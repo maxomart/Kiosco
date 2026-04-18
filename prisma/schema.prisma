@@ -20,8 +20,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("postgresql://postgres:ZJfRzrLlyxUSpNhMtjWCYMGwhAlViOeK@postgres.railway.internal:5432/railway")
   // Para producción, cambiar a:
   // provider = "postgresql"
 }
