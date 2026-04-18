@@ -1,0 +1,542 @@
+// ============================================================
+// KIOSCO APP - Prisma Schema (Multi-Tenant)
+//
+// DESARROLLO LOCAL:
+//   provider = "sqlite"
+//   DATABASE_URL="file:./dev.db"
+//
+// PRODUCCIÓN (Vercel + Neon / Supabase / Railway):
+//   provider = "postgresql"
+//   DATABASE_URL="postgresql://user:pass@host:5432/kiosco?schema=public"
+//
+// Para cambiar de SQLite a PostgreSQL:
+//   1. Cambiar provider abajo
+//   2. Actualizar DATABASE_URL en .env
+//   3. npx prisma migrate dev --name init
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+  // Para producción, cambiar a:
+  // provider = "postgresql"
+}
+
+// ============================================================
+// TENANT (Kiosco)
+// ============================================================
+
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users             User[]
+  products          Product[]
+  categories        Category[]
+  suppliers         Supplier[]
+  sales             Sale[]
+  cashSessions      CashSession[]
+  recharges         Recharge[]
+  clients           Client[]
+  expenses          Expense[]
+  expenseCategories ExpenseCategory[]
+  config            BusinessConfig[]
+  purchases         Purchase[]
+
+  @@map("tenants")
+}
+
+// ============================================================
+// USUARIOS Y PERMISOS
+// Role: SUPER_ADMIN | ADMIN | OWNER | CASHIER
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("CASHIER")
+  active        Boolean   @default(true)
+  phone         String?
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id])
+
+  sessions      Session[]
+  accounts      Account[]
+  sales         Sale[]
+  cashSessions  CashSession[]
+  stockMoves    StockMovement[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============================================================
+// CATEGORÍAS DE PRODUCTOS
+// ============================================================
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  color       String?
+  icon        String?
+  active      Boolean   @default(true)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenantId    String?
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id])
+
+  products    Product[]
+
+  @@unique([name, tenantId])
+  @@map("categories")
+}
+
+// ============================================================
+// PROVEEDORES
+// ============================================================
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  cuit        String?
+  contact     String?
+  phone       String?
+  email       String?
+  address     String?
+  notes       String?
+  active      Boolean  @default(true)
+  balance     Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+
+  products    Product[]
+  purchases   Purchase[]
+
+  @@unique([cuit, tenantId])
+  @@map("suppliers")
+}
+
+// ============================================================
+// PRODUCTOS
+// taxRate: ZERO | REDUCED | STANDARD
+// ============================================================
+
+model Product {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  barcode         String?
+  sku             String?
+  imageUrl        String?
+
+  costPrice       Float     @default(0)
+  salePrice       Float
+  profitPercent   Float     @default(0)
+  taxRate         String    @default("STANDARD")
+
+  stock           Float     @default(0)
+  minStock        Float     @default(5)
+  idealStock      Float     @default(20)
+  unit            String    @default("un")
+  soldByWeight    Boolean   @default(false)
+
+  hasExpiry       Boolean   @default(false)
+  expiryDate      DateTime?
+
+  categoryId      String?
+  supplierId      String?
+  category        Category? @relation(fields: [categoryId], references: [id])
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+
+  tenantId        String?
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
+
+  active          Boolean   @default(true)
+  featured        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  saleItems       SaleItem[]
+  stockMovements  StockMovement[]
+  purchaseItems   PurchaseItem[]
+
+  @@unique([barcode, tenantId])
+  @@unique([sku, tenantId])
+  @@map("products")
+}
+
+// ============================================================
+// CLIENTES
+// ============================================================
+
+model Client {
+  id            String   @id @default(cuid())
+  name          String
+  phone         String?
+  email         String?
+  dni           String?
+  address       String?
+  birthDate     DateTime?
+  loyaltyPoints Int      @default(0)
+  balance       Float    @default(0)
+  notes         String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenantId      String?
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id])
+
+  sales         Sale[]
+
+  @@unique([dni, tenantId])
+  @@map("clients")
+}
+
+// ============================================================
+// VENTAS
+// status: COMPLETED | CANCELLED | REFUNDED | PARTIAL_REFUND
+// paymentMethod: CASH | DEBIT | CREDIT | TRANSFER | MERCADOPAGO | UALA | MODO | NARANJA_X | CUENTA_DNI | LOYALTY_POINTS | MIXED
+// ============================================================
+
+model Sale {
+  id              String   @id @default(cuid())
+  number          Int
+
+  subtotal        Float
+  discountAmount  Float    @default(0)
+  discountPercent Float    @default(0)
+  taxAmount       Float    @default(0)
+  total           Float
+
+  paymentMethod   String   @default("CASH")
+  cashReceived    Float?
+  change          Float?
+
+  status          String   @default("COMPLETED")
+  cancelReason    String?
+
+  invoiceType     String?
+  invoiceNumber   String?
+  cae             String?
+  caeExpiry       DateTime?
+
+  userId          String
+  clientId        String?
+  cashSessionId   String?
+
+  tenantId        String?
+  tenant          Tenant?       @relation(fields: [tenantId], references: [id])
+
+  user            User          @relation(fields: [userId], references: [id])
+  client          Client?       @relation(fields: [clientId], references: [id])
+  cashSession     CashSession?  @relation(fields: [cashSessionId], references: [id])
+  items           SaleItem[]
+  payments        SalePayment[]
+
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([number, tenantId])
+  @@map("sales")
+}
+
+model SaleItem {
+  id          String   @id @default(cuid())
+  saleId      String
+  productId   String
+  productName String
+  quantity    Float
+  unitPrice   Float
+  costPrice   Float    @default(0)
+  discount    Float    @default(0)
+  subtotal    Float
+  taxRate     String   @default("STANDARD")
+  taxAmount   Float    @default(0)
+
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+model SalePayment {
+  id            String   @id @default(cuid())
+  saleId        String
+  method        String
+  amount        Float
+  reference     String?
+
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_payments")
+}
+
+// ============================================================
+// CAJA
+// status: OPEN | CLOSED
+// ============================================================
+
+model CashSession {
+  id              String   @id @default(cuid())
+  userId          String
+  status          String   @default("OPEN")
+
+  openedAt        DateTime @default(now())
+  openingBalance  Float    @default(0)
+
+  closedAt        DateTime?
+  closingBalance  Float?
+  expectedCash    Float?
+  difference      Float?
+
+  notes           String?
+
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
+
+  user            User     @relation(fields: [userId], references: [id])
+  sales           Sale[]
+  expenses        Expense[]
+
+  @@map("cash_sessions")
+}
+
+// ============================================================
+// MOVIMIENTOS DE STOCK
+// type: PURCHASE | SALE | ADJUSTMENT | LOSS | EXPIRY | RETURN | TRANSFER | INITIAL
+// ============================================================
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  productId   String
+  type        String
+  quantity    Float
+  stockBefore Float
+  stockAfter  Float
+  unitCost    Float?
+  totalCost   Float?
+  reason      String?
+  reference   String?
+  userId      String
+
+  product     Product  @relation(fields: [productId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+
+  @@map("stock_movements")
+}
+
+// ============================================================
+// COMPRAS A PROVEEDORES
+// status: PENDING | RECEIVED | PARTIAL | CANCELLED
+// ============================================================
+
+model Purchase {
+  id          String   @id @default(cuid())
+  supplierId  String
+  status      String   @default("PENDING")
+  invoiceNum  String?
+  totalCost   Float    @default(0)
+  paid        Float    @default(0)
+  notes       String?
+  receivedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantId    String?
+  tenant      Tenant?      @relation(fields: [tenantId], references: [id])
+
+  supplier    Supplier     @relation(fields: [supplierId], references: [id])
+  items       PurchaseItem[]
+
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String   @id @default(cuid())
+  purchaseId  String
+  productId   String
+  quantity    Float
+  unitCost    Float
+  totalCost   Float
+
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@map("purchase_items")
+}
+
+// ============================================================
+// GASTOS
+// ============================================================
+
+model ExpenseCategory {
+  id       String    @id @default(cuid())
+  name     String
+  color    String?
+
+  tenantId String?
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id])
+
+  expenses Expense[]
+
+  @@unique([name, tenantId])
+  @@map("expense_categories")
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  description   String
+  amount        Float
+  categoryId    String?
+  cashSessionId String?
+  receipt       String?
+  notes         String?
+
+  tenantId      String?
+  tenant        Tenant?          @relation(fields: [tenantId], references: [id])
+
+  category      ExpenseCategory? @relation(fields: [categoryId], references: [id])
+  cashSession   CashSession?     @relation(fields: [cashSessionId], references: [id])
+
+  createdAt     DateTime @default(now())
+
+  @@map("expenses")
+}
+
+// ============================================================
+// RECARGAS Y SERVICIOS
+// type: CELULAR_CLARO | CELULAR_MOVISTAR | CELULAR_PERSONAL | CELULAR_TUENTI | SUBE | SERVICIOS | TARJETA_PREPAGA | OTROS
+// ============================================================
+
+model Recharge {
+  id          String   @id @default(cuid())
+  type        String
+  phoneNumber String?
+  amount      Float
+  commission  Float    @default(0)
+  profit      Float    @default(0)
+  reference   String?
+  status      String   @default("COMPLETED")
+  notes       String?
+
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+
+  createdAt   DateTime @default(now())
+
+  @@map("recharges")
+}
+
+// ============================================================
+// AUDITORÍA
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  String?
+  newValue  String?
+  ip        String?
+  userAgent String?
+
+  tenantId  String?
+
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ============================================================
+// CONFIGURACIÓN DEL NEGOCIO
+// ============================================================
+
+model BusinessConfig {
+  id          String   @id @default(cuid())
+  key         String
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+
+  @@unique([key, tenantId])
+  @@map("business_config")
+}
+
+// ============================================================
+// PROGRAMA DE FIDELIDAD
+// ============================================================
+
+model LoyaltyTransaction {
+  id          String   @id @default(cuid())
+  clientId    String
+  points      Int
+  description String
+  saleId      String?
+  createdAt   DateTime @default(now())
+
+  @@map("loyalty_transactions")
+}
