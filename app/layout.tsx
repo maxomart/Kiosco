@@ -10,11 +10,6 @@ export const metadata: Metadata = {
   title: "KioscoApp - Sistema de Gestión",
   description: "Sistema de gestión para kioscos argentinos",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "KioscoApp",
-  },
 }
 
 export const viewport: Viewport = {
@@ -30,9 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es-AR" suppressHydrationWarning>
-      <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-      </head>
+      <head />
       <body className={`${inter.className} antialiased`} suppressHydrationWarning>
         <ThemeProvider>
           {children}
