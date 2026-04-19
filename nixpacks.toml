@@ -1,5 +1,4 @@
 # Nixpacks configuration para Railway
-# https://nixpacks.com/docs/configuration/file
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "openssl"]
@@ -10,7 +9,7 @@ cmds = ["npm ci"]
 [phases.build]
 cmds = [
   "npx prisma generate",
-  "npm run build"
+  "npx next build"
 ]
 
 [start]
