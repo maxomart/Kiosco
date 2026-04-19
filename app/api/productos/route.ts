@@ -47,12 +47,12 @@ export async function GET(req: NextRequest) {
   if (barcode) {
     where.barcode = barcode
   } else if (q) {
-    // SQLite LIKE es case-insensitive por defecto para ASCII (no soporta mode)
+    // PostgreSQL: usar mode insensitive para búsqueda case-insensitive
     where.OR = [
-      { name: { contains: q } },
+      { name: { contains: q, mode: "insensitive" } },
       { barcode: { contains: q } },
-      { sku: { contains: q } },
-      { description: { contains: q } },
+      { sku: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
     ]
   }
 

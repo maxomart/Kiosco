@@ -1,18 +1,7 @@
 // ============================================================
 // KIOSCO APP - Prisma Schema (Multi-Tenant)
-//
-// DESARROLLO LOCAL:
-//   provider = "sqlite"
-//   DATABASE_URL="file:./dev.db"
-//
-// PRODUCCIÓN (Vercel + Neon / Supabase / Railway):
-//   provider = "postgresql"
-//   DATABASE_URL="postgresql://user:pass@host:5432/kiosco?schema=public"
-//
-// Para cambiar de SQLite a PostgreSQL:
-//   1. Cambiar provider abajo
-//   2. Actualizar DATABASE_URL en .env
-//   3. npx prisma migrate dev --name init
+// PostgreSQL — usado en desarrollo y producción (Railway)
+// DATABASE_URL se toma desde variables de entorno.
 // ============================================================
 
 generator client {
@@ -22,8 +11,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  // Para producción, cambiar a:
-  // provider = "postgresql"
 }
 
 // ============================================================

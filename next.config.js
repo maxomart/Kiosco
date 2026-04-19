@@ -2,7 +2,13 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000"],
+      // Permite localhost (dev) y cualquier subdominio de Railway / Vercel en producción
+      allowedOrigins: [
+        "localhost:3000",
+        "*.up.railway.app",
+        "*.railway.app",
+        "*.vercel.app",
+      ],
     },
   },
 

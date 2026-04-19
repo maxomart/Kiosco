@@ -12,6 +12,9 @@ export default async function DashboardLayout({
   const session = await auth()
   if (!session) redirect("/login")
 
+  // SUPER_ADMIN va directo al panel de administración de kioscos
+  if (session.user.role === "SUPER_ADMIN") redirect("/admin")
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden">
       <OfflineBanner />

@@ -9,10 +9,24 @@ async function main() {
   // ============================================================
   // USUARIOS
   // ============================================================
+  const superAdminPassword = await bcrypt.hash("SuperAdmin2026!", 12)
   const adminPassword = await bcrypt.hash("admin123", 12)
   const cashierPassword = await bcrypt.hash("cajero123", 12)
 
-  const admin = await db.user.upsert({
+  // SUPER ADMIN: ve y administra todos los kioscos (tenantId = null)
+  await db.user.upsert({
+    where: { email: "superadmin@kiosco.com" },
+    update: { role: "SUPER_ADMIN", active: true },
+    create: {
+      name: "Super Administrador",
+      email: "superadmin@kiosco.com",
+      password: superAdminPassword,
+      role: "SUPER_ADMIN",
+      tenantId: null,
+    },
+  })
+
+  await db.user.upsert({
     where: { email: "admin@kiosco.com" },
     update: {},
     create: {
@@ -23,7 +37,7 @@ async function main() {
     },
   })
 
-  const cashier = await db.user.upsert({
+  await db.user.upsert({
     where: { email: "cajero@kiosco.com" },
     update: {},
     create: {

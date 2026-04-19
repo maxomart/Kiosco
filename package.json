@@ -4,13 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "prisma generate && next build",
+    "start": "next start -p ${PORT:-3000}",
+    "start:prod": "prisma db push --accept-data-loss --skip-generate && node scripts/ensure-admin.js && next start -p ${PORT:-3000}",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
     "db:studio": "prisma studio",
-    "db:migrate": "prisma migrate deploy"
+    "db:migrate": "prisma migrate deploy",
+    "ensure:admin": "node scripts/ensure-admin.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
