@@ -2,40 +2,45 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { startOfDay, endOfDay, subDays } from "date-fns"
 import Anthropic from "@anthropic-ai/sdk"
+import { getSessionTenant } from "@/lib/tenant"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // GET /api/ia/resumen-dia
 // Genera un resumen en lenguaje natural del rendimiento del día
 export async function GET() {
+  const { error, tenantId } = await getSessionTenant()
+  if (error) return error
   try {
     const now = new Date()
     const todayStart = startOfDay(now)
     const todayEnd = endOfDay(now)
     const yesterdayStart = startOfDay(subDays(now, 1))
     const yesterdayEnd = endOfDay(subDays(now, 1))
+    const tenantFilter = tenantId ? { tenantId } : {}
+    const saleTenantFilter = tenantId ? { sale: { tenantId } } : {}
 
     const [today, yesterday, topItems, allActiveProducts] = await Promise.all([
       db.sale.aggregate({
-        where: { createdAt: { gte: todayStart, lte: todayEnd }, status: "COMPLETED" },
+        where: { createdAt: { gte: todayStart, lte: todayEnd }, status: "COMPLETED", ...tenantFilter },
         _sum: { total: true },
         _count: true,
       }),
       db.sale.aggregate({
-        where: { createdAt: { gte: yesterdayStart, lte: yesterdayEnd }, status: "COMPLETED" },
+        where: { createdAt: { gte: yesterdayStart, lte: yesterdayEnd }, status: "COMPLETED", ...tenantFilter },
         _sum: { total: true },
         _count: true,
       }),
       db.saleItem.groupBy({
         by: ["productName"],
-        where: { sale: { createdAt: { gte: todayStart, lte: todayEnd }, status: "COMPLETED" } },
+        where: { sale: { createdAt: { gte: todayStart, lte: todayEnd }, status: "COMPLETED", ...tenantFilter } },
         _sum: { quantity: true, subtotal: true },
         orderBy: { _sum: { quantity: "desc" } },
         take: 3,
       }),
       // Filtrar low stock en JS para compatibilidad SQLite + PostgreSQL
       db.product.findMany({
-        where: { active: true },
+        where: { active: true, ...tenantFilter },
         select: { stock: true, minStock: true },
       }),
     ])

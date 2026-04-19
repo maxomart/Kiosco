@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { getSessionTenant } from "@/lib/tenant"
 import { z } from "zod"
 
 const clientSchema = z.object({
@@ -14,9 +14,11 @@ const clientSchema = z.object({
 
 // GET /api/clientes
 export async function GET() {
+  const { error, tenantId } = await getSessionTenant()
+  if (error) return error
   try {
     const clients = await db.client.findMany({
-      where: { active: true },
+      where: { active: true, ...(tenantId ? { tenantId } : {}) },
       orderBy: { name: "asc" },
     })
     return NextResponse.json(clients)
@@ -27,8 +29,8 @@ export async function GET() {
 
 // POST /api/clientes
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const { error, tenantId } = await getSessionTenant()
+  if (error) return error
 
   const body = await req.json()
   const parsed = clientSchema.safeParse(body)
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
         dni: data.dni || null,
         address: data.address || null,
         notes: data.notes || null,
+        tenantId: tenantId ?? null,
       },
     })
     return NextResponse.json(client, { status: 201 })

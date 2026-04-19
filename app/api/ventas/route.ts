@@ -36,7 +36,7 @@ const saleSchema = z.object({
 
 // POST /api/ventas - Registrar una venta
 export async function POST(req: NextRequest) {
-  const { error, tenantId, session } = await getSessionTenant()
+  const { error, tenantId, session, isSuperAdmin } = await getSessionTenant()
   if (error) return error
 
   const body = await req.json()
@@ -48,22 +48,6 @@ export async function POST(req: NextRequest) {
   const data = parsed.data
 
   try {
-    // Verificar stock disponible
-    for (const item of data.items) {
-      const product = await db.product.findUnique({
-        where: { id: item.productId },
-        select: { stock: true, name: true, soldByWeight: true }
-      })
-      if (!product) {
-        return NextResponse.json({ error: `Producto no encontrado: ${item.productId}` }, { status: 404 })
-      }
-      if (!product.soldByWeight && product.stock < item.quantity) {
-        return NextResponse.json({
-          error: `Stock insuficiente para: ${item.productName}. Stock actual: ${product.stock}`
-        }, { status: 400 })
-      }
-    }
-
     // Calcular IVA por ítem
     const TAX_RATES = { ZERO: 0, REDUCED: 0.105, STANDARD: 0.21 }
     const itemsWithTax = data.items.map(item => ({
@@ -71,8 +55,26 @@ export async function POST(req: NextRequest) {
       taxAmount: item.subtotal * (TAX_RATES[item.taxRate] / (1 + TAX_RATES[item.taxRate])),
     }))
 
-    // Crear la venta con todos sus ítems en una sola transacción
+    // Toda la operación (verificación de stock + creación + decremento)
+    // corre dentro de una sola transacción para evitar race conditions.
     const sale = await db.$transaction(async (tx) => {
+      // Verificar stock + tenantId dentro de la transacción
+      for (const item of data.items) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { stock: true, name: true, soldByWeight: true, tenantId: true },
+        })
+        if (!product) {
+          throw new Error(`NOT_FOUND:${item.productId}`)
+        }
+        if (!isSuperAdmin && product.tenantId !== tenantId) {
+          throw new Error(`FORBIDDEN:${item.productId}`)
+        }
+        if (!product.soldByWeight && product.stock < item.quantity) {
+          throw new Error(`NO_STOCK:${item.productName}:${product.stock}`)
+        }
+      }
+
       // Generar número de venta secuencial por tenant
       const lastSale = await tx.sale.findFirst({
         where: tenantId ? { tenantId } : {},
@@ -162,7 +164,20 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ sale }, { status: 201 })
-  } catch (err) {
+  } catch (err: any) {
+    const msg = err?.message ?? ""
+    if (msg.startsWith("NOT_FOUND:")) {
+      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
+    }
+    if (msg.startsWith("FORBIDDEN:")) {
+      return NextResponse.json({ error: "Producto no pertenece a tu kiosco" }, { status: 403 })
+    }
+    if (msg.startsWith("NO_STOCK:")) {
+      const parts = msg.split(":")
+      return NextResponse.json({
+        error: `Stock insuficiente para: ${parts[1]}. Stock actual: ${parts[2]}`,
+      }, { status: 400 })
+    }
     console.error("Error al procesar venta:", err)
     return NextResponse.json({ error: "Error al procesar la venta" }, { status: 500 })
   }

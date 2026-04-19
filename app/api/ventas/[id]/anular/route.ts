@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { getSessionTenant } from "@/lib/tenant"
 
 // POST /api/ventas/[id]/anular
 // Anula una venta y devuelve el stock a cada producto
@@ -8,10 +8,10 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const { error, session, tenantId, isSuperAdmin } = await getSessionTenant()
+  if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
-  if (!["ADMIN", "OWNER"].includes(session.user.role ?? "")) {
+  if (!["ADMIN", "OWNER", "SUPER_ADMIN"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Sin permisos para anular ventas" }, { status: 403 })
   }
 
@@ -24,6 +24,9 @@ export async function POST(
   })
 
   if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 })
+  if (!isSuperAdmin && sale.tenantId !== tenantId) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
   if (sale.status !== "COMPLETED") {
     return NextResponse.json({ error: "Solo se pueden anular ventas completadas" }, { status: 400 })
   }

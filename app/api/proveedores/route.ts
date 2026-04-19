@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { getSessionTenant } from "@/lib/tenant"
 import { z } from "zod"
 
 const supplierSchema = z.object({
@@ -15,9 +15,11 @@ const supplierSchema = z.object({
 
 // GET /api/proveedores
 export async function GET() {
+  const { error, tenantId } = await getSessionTenant()
+  if (error) return error
   try {
     const suppliers = await db.supplier.findMany({
-      where: { active: true },
+      where: { active: true, ...(tenantId ? { tenantId } : {}) },
       orderBy: { name: "asc" },
       include: { _count: { select: { products: true } } },
     })
@@ -29,8 +31,8 @@ export async function GET() {
 
 // POST /api/proveedores
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const { error, tenantId } = await getSessionTenant()
+  if (error) return error
 
   const body = await req.json()
   const parsed = supplierSchema.safeParse(body)
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
         email: data.email || null,
         address: data.address || null,
         notes: data.notes || null,
+        tenantId: tenantId ?? null,
       },
       include: { _count: { select: { products: true } } },
     })

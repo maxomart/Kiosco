@@ -55,6 +55,7 @@ export default function AdminPage() {
   const [resettingUserId, setResettingUserId] = useState<string | null>(null)
   const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(null)
   const [showResetPassword, setShowResetPassword] = useState(false)
+  const [togglingTenantId, setTogglingTenantId] = useState<string | null>(null)
 
   const loadTenants = async () => {
     try {
@@ -114,25 +115,44 @@ export default function AdminPage() {
   }
 
   const toggleTenant = async (id: string, active: boolean) => {
+    if (togglingTenantId) return // evitar doble clic
+    if (!active) {
+      const ok = window.confirm(
+        "¿Desactivar este kiosco?\n\nTodos sus usuarios perderán acceso inmediato. Podés reactivarlo cuando quieras."
+      )
+      if (!ok) return
+    }
+    setTogglingTenantId(id)
     try {
       const r = await fetch(`/api/admin/tenants/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active }),
       })
+      const data = await r.json().catch(() => ({}))
       if (r.ok) {
         setTenants(prev => prev.map(t => t.id === id ? { ...t, active } : t))
         if (selectedTenant?.id === id) setSelectedTenant(prev => prev ? { ...prev, active } : prev)
         toast.success(active ? "Kiosco activado" : "Kiosco desactivado")
+      } else {
+        toast.error(data.error ?? "No se pudo actualizar el kiosco")
       }
-    } catch { toast.error("Error") }
+    } catch {
+      toast.error("Error de conexión")
+    } finally {
+      setTogglingTenantId(null)
+    }
   }
 
   const resetPassword = async (userId: string) => {
+    if (!selectedTenant) {
+      toast.error("Kiosco no seleccionado")
+      return
+    }
     setResettingUserId(userId)
     setResetResult(null)
     try {
-      const r = await fetch(`/api/admin/tenants/${selectedTenant!.id}/reset-password`, {
+      const r = await fetch(`/api/admin/tenants/${selectedTenant.id}/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -302,9 +322,21 @@ export default function AdminPage() {
                   </span>
                   <button
                     onClick={() => toggleTenant(selectedTenant.id, !selectedTenant.active)}
-                    className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition", selectedTenant.active ? "bg-red-900/30 text-red-400 hover:bg-red-900/50" : "bg-green-900/30 text-green-400 hover:bg-green-900/50")}
+                    disabled={togglingTenantId === selectedTenant.id}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed",
+                      selectedTenant.active
+                        ? "bg-red-900/30 text-red-400 hover:bg-red-900/50"
+                        : "bg-green-900/30 text-green-400 hover:bg-green-900/50"
+                    )}
                   >
-                    {selectedTenant.active ? <><PowerOff size={14} /> Desactivar</> : <><Power size={14} /> Activar</>}
+                    {togglingTenantId === selectedTenant.id ? (
+                      <><Loader2 size={14} className="animate-spin" /> Procesando...</>
+                    ) : selectedTenant.active ? (
+                      <><PowerOff size={14} /> Desactivar</>
+                    ) : (
+                      <><Power size={14} /> Activar</>
+                    )}
                   </button>
                 </div>
 

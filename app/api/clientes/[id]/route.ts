@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { getSessionTenant } from "@/lib/tenant"
 import { z } from "zod"
 
 const updateSchema = z.object({
@@ -12,10 +12,21 @@ const updateSchema = z.object({
   notes: z.string().optional().nullable(),
 })
 
+async function ensureOwnership(id: string, tenantId: string | null, isSuperAdmin: boolean) {
+  const existing = await db.client.findUnique({ where: { id }, select: { tenantId: true } })
+  if (!existing) return "not_found" as const
+  if (!isSuperAdmin && existing.tenantId !== tenantId) return "forbidden" as const
+  return "ok" as const
+}
+
 // PUT /api/clientes/[id]
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const { error, tenantId, isSuperAdmin } = await getSessionTenant()
+  if (error) return error
+
+  const check = await ensureOwnership(params.id, tenantId, isSuperAdmin)
+  if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
+  if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
 
   const body = await req.json()
   const parsed = updateSchema.safeParse(body)
@@ -44,8 +55,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 // DELETE /api/clientes/[id]
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const { error, tenantId, isSuperAdmin } = await getSessionTenant()
+  if (error) return error
+
+  const check = await ensureOwnership(params.id, tenantId, isSuperAdmin)
+  if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
+  if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
 
   try {
     await db.client.update({ where: { id: params.id }, data: { active: false } })

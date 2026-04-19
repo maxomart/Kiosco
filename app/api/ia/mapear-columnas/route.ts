@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
+import { auth } from "@/lib/auth"
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // POST /api/ia/mapear-columnas
 // Recibe headers y una fila de muestra, devuelve un mapping header → campo del sistema
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   try {
     const { headers, sample } = await req.json()
 

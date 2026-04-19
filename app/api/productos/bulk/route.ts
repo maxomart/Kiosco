@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { getSessionTenant } from "@/lib/tenant"
 import { z } from "zod"
 
 // POST /api/productos/bulk
@@ -20,9 +20,9 @@ const bulkUpdateSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  if (!["ADMIN", "OWNER"].includes(session.user.role ?? "")) {
+  const { error, session, tenantId, isSuperAdmin } = await getSessionTenant()
+  if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  if (!["ADMIN", "OWNER", "SUPER_ADMIN"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
   }
 
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       for (const u of updates) {
         const old = await tx.product.findUnique({ where: { id: u.id } })
         if (!old) continue
+        if (!isSuperAdmin && old.tenantId !== tenantId) continue
 
         const updateData: any = {}
         if (u.costPrice !== undefined) updateData.costPrice = u.costPrice
@@ -71,11 +72,11 @@ export async function POST(req: NextRequest) {
 }
 
 // DELETE /api/productos/bulk
-// Borra TODOS los productos (requiere confirmación en el body)
+// Borra TODOS los productos (requiere confirmación en el body) — SIEMPRE alcance del tenant
 export async function DELETE(req: NextRequest) {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  if (!["ADMIN", "OWNER"].includes(session.user.role ?? "")) {
+  const { error, session, tenantId, isSuperAdmin } = await getSessionTenant()
+  if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  if (!["ADMIN", "OWNER", "SUPER_ADMIN"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
   }
 
@@ -88,11 +89,22 @@ export async function DELETE(req: NextRequest) {
   }
 
   const mode: "soft" | "hard" = body.mode === "hard" ? "hard" : "soft"
+  // SUPER_ADMIN sin tenantId en body no puede borrar TODO a nivel global — requiere tenantId explícito
+  const scopeTenantId: string | null = isSuperAdmin ? (body.tenantId ?? null) : tenantId
+  if (!scopeTenantId) {
+    return NextResponse.json(
+      { error: "tenantId requerido para borrado masivo" },
+      { status: 400 }
+    )
+  }
+  const tenantFilter = { tenantId: scopeTenantId }
 
   try {
     if (mode === "hard") {
-      // Hard delete: requiere que no haya ventas
-      const hasVentas = await db.saleItem.count()
+      // Hard delete dentro del tenant: requiere que no haya ventas de ese tenant
+      const hasVentas = await db.saleItem.count({
+        where: { product: { tenantId: scopeTenantId } },
+      })
       if (hasVentas > 0) {
         return NextResponse.json(
           {
@@ -101,11 +113,11 @@ export async function DELETE(req: NextRequest) {
           { status: 400 }
         )
       }
-      await db.stockMovement.deleteMany()
-      await db.product.deleteMany()
+      await db.stockMovement.deleteMany({ where: { product: tenantFilter } })
+      await db.product.deleteMany({ where: tenantFilter })
     } else {
-      // Soft delete: desactivar todos
-      await db.product.updateMany({ data: { active: false } })
+      // Soft delete: desactivar solo los del tenant
+      await db.product.updateMany({ where: tenantFilter, data: { active: false } })
     }
 
     await db.auditLog.create({
