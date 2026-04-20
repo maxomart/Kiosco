@@ -4,13 +4,14 @@ import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { generatePassword } from "@/lib/utils"
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session || session.user.role !== "SUPER_ADMIN")
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
 
+  const { id } = await params
   const owner = await db.user.findFirst({
-    where: { tenantId: params.id, role: "OWNER" },
+    where: { tenantId: id, role: "OWNER" },
     select: { id: true, email: true },
   })
   if (!owner) return NextResponse.json({ error: "Owner no encontrado" }, { status: 404 })

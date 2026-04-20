@@ -27,8 +27,12 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetch("/api/admin/stats")
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then(d => { setStats(d); setLoading(false) })
+      .catch(err => { console.error("Failed to load admin stats:", err); setLoading(false) })
   }, [])
 
   if (loading) {

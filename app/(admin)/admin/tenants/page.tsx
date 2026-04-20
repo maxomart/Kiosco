@@ -37,21 +37,41 @@ export default function AdminTenantsPage() {
   const handleToggle = async (t: Tenant) => {
     if (!confirm(`¿${t.active ? "Desactivar" : "Activar"} "${t.name}"?`)) return
     setTogglingId(t.id)
-    await fetch(`/api/admin/tenants/${t.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: !t.active }),
-    })
-    await load()
-    setTogglingId(null)
+    try {
+      const res = await fetch(`/api/admin/tenants/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: !t.active }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        alert(d.error || "Error al actualizar tenant")
+      } else {
+        await load()
+      }
+    } catch (e) {
+      alert("Error de red al actualizar tenant")
+    } finally {
+      setTogglingId(null)
+    }
   }
 
   const handleResetPassword = async (t: Tenant) => {
     if (!confirm(`¿Resetear contraseña del owner de "${t.name}"?`)) return
     setResettingId(t.id)
-    const res = await fetch(`/api/admin/tenants/${t.id}/reset-password`, { method: "POST" })
-    if (res.ok) { setNewPassword(await res.json()) }
-    setResettingId(null)
+    try {
+      const res = await fetch(`/api/admin/tenants/${t.id}/reset-password`, { method: "POST" })
+      if (res.ok) {
+        setNewPassword(await res.json())
+      } else {
+        const d = await res.json().catch(() => ({}))
+        alert(d.error || "Error al resetear contraseña")
+      }
+    } catch (e) {
+      alert("Error de red al resetear contraseña")
+    } finally {
+      setResettingId(null)
+    }
   }
 
   const copyPw = () => {

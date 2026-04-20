@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
-import { Shield, LogOut, Building2, BarChart3, Activity } from "lucide-react"
+import { Shield, LogOut, Building2, BarChart3 } from "lucide-react"
 
 interface Props {
   user: { name?: string | null; email?: string | null }
@@ -15,7 +15,6 @@ export default function AdminNav({ user }: Props) {
   const links = [
     { href: "/admin", label: "Dashboard", icon: BarChart3 },
     { href: "/admin/tenants", label: "Tenants", icon: Building2 },
-    { href: "/admin/metrics", label: "Métricas", icon: Activity },
   ]
 
   return (

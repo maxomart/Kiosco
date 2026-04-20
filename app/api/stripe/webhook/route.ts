@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         const tenantId = sub.metadata?.tenantId
         if (!tenantId) break
         const plan = PLAN_FROM_PRICE[sub.items.data[0]?.price.id] || "STARTER"
-        await db.subscription.upsert({
+        const dbSub = await db.subscription.upsert({
           where: { tenantId },
           create: {
             tenantId, plan,
@@ -76,20 +76,25 @@ export async function POST(req: NextRequest) {
           },
           update: {
             plan, status: "ACTIVE",
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: sub.id,
             currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
           },
         })
+        const invoiceNumber = invoice.number ?? invoice.id ?? `inv_${Date.now()}`
+        const paidAtTs = invoice.status_transitions?.paid_at
         await db.invoice.create({
           data: {
-            tenantId,
-            stripeInvoiceId: invoice.id!,
+            subscriptionId: dbSub.id,
+            number: invoiceNumber,
+            stripeInvoiceId: invoice.id ?? null,
             amount: invoice.amount_paid / 100,
             currency: invoice.currency.toUpperCase(),
             status: "PAID",
-            paidAt: new Date(invoice.status_transitions.paid_at! * 1000),
-            invoiceUrl: invoice.hosted_invoice_url,
+            paidAt: paidAtTs ? new Date(paidAtTs * 1000) : new Date(),
+            pdfUrl: invoice.invoice_pdf ?? invoice.hosted_invoice_url ?? null,
           },
-        }).catch(() => {})
+        }).catch((e) => { console.error("invoice insert failed:", e) })
         break
       }
 
@@ -109,7 +114,7 @@ export async function POST(req: NextRequest) {
         if (!tenantId) break
         await db.subscription.updateMany({
           where: { tenantId },
-          data: { plan: "FREE", status: "CANCELLED", stripeSubscriptionId: null },
+          data: { plan: "FREE", status: "CANCELLED", stripeSubscriptionId: null, cancelledAt: new Date() },
         })
         break
       }

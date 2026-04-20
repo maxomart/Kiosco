@@ -74,12 +74,20 @@ export default function SuscripcionPage() {
 
   const handlePortal = async () => {
     setPortalLoading(true)
-    const res = await fetch("/api/stripe/customer-portal", { method: "POST" })
-    if (res.ok) {
-      const { url } = await res.json()
-      window.location.href = url
+    try {
+      const res = await fetch("/api/stripe/customer-portal", { method: "POST" })
+      if (res.ok) {
+        const { url } = await res.json()
+        window.location.href = url
+      } else {
+        const d = await res.json().catch(() => ({}))
+        alert(d.error || "No se pudo abrir el portal de facturación")
+      }
+    } catch (e) {
+      alert("Error de red al abrir el portal")
+    } finally {
+      setPortalLoading(false)
     }
-    setPortalLoading(false)
   }
 
   const STATUS_LABELS: Record<string, string> = {
