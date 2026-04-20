@@ -62,10 +62,25 @@ export async function POST(req: NextRequest) {
 
   // Validate clientId / cashSessionId belong to tenant (prevents cross-tenant writes)
   if (data.clientId) {
-    const client = await db.client.findUnique({ where: { id: data.clientId }, select: { tenantId: true } })
+    const client = await db.client.findUnique({
+      where: { id: data.clientId },
+      select: { tenantId: true, creditLimit: true, currentBalance: true },
+    })
     if (!client || client.tenantId !== tenantId) {
       return NextResponse.json({ error: "Cliente inválido" }, { status: 400 })
     }
+    // Cuenta corriente: enforce credit limit
+    if (data.paymentMethod === "CUENTA_CORRIENTE") {
+      const limit = Number(client.creditLimit ?? 0)
+      const balance = Number(client.currentBalance ?? 0)
+      if (limit > 0 && balance + data.total > limit) {
+        return NextResponse.json({
+          error: `Excede el límite de crédito ($${limit.toFixed(2)}). Saldo actual: $${balance.toFixed(2)}`,
+        }, { status: 400 })
+      }
+    }
+  } else if (data.paymentMethod === "CUENTA_CORRIENTE") {
+    return NextResponse.json({ error: "Para cuenta corriente debés seleccionar un cliente" }, { status: 400 })
   }
   if (data.cashSessionId) {
     const cs = await db.cashSession.findUnique({ where: { id: data.cashSessionId }, select: { tenantId: true } })
@@ -172,6 +187,14 @@ export async function POST(req: NextRequest) {
             productId: item.productId,
             userId,
           },
+        })
+      }
+
+      // ---- 4b. Cuenta corriente: increment client.currentBalance ----
+      if (data.paymentMethod === "CUENTA_CORRIENTE" && data.clientId) {
+        await tx.client.update({
+          where: { id: data.clientId },
+          data: { currentBalance: { increment: data.total } },
         })
       }
 

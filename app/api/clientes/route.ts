@@ -4,7 +4,15 @@ import { getSessionTenant } from "@/lib/tenant"
 import { checkQuota } from "@/lib/plan-guard"
 import { z } from "zod"
 
-const schema = z.object({ name: z.string().min(1), phone: z.string().optional().nullable(), email: z.string().email().optional().nullable().or(z.literal("")), dni: z.string().optional().nullable(), address: z.string().optional().nullable(), notes: z.string().optional().nullable() })
+const schema = z.object({
+  name: z.string().min(1),
+  phone: z.string().optional().nullable(),
+  email: z.string().email().optional().nullable().or(z.literal("")),
+  dni: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  creditLimit: z.number().nonnegative().optional(),
+})
 
 export async function GET() {
   const { error, tenantId } = await getSessionTenant()
@@ -33,6 +41,8 @@ export async function GET() {
     return NextResponse.json({
       clients: clients.map((c: any) => ({
         ...c,
+        creditLimit: Number(c.creditLimit ?? 0),
+        currentBalance: Number(c.currentBalance ?? 0),
         totalPurchases: sumByClient.get(c.id) ?? 0,
       })),
     })
@@ -59,7 +69,14 @@ export async function POST(req: NextRequest) {
   if (!quota.ok) return NextResponse.json({ error: quota.message }, { status: 403 })
 
   try {
-    const client = await db.client.create({ data: { ...parsed.data, email: parsed.data.email || null, tenantId: tenantId! } })
+    const client = await db.client.create({
+      data: {
+        ...parsed.data,
+        email: parsed.data.email || null,
+        creditLimit: parsed.data.creditLimit ?? 0,
+        tenantId: tenantId!,
+      },
+    })
     return NextResponse.json({ client }, { status: 201 })
   } catch (err: any) {
     if (err?.code === "P2002") return NextResponse.json({ error: "DNI ya registrado" }, { status: 400 })

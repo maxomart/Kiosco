@@ -11,6 +11,7 @@ const updateSchema = z.object({
   address: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   active: z.boolean().optional(),
+  creditLimit: z.number().nonnegative().optional(),
 })
 
 async function own(id: string, tenantId: string | null, sup: boolean) {

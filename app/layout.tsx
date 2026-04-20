@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "react-hot-toast"
+import ServiceWorkerRegistrar from "./sw"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#030712",
+  themeColor: "#8b5cf6",
   width: "device-width",
   initialScale: 1,
 }
@@ -27,8 +28,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es-AR" suppressHydrationWarning className="dark">
-      <head />
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#8b5cf6" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </head>
       <body className={`${inter.variable} antialiased min-h-screen bg-gray-950`} suppressHydrationWarning>
+        <ServiceWorkerRegistrar />
         {children}
         <Toaster
           position="top-right"
