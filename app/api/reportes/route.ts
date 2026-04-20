@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
+import { can, hasFeature } from "@/lib/permissions"
+import type { Plan } from "@/lib/utils"
 import { startOfDay, endOfDay, format } from "date-fns"
 
 export async function GET(req: NextRequest) {
-  const { error, tenantId } = await getSessionTenant()
+  const { error, tenantId, session } = await getSessionTenant()
   if (error) return error
+
+  if (!can(session?.user?.role, "reports:read")) {
+    return NextResponse.json({ error: "Sin permisos para ver reportes" }, { status: 403 })
+  }
+
+  // Plan gate
+  const sub = await db.subscription.findUnique({
+    where: { tenantId: tenantId! },
+    select: { plan: true },
+  })
+  const plan = (sub?.plan as Plan) ?? "FREE"
+  if (!hasFeature(plan, "feature:reports")) {
+    return NextResponse.json({ error: "Reportes no incluido en tu plan" }, { status: 402 })
+  }
 
   const { searchParams } = new URL(req.url)
   const from = searchParams.get("from") ? new Date(searchParams.get("from")!) : startOfDay(new Date())

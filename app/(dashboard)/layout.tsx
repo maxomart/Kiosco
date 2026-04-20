@@ -20,18 +20,24 @@ export default async function DashboardLayout({
     redirect("/admin")
   }
 
-  // Read tenant theme on the server so the first paint already has the
-  // correct accent — avoids the flash-of-default-color.
+  // Read tenant theme + plan on the server so the first paint already has
+  // the correct accent and the sidebar can lock plan-gated items.
   let initialAccent: string | null = null
   let initialMode: "dark" | "light" | "auto" = "dark"
+  let plan: string = "FREE"
   if (session.user.tenantId) {
     try {
-      const cfg = (await db.tenantConfig.findUnique({
-        where: { tenantId: session.user.tenantId },
-      })) as { themeColor?: string | null; themeMode?: string | null } | null
+      const [cfg, sub] = await Promise.all([
+        db.tenantConfig.findUnique({ where: { tenantId: session.user.tenantId } }) as any,
+        db.subscription.findUnique({
+          where: { tenantId: session.user.tenantId },
+          select: { plan: true },
+        }),
+      ])
       initialAccent = cfg?.themeColor ?? null
       const m = cfg?.themeMode
       if (m === "light" || m === "dark" || m === "auto") initialMode = m
+      plan = sub?.plan ?? "FREE"
     } catch {
       // Schema may not yet have the columns deployed; fall back gracefully.
     }
@@ -40,9 +46,9 @@ export default async function DashboardLayout({
   return (
     <ThemeProvider initialAccent={initialAccent} initialMode={initialMode}>
       <div className="flex h-screen bg-gray-950 overflow-hidden">
-        <Sidebar user={session.user} />
+        <Sidebar user={session.user} plan={plan as any} />
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <Header user={session.user} />
+          <Header user={session.user} plan={plan as any} />
           <main className="flex-1 overflow-auto p-4 lg:p-6">
             {children}
           </main>

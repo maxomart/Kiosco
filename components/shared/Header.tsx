@@ -9,6 +9,7 @@ import type { Plan } from "@/lib/utils"
 import NotificationsBell from "@/components/shared/NotificationsBell"
 
 interface HeaderProps {
+  plan?: Plan
   user: {
     id: string
     name: string
@@ -55,7 +56,7 @@ function openMobileSidebar() {
   btn?.click()
 }
 
-export default function Header({ user }: HeaderProps) {
+export default function Header({ user, plan: planProp = "FREE" }: HeaderProps) {
   const pathname = usePathname()
   const title = getPageTitle(pathname)
   const [scrolled, setScrolled] = useState(false)
@@ -68,10 +69,9 @@ export default function Header({ user }: HeaderProps) {
     return () => main.removeEventListener("scroll", onScroll)
   }, [])
 
-  // Plan is stored in session user — for now we read from the role/name
-  // In a real scenario this would come from a context or be passed as a prop.
-  // We use FREE as a safe default; the dashboard page will enrich this via fetch.
-  const plan: Plan = "FREE"
+  // Plan now comes from the dashboard layout (fetched server-side from
+  // the tenant's Subscription). Defaults to FREE if not provided.
+  const plan: Plan = planProp
 
   const initials = (user.name ?? user.email)
     .split(" ")

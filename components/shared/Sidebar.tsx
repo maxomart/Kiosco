@@ -19,9 +19,12 @@ import {
   ChevronLeft,
   ChevronRight,
   ShoppingBag,
+  Lock,
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { canAny, hasFeature, type Permission, type PlanFeature } from "@/lib/permissions"
+import type { Plan } from "@/lib/utils"
 
 interface SidebarProps {
   user: {
@@ -32,20 +35,32 @@ interface SidebarProps {
     tenantId: string | null
     image?: string | null
   }
+  plan?: Plan
 }
 
-const NAV_ITEMS = [
+// Sidebar items declare BOTH role-based permission checks (any of) AND
+// optional plan-feature gating. If `feature` is set and the plan doesn't
+// unlock it, the item still renders but with a lock icon + paywall hint.
+type NavItem = {
+  href: string
+  label: string
+  icon: any
+  permissions?: Permission[]   // any-of; undefined means "everyone"
+  feature?: PlanFeature        // optional plan gate
+}
+
+const NAV_ITEMS: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: Home },
-  { href: "/pos", label: "POS", icon: ShoppingCart },
-  { href: "/inventario", label: "Inventario", icon: Package },
-  { href: "/ventas", label: "Ventas", icon: Receipt },
-  { href: "/reportes", label: "Reportes", icon: BarChart3 },
-  { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/caja", label: "Caja", icon: DollarSign },
-  { href: "/gastos", label: "Gastos", icon: TrendingDown },
-  { href: "/cargas", label: "Cargas", icon: Truck },
-  { href: "/configuracion", label: "Configuración", icon: Settings },
-] as const
+  { href: "/pos", label: "POS", icon: ShoppingCart, permissions: ["sales:create"] },
+  { href: "/inventario", label: "Inventario", icon: Package, permissions: ["products:read"] },
+  { href: "/ventas", label: "Ventas", icon: Receipt, permissions: ["sales:read"] },
+  { href: "/reportes", label: "Reportes", icon: BarChart3, permissions: ["reports:read"], feature: "feature:reports" },
+  { href: "/clientes", label: "Clientes", icon: Users, permissions: ["clients:read"] },
+  { href: "/caja", label: "Caja", icon: DollarSign, permissions: ["cash:read"] },
+  { href: "/gastos", label: "Gastos", icon: TrendingDown, permissions: ["expenses:read"], feature: "feature:expenses" },
+  { href: "/cargas", label: "Cargas", icon: Truck, permissions: ["recharges:read"], feature: "feature:recharges" },
+  { href: "/configuracion", label: "Configuración", icon: Settings, permissions: ["settings:read"] },
+]
 
 const ROLE_LABELS: Record<string, string> = {
   OWNER: "Propietario",
@@ -53,10 +68,17 @@ const ROLE_LABELS: Record<string, string> = {
   CASHIER: "Cajero/a",
 }
 
-export default function Sidebar({ user }: SidebarProps) {
+export default function Sidebar({ user, plan = "FREE" }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Hide nav items the user has no permission for. For plan-gated items we
+  // still show them with a lock icon (acts as upsell to /configuracion/suscripcion).
+  const visibleNav = NAV_ITEMS.filter((item) => {
+    if (!item.permissions || item.permissions.length === 0) return true
+    return canAny(user.role, item.permissions)
+  })
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -105,38 +127,58 @@ export default function Sidebar({ user }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {visibleNav.map(({ href, label, icon: Icon, feature }) => {
           const isActive =
             pathname === href || pathname.startsWith(href + "/")
+          // Plan-gated: render but disabled-looking, link to upgrade page
+          const locked = !!feature && !hasFeature(plan, feature)
+          const targetHref = locked ? "/configuracion/suscripcion" : href
           return (
             <Link
               key={href}
-              href={href}
+              href={targetHref}
               className={cn(
                 "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
-                isActive
+                isActive && !locked
                   ? "bg-accent-soft text-accent-foreground"
+                  : locked
+                  ? "text-gray-600 hover:text-gray-400 hover:bg-gray-800/40"
                   : "text-gray-400 hover:text-gray-100 hover:bg-gray-800/70",
                 collapsed && "justify-center px-2"
               )}
-              title={collapsed ? label : undefined}
+              title={
+                collapsed
+                  ? `${label}${locked ? " (Bloqueado · plan superior)" : ""}`
+                  : locked
+                  ? "Función bloqueada — Suscribite para desbloquear"
+                  : undefined
+              }
             >
               {/* Active indicator bar */}
               <span
                 className={cn(
                   "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full bg-accent transition-all duration-200 ease-out",
-                  isActive ? "h-6 opacity-100" : "h-0 opacity-0"
+                  isActive && !locked ? "h-6 opacity-100" : "h-0 opacity-0"
                 )}
                 aria-hidden
               />
               <Icon
                 className={cn(
                   "w-4 h-4 flex-shrink-0 transition-colors duration-150",
-                  isActive ? "text-accent" : "text-gray-400 group-hover:text-gray-200"
+                  isActive && !locked
+                    ? "text-accent"
+                    : locked
+                    ? "text-gray-600 group-hover:text-gray-500"
+                    : "text-gray-400 group-hover:text-gray-200"
                 )}
               />
               {!collapsed && (
-                <span className={cn(isActive && "text-gray-100")}>{label}</span>
+                <>
+                  <span className={cn("flex-1", isActive && !locked && "text-gray-100")}>{label}</span>
+                  {locked && (
+                    <Lock className="w-3.5 h-3.5 text-gray-600 group-hover:text-amber-400 transition-colors" />
+                  )}
+                </>
               )}
             </Link>
           )

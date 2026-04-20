@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
+import { can, hasFeature } from "@/lib/permissions"
+import type { Plan } from "@/lib/utils"
 import { z } from "zod"
 
 const schema = z.object({ supplierId: z.string(), cost: z.number().min(0), amount: z.number().min(0), notes: z.string().optional().nullable() })
 
+async function getPlan(tenantId: string): Promise<Plan> {
+  const sub = await db.subscription.findUnique({ where: { tenantId }, select: { plan: true } })
+  return (sub?.plan as Plan) ?? "FREE"
+}
+
 export async function GET(req: NextRequest) {
-  const { error, tenantId } = await getSessionTenant()
+  const { error, tenantId, session } = await getSessionTenant()
   if (error) return error
+  if (!can(session?.user?.role, "recharges:read"))
+    return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
+  if (!hasFeature(await getPlan(tenantId!), "feature:recharges"))
+    return NextResponse.json({ error: "Cargas no incluido en tu plan" }, { status: 402 })
   const { searchParams } = new URL(req.url)
   const from = searchParams.get("from"); const to = searchParams.get("to")
   const where: any = { ...(tenantId ? { tenantId } : {}) }
@@ -24,6 +35,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  if (!can(session.user.role, "recharges:create"))
+    return NextResponse.json({ error: "Sin permisos para crear cargas" }, { status: 403 })
+  if (!hasFeature(await getPlan(tenantId!), "feature:recharges"))
+    return NextResponse.json({ error: "Cargas no incluido en tu plan" }, { status: 402 })
   let body: unknown
   try {
     body = await req.json()

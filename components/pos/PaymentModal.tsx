@@ -25,7 +25,7 @@ export function PaymentModal({ onClose }: Props) {
   const [method, setMethod] = useState("CASH")
   const [cashReceived, setCashReceived] = useState("")
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<{ number: number } | null>(null)
+  const [success, setSuccess] = useState<{ number: number; total: number; change: number; method: string } | null>(null)
 
   const totalAmount = total()
   const change = method === "CASH" && cashReceived ? Math.max(0, Number(cashReceived) - totalAmount) : 0
@@ -78,7 +78,14 @@ export function PaymentModal({ onClose }: Props) {
         return
       }
 
-      setSuccess({ number: data.sale.number })
+      // Capture totals BEFORE clearing the cart — otherwise the success
+      // screen reads them from the now-empty cart and shows $0,00.
+      setSuccess({
+        number: data.sale.number,
+        total: totalAmount,
+        change: method === "CASH" && cashReceived ? change : 0,
+        method,
+      })
       clearCart()
     } catch (e) {
       console.error("[PaymentModal] network error", e)
@@ -97,14 +104,14 @@ export function PaymentModal({ onClose }: Props) {
           </div>
           <h2 className="text-xl font-bold text-gray-100 mb-1">¡Venta registrada!</h2>
           <p className="text-gray-400 mb-1">Venta #{success.number}</p>
-          <p className="text-2xl font-bold text-purple-400 mb-6">{formatCurrency(totalAmount)}</p>
-          {method === "CASH" && change > 0 && (
+          <p className="text-2xl font-bold text-accent mb-6">{formatCurrency(success.total)}</p>
+          {success.method === "CASH" && success.change > 0 && (
             <div className="bg-green-900/20 border border-green-800 rounded-xl p-3 mb-4">
               <p className="text-sm text-gray-400">Vuelto</p>
-              <p className="text-2xl font-bold text-green-400">{formatCurrency(change)}</p>
+              <p className="text-2xl font-bold text-green-400">{formatCurrency(success.change)}</p>
             </div>
           )}
-          <button onClick={onClose} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-xl transition">
+          <button onClick={onClose} className="w-full bg-accent hover:bg-accent-hover text-accent-foreground font-semibold py-3 rounded-xl transition">
             Nueva venta
           </button>
         </div>
