@@ -51,12 +51,60 @@ export function generatePassword(length = 16): string {
   ).join("")
 }
 
+// Numeric hard limits per plan. Use Number.POSITIVE_INFINITY for "unlimited".
+// historyDays = how far back the user can see their own data (sales, reports).
+// salesPerMonth = soft cap for the FREE tier so we don't get free-rider abuse.
 export const PLAN_LIMITS = {
-  FREE: { products: 500, users: 1, reports: false, api: false },
-  STARTER: { products: 5000, users: 2, reports: true, api: false },
-  PROFESSIONAL: { products: 99999, users: 5, reports: true, api: false },
-  BUSINESS: { products: 99999, users: 15, reports: true, api: true },
-  ENTERPRISE: { products: 99999, users: 99999, reports: true, api: true },
+  FREE: {
+    products: 50,
+    users: 1,
+    clients: 25,
+    suppliers: 0,           // 0 = feature locked
+    categories: 3,
+    salesPerMonth: 200,
+    historyDays: 7,
+    api: false,
+  },
+  STARTER: {
+    products: 500,
+    users: 3,
+    clients: Number.POSITIVE_INFINITY,
+    suppliers: Number.POSITIVE_INFINITY,
+    categories: Number.POSITIVE_INFINITY,
+    salesPerMonth: 2000,
+    historyDays: 90,
+    api: false,
+  },
+  PROFESSIONAL: {
+    products: 5000,
+    users: 10,
+    clients: Number.POSITIVE_INFINITY,
+    suppliers: Number.POSITIVE_INFINITY,
+    categories: Number.POSITIVE_INFINITY,
+    salesPerMonth: Number.POSITIVE_INFINITY,
+    historyDays: 365,
+    api: false,
+  },
+  BUSINESS: {
+    products: Number.POSITIVE_INFINITY,
+    users: Number.POSITIVE_INFINITY,
+    clients: Number.POSITIVE_INFINITY,
+    suppliers: Number.POSITIVE_INFINITY,
+    categories: Number.POSITIVE_INFINITY,
+    salesPerMonth: Number.POSITIVE_INFINITY,
+    historyDays: Number.POSITIVE_INFINITY,
+    api: true,
+  },
+  ENTERPRISE: {
+    products: Number.POSITIVE_INFINITY,
+    users: Number.POSITIVE_INFINITY,
+    clients: Number.POSITIVE_INFINITY,
+    suppliers: Number.POSITIVE_INFINITY,
+    categories: Number.POSITIVE_INFINITY,
+    salesPerMonth: Number.POSITIVE_INFINITY,
+    historyDays: Number.POSITIVE_INFINITY,
+    api: true,
+  },
 } as const
 
 export type Plan = keyof typeof PLAN_LIMITS

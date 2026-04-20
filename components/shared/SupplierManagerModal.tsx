@@ -31,6 +31,8 @@ export function SupplierManagerModal({
   const [savingId, setSavingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  const [locked, setLocked] = useState(false)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -38,6 +40,7 @@ export function SupplierManagerModal({
       if (res.ok) {
         const data = await res.json()
         setSuppliers(data.suppliers ?? [])
+        setLocked(!!data.locked)
       }
     } finally {
       setLoading(false)

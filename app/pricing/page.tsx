@@ -1,164 +1,410 @@
 import Link from "next/link"
-import { CheckCircle, X, ArrowLeft, Zap, Crown, Building2, Sparkles } from "lucide-react"
+import { Check, X, Sparkles, ShoppingBag, ArrowRight, Zap, Crown, Building2 } from "lucide-react"
+
+// Approximate ARS conversion shown next to USD price for local context.
+// We don't auto-fetch FX rates — just give shoppers a ballpark. Edit anytime.
+const USD_TO_ARS_DISPLAY = 1100
 
 const PLANS = [
   {
-    id: "FREE", name: "Gratis", price: 0, desc: "Ideal para probar el sistema",
-    features: { products: "500", users: "1", reports: false, imports: false, clients: false, api: false, support: "Comunidad" },
-    highlight: false,
+    id: "FREE",
+    name: "Gratis",
+    tagline: "Para arrancar y conocer la herramienta",
+    priceUSD: 0,
+    priceARS: 0,
+    cta: "Empezar gratis",
+    href: "/signup",
+    icon: Sparkles,
+    accent: "border-gray-700",
+    highlight: null as string | null,
+    features: [
+      "Hasta 50 productos",
+      "Hasta 200 ventas/mes",
+      "1 usuario",
+      "POS y caja básicos",
+      "Hasta 25 clientes",
+      "Hasta 3 categorías",
+      "Reportes del día (KPIs básicos)",
+      "Asistente IA — 5 mensajes/día",
+      "Historial de 7 días",
+    ],
+    notIncluded: [
+      "Proveedores",
+      "Gastos",
+      "Cargas / recargas",
+      "WhatsApp alertas",
+      "Reportes avanzados (gráficos, top productos)",
+      "Importar/exportar CSV",
+      "Logo personalizado",
+      "Programa de fidelidad",
+    ],
   },
   {
-    id: "STARTER", name: "Starter", price: 25, desc: "Para kioscos y comercios chicos",
-    features: { products: "5.000", users: "2", reports: true, imports: false, clients: "básico", api: false, support: "Email" },
-    highlight: false,
+    id: "STARTER",
+    name: "Starter",
+    tagline: "Para tu primer kiosco / almacén",
+    priceUSD: 25,
+    priceARS: Math.round(25 * USD_TO_ARS_DISPLAY),
+    cta: "Empezar prueba",
+    href: "/signup",
+    icon: Zap,
+    accent: "border-purple-500 ring-2 ring-purple-500/30",
+    highlight: "Más elegido",
+    features: [
+      "Hasta 500 productos",
+      "Hasta 2.000 ventas/mes",
+      "3 usuarios",
+      "Clientes y categorías ilimitados",
+      "Proveedores ilimitados",
+      "Gastos y cargas",
+      "Historial de 90 días",
+      "Reportes avanzados (gráficos + top productos + métodos de pago)",
+      "WhatsApp — alertas de stock bajo",
+      "Importar / exportar CSV",
+      "Logo personalizado",
+      "Asistente IA — 50 mensajes/día",
+    ],
+    notIncluded: [
+      "Programa de fidelidad",
+      "Multi-caja simultánea",
+      "API access",
+      "Soporte prioritario",
+    ],
   },
   {
-    id: "PROFESSIONAL", name: "Professional", price: 60, desc: "El plan más elegido",
-    features: { products: "Ilimitados", users: "5", reports: true, imports: true, clients: "completo + fidelidad", api: false, support: "Email + chat" },
-    highlight: true,
+    id: "PROFESSIONAL",
+    name: "Professional",
+    tagline: "Para crecer y profesionalizarte",
+    priceUSD: 60,
+    priceARS: Math.round(60 * USD_TO_ARS_DISPLAY),
+    cta: "Empezar prueba",
+    href: "/signup",
+    icon: Crown,
+    accent: "border-purple-700",
+    highlight: null as string | null,
+    features: [
+      "Hasta 5.000 productos",
+      "Ventas ilimitadas",
+      "10 usuarios",
+      "Todo lo de Starter, más:",
+      "Programa de fidelidad (puntos)",
+      "Multi-caja simultánea",
+      "Historial de 1 año",
+      "WhatsApp — resumen diario automático",
+      "Asistente IA — 500 mensajes/día",
+      "Soporte prioritario por email (24h)",
+    ],
+    notIncluded: [
+      "API access",
+      "Multi-tienda",
+      "Soporte por WhatsApp",
+    ],
   },
   {
-    id: "BUSINESS", name: "Business", price: 150, desc: "Para cadenas y franquicias",
-    features: { products: "Ilimitados", users: "15", reports: true, imports: true, clients: "completo + fidelidad", api: true, support: "Prioritario" },
-    highlight: false,
+    id: "BUSINESS",
+    name: "Business",
+    tagline: "Para cadenas y operaciones grandes",
+    priceUSD: 150,
+    priceARS: Math.round(150 * USD_TO_ARS_DISPLAY),
+    cta: "Empezar prueba",
+    href: "/signup",
+    icon: Building2,
+    accent: "border-amber-700",
+    highlight: null as string | null,
+    features: [
+      "Productos y ventas ilimitados",
+      "Usuarios ilimitados",
+      "Todo lo de Professional, más:",
+      "Multi-tienda (varias sucursales)",
+      "API access",
+      "Historial ilimitado",
+      "Asistente IA — 5.000 mensajes/día",
+      "Soporte prioritario por WhatsApp",
+    ],
+    notIncluded: [],
   },
 ]
 
-const COMPARE_ROWS = [
-  { label: "Productos", key: "products" },
-  { label: "Usuarios", key: "users" },
-  { label: "Reportes avanzados", key: "reports" },
-  { label: "Importar/exportar masivo", key: "imports" },
-  { label: "Clientes y fidelidad", key: "clients" },
-  { label: "API acceso", key: "api" },
-  { label: "Soporte", key: "support" },
+const COMPARISON: { section: string; rows: [string, ...(string | boolean)[]][] }[] = [
+  { section: "Inventario", rows: [
+    ["Productos", "50", "500", "5.000", "Ilimitados"],
+    ["Categorías", "3", "Ilimitadas", "Ilimitadas", "Ilimitadas"],
+    ["Importar / exportar CSV", false, true, true, true],
+    ["Logo personalizado", false, true, true, true],
+  ]},
+  { section: "Ventas y POS", rows: [
+    ["Ventas por mes", "200", "2.000", "Ilimitadas", "Ilimitadas"],
+    ["Caja", true, true, true, true],
+    ["Multi-caja simultánea", false, false, true, true],
+    ["Métodos de pago argentinos", true, true, true, true],
+    ["Historial de ventas", "7 días", "90 días", "1 año", "Ilimitado"],
+  ]},
+  { section: "Clientes y proveedores", rows: [
+    ["Clientes", "25", "Ilimitados", "Ilimitados", "Ilimitados"],
+    ["Proveedores", false, true, true, true],
+    ["Gastos", false, true, true, true],
+    ["Cargas / recargas", false, true, true, true],
+    ["Programa de fidelidad", false, false, true, true],
+  ]},
+  { section: "Reportes e IA", rows: [
+    ["KPIs del día", true, true, true, true],
+    ["Gráficos y top productos", false, true, true, true],
+    ["Comparativas históricas", false, false, true, true],
+    ["Asistente IA (mensajes/día)", "5", "50", "500", "5.000"],
+    ["Recomendaciones automáticas", true, true, true, true],
+  ]},
+  { section: "Notificaciones", rows: [
+    ["Notificaciones in-app", true, true, true, true],
+    ["WhatsApp — stock bajo", false, true, true, true],
+    ["WhatsApp — resumen diario", false, false, true, true],
+  ]},
+  { section: "Equipo y soporte", rows: [
+    ["Usuarios", "1", "3", "10", "Ilimitados"],
+    ["Multi-tienda", false, false, false, true],
+    ["API access", false, false, false, true],
+    ["Soporte", "Comunidad", "Email 48h", "Email 24h", "WhatsApp directo"],
+  ]},
 ]
+
+const FAQ = [
+  {
+    q: "¿Puedo cambiar de plan en cualquier momento?",
+    a: "Sí. Subís o bajás de plan cuando quieras desde Configuración → Suscripción. El cambio se prorratea automáticamente.",
+  },
+  {
+    q: "¿Hay periodo de prueba?",
+    a: "Sí, todos los planes pagos incluyen 14 días de prueba sin tarjeta. Si te gusta, seguís; si no, cancelás sin cargo.",
+  },
+  {
+    q: "¿Qué pasa con mis datos si cancelo?",
+    a: "Tu cuenta vuelve al plan Gratis automáticamente. Conservás todos tus datos pero con los límites del plan Free (50 productos, 7 días de historial). Podés exportar todo antes vía CSV en cualquier plan pago.",
+  },
+  {
+    q: "¿Aceptan facturas A?",
+    a: "Sí, emitimos factura A o B según corresponda. Próximamente integración directa con AFIP para emisión electrónica desde el POS.",
+  },
+  {
+    q: "¿El precio es en pesos o en dólares?",
+    a: "El precio base es en USD para protegerte de la inflación. Te cobramos en tu tarjeta el equivalente en pesos al tipo de cambio del día.",
+  },
+]
+
+function formatARS(n: number) {
+  return new Intl.NumberFormat("es-AR").format(n)
+}
+
+function CheckIcon() {
+  return <Check className="w-4 h-4 text-emerald-400" />
+}
+function XIcon() {
+  return <X className="w-4 h-4 text-gray-700" />
+}
 
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
-      <nav className="sticky top-0 z-50 bg-gray-950/80 backdrop-blur-xl border-b border-gray-800/50 px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-          <ArrowLeft size={16} /> Volver
-        </Link>
-        <Link href="/signup" className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors">
-          Empezar gratis
-        </Link>
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 bg-gray-950/85 backdrop-blur-xl border-b border-gray-800/60">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <ShoppingBag className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-lg">RetailAR</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-sm text-gray-300 hover:text-white">Ingresar</Link>
+            <Link href="/signup" className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium">
+              Empezar gratis
+            </Link>
+          </div>
+        </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs mb-6">
-            <Sparkles size={12} /> 14 días de prueba en todos los planes pagos
+      {/* Hero */}
+      <section className="relative pt-20 pb-12 px-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/15 via-transparent to-pink-900/10 pointer-events-none" />
+        <div className="relative max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs mb-5">
+            <Sparkles size={12} /> Precios en USD para protegerte de la inflación
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-4">Precios simples</h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">Pagá solo por lo que usás. Cambiá de plan cuando quieras. Sin sorpresas.</p>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-5">
+            Planes para cada etapa <br className="hidden md:block" />
+            de tu negocio
+          </h1>
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+            Empezá gratis. Sin tarjeta. Crecé cuando estés listo. Cancelás cuando quieras.
+          </p>
         </div>
+      </section>
 
-        {/* Plans */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-20">
-          {PLANS.map(p => (
-            <div key={p.id}
-              className={`relative p-6 rounded-2xl border-2 ${p.highlight ? "border-purple-500 bg-gradient-to-b from-purple-500/10 to-transparent" : "border-gray-800 bg-gray-900"}`}>
-              {p.highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-purple-600 text-white text-xs font-bold">MÁS POPULAR</div>
-              )}
-              <div className="flex items-center gap-2 mb-1">
-                {p.id === "FREE" && <Zap size={16} className="text-gray-400" />}
-                {p.id === "STARTER" && <Zap size={16} className="text-blue-400" />}
-                {p.id === "PROFESSIONAL" && <Crown size={16} className="text-purple-400" />}
-                {p.id === "BUSINESS" && <Building2 size={16} className="text-yellow-400" />}
-                <h3 className="font-semibold">{p.name}</h3>
-              </div>
-              <p className="text-gray-500 text-sm">{p.desc}</p>
-              <div className="my-5">
-                {p.price === 0 ? (
-                  <span className="text-4xl font-bold">Gratis</span>
-                ) : (
-                  <>
-                    <span className="text-4xl font-bold">US${p.price}</span>
-                    <span className="text-gray-500 text-sm">/mes</span>
-                  </>
+      {/* Plan cards */}
+      <section className="px-6 pb-20">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          {PLANS.map((plan) => {
+            const Icon = plan.icon
+            return (
+              <div
+                key={plan.id}
+                className={`relative bg-gray-900 rounded-2xl p-6 border ${plan.accent} flex flex-col`}
+              >
+                {plan.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-purple-600 text-white text-xs font-semibold shadow-lg shadow-purple-900/40">
+                    {plan.highlight}
+                  </div>
                 )}
-              </div>
-              <Link href={p.id === "FREE" ? "/signup" : `/signup?plan=${p.id}`}
-                className={`block text-center py-2.5 rounded-lg font-semibold text-sm transition-colors mb-4 ${
-                  p.highlight ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-gray-800 hover:bg-gray-700 text-white"
-                }`}>
-                {p.price === 0 ? "Empezar gratis" : "Probar 14 días"}
-              </Link>
-              <ul className="space-y-1.5 text-xs text-gray-400">
-                <li>{p.features.products} productos</li>
-                <li>{p.features.users} usuarios</li>
-                <li>{p.features.reports ? "Reportes avanzados" : "Reportes básicos"}</li>
-                <li>{p.features.imports ? "Import/export masivo" : "—"}</li>
-                <li>Soporte: {p.features.support}</li>
-              </ul>
-            </div>
-          ))}
-        </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-9 h-9 rounded-lg bg-gray-800 flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <h3 className="font-bold text-lg">{plan.name}</h3>
+                </div>
+                <p className="text-sm text-gray-500 mb-5 min-h-[2.5rem]">{plan.tagline}</p>
 
-        {/* Comparison table */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800">
-            <h2 className="text-xl font-semibold">Comparación de planes</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="p-4 text-left text-gray-400 font-medium"></th>
-                  {PLANS.map(p => (
-                    <th key={p.id} className={`p-4 font-semibold text-center ${p.highlight ? "text-purple-400" : "text-white"}`}>
-                      {p.name}
-                    </th>
+                <div className="mb-5">
+                  {plan.priceUSD === 0 ? (
+                    <p className="text-3xl font-bold">Gratis</p>
+                  ) : (
+                    <>
+                      <p className="text-3xl font-bold">
+                        USD {plan.priceUSD}
+                        <span className="text-sm font-normal text-gray-500">/mes</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        ≈ ${formatARS(plan.priceARS)} ARS al cambio actual
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                <Link
+                  href={plan.href}
+                  className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-semibold text-sm transition mb-6 ${
+                    plan.id === "STARTER"
+                      ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/30"
+                      : "bg-gray-800 hover:bg-gray-700 text-gray-100"
+                  }`}
+                >
+                  {plan.cta} <ArrowRight size={14} />
+                </Link>
+
+                <ul className="space-y-2.5 text-sm flex-1">
+                  {plan.features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-300 leading-snug">{f}</span>
+                    </li>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800">
-                {COMPARE_ROWS.map(row => (
-                  <tr key={row.key}>
-                    <td className="p-4 text-gray-300">{row.label}</td>
-                    {PLANS.map(p => {
-                      const val = (p.features as any)[row.key]
-                      return (
-                        <td key={p.id} className="p-4 text-center">
-                          {val === true ? <CheckCircle size={16} className="text-green-400 mx-auto" />
-                            : val === false ? <X size={16} className="text-gray-600 mx-auto" />
-                            : <span className="text-gray-300">{val}</span>}
-                        </td>
-                      )
-                    })}
+                  {plan.notIncluded.map((f, i) => (
+                    <li key={`x-${i}`} className="flex items-start gap-2 opacity-60">
+                      <X className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-500 leading-snug">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* Comparison table */}
+      <section className="px-6 pb-20">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold mb-2 text-center">Comparativa completa</h2>
+          <p className="text-gray-400 text-center mb-10">Todo lo que tenés en cada plan, lado a lado</p>
+
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-900/95 backdrop-blur-sm z-10">
+                  <tr className="border-b border-gray-800">
+                    <th className="text-left p-4 font-medium text-gray-400 min-w-[220px]">Función</th>
+                    {PLANS.map((p) => (
+                      <th key={p.id} className="text-center p-4 font-semibold text-white min-w-[120px]">
+                        {p.name}
+                        {p.id === "STARTER" && (
+                          <span className="block mt-0.5 text-[10px] font-normal text-purple-400 uppercase tracking-wide">
+                            Más elegido
+                          </span>
+                        )}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {COMPARISON.map((section) => (
+                    <>
+                      <tr key={`s-${section.section}`} className="bg-gray-800/30">
+                        <td colSpan={5} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-purple-400">
+                          {section.section}
+                        </td>
+                      </tr>
+                      {section.rows.map(([label, ...vals], i) => (
+                        <tr key={`${section.section}-${i}`} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition">
+                          <td className="p-3 text-gray-300">{label as string}</td>
+                          {vals.map((v, j) => (
+                            <td key={j} className="p-3 text-center">
+                              {typeof v === "boolean" ? (
+                                <span className="inline-flex justify-center">
+                                  {v ? <CheckIcon /> : <XIcon />}
+                                </span>
+                              ) : (
+                                <span className="text-gray-200 text-sm">{v}</span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* FAQ */}
-        <div className="mt-20 max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-8">Preguntas sobre los planes</h2>
+      {/* FAQ */}
+      <section className="px-6 pb-24">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold mb-10 text-center">Preguntas frecuentes</h2>
           <div className="space-y-3">
-            {[
-              { q: "¿Puedo cambiar de plan?", a: "Sí, cuando quieras. Los cambios son inmediatos y prorrateados." },
-              { q: "¿Cómo se pagan los planes?", a: "Con tarjeta de crédito internacional vía Stripe. Pagos mensuales en USD." },
-              { q: "¿Qué métodos de pago aceptan?", a: "Todas las tarjetas de crédito internacionales (Visa, Mastercard, Amex)." },
-              { q: "¿El IVA está incluido?", a: "Los precios son en USD. Según tu situación fiscal puede aplicarse IVA adicional." },
-              { q: "¿Ofrecen descuentos por pago anual?", a: "Sí, 20% off pagando el año completo. Contactanos a ventas@retailar.com." },
-            ].map((f, i) => (
-              <details key={i} className="group bg-gray-900 rounded-xl border border-gray-800">
-                <summary className="p-4 cursor-pointer font-medium list-none flex items-center justify-between">
+            {FAQ.map((f) => (
+              <details
+                key={f.q}
+                className="group bg-gray-900 border border-gray-800 rounded-xl p-5 open:border-gray-700 transition"
+              >
+                <summary className="font-semibold cursor-pointer flex items-center justify-between text-gray-100 list-none">
                   {f.q}
-                  <span className="text-gray-500 group-open:rotate-45 transition-transform text-xl">+</span>
+                  <span className="text-purple-400 text-xl group-open:rotate-45 transition-transform">+</span>
                 </summary>
-                <div className="px-4 pb-4 text-gray-400 text-sm">{f.a}</div>
+                <p className="mt-3 text-gray-400 text-sm leading-relaxed">{f.a}</p>
               </details>
             ))}
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* CTA footer */}
+      <section className="px-6 pb-20">
+        <div className="max-w-4xl mx-auto bg-gradient-to-br from-purple-900/40 to-pink-900/30 rounded-3xl p-10 text-center border border-purple-700/30">
+          <h2 className="text-3xl md:text-4xl font-bold mb-3">¿Listo para empezar?</h2>
+          <p className="text-gray-300 mb-7 max-w-xl mx-auto">
+            Creá tu cuenta gratis ahora. Sin tarjeta de crédito. 14 días de prueba en planes pagos.
+          </p>
+          <Link
+            href="/signup"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-lg shadow-purple-900/40 transition"
+          >
+            Empezar gratis <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
+
+      <footer className="border-t border-gray-900 py-8 text-center text-sm text-gray-600">
+        &copy; {new Date().getFullYear()} RetailAR — Todos los derechos reservados
+      </footer>
     </div>
   )
 }

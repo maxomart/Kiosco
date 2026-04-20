@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
+import { checkQuota } from "@/lib/plan-guard"
 import { z } from "zod"
 
 const schema = z.object({ name: z.string().min(1), phone: z.string().optional().nullable(), email: z.string().email().optional().nullable().or(z.literal("")), dni: z.string().optional().nullable(), address: z.string().optional().nullable(), notes: z.string().optional().nullable() })
@@ -52,6 +53,11 @@ export async function POST(req: NextRequest) {
   }
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+
+  // Plan hard limit (FREE = 25 clients)
+  const quota = await checkQuota(tenantId!, "clients")
+  if (!quota.ok) return NextResponse.json({ error: quota.message }, { status: 403 })
+
   try {
     const client = await db.client.create({ data: { ...parsed.data, email: parsed.data.email || null, tenantId: tenantId! } })
     return NextResponse.json({ client }, { status: 201 })

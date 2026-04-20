@@ -22,10 +22,15 @@ export async function GET(req: NextRequest) {
   const hasFull = hasFeature(plan, "feature:reports_full")
 
   const { searchParams } = new URL(req.url)
-  const from = searchParams.get("from") ? new Date(searchParams.get("from")!) : startOfDay(new Date())
+  const requestedFrom = searchParams.get("from") ? new Date(searchParams.get("from")!) : startOfDay(new Date())
   const to = searchParams.get("to") ? new Date(searchParams.get("to")!) : endOfDay(new Date())
-  const tenantFilter = tenantId ? { tenantId } : {}
 
+  // Clamp the lower bound to the plan's history window (FREE = 7d, STARTER = 90d, …)
+  const { clampFromDate } = await import("@/lib/plan-guard")
+  const from = clampFromDate(plan, requestedFrom)
+  const wasClamped = from.getTime() !== requestedFrom.getTime()
+
+  const tenantFilter = tenantId ? { tenantId } : {}
   const where = { ...tenantFilter, status: "COMPLETED", createdAt: { gte: from, lte: to } }
 
   let salesAgg, itemsRaw, paymentMethods, sales
@@ -75,6 +80,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     plan,
     isLimited: !hasFull,
+    historyClampedTo: wasClamped ? from.toISOString() : null,
     totalSales: salesAgg._count,
     totalRevenue,
     totalCost: hasFull ? totalCost : 0,

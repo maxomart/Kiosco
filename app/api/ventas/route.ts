@@ -266,15 +266,25 @@ export async function GET(req: NextRequest) {
   const fromParam = searchParams.get("from")
   const toParam = searchParams.get("to")
 
+  // Plan history window — clamp lower bound so FREE only sees 7 days back, etc.
+  const { getTenantPlan, clampFromDate, getHistoryWindow } = await import("@/lib/plan-guard")
+  const plan = await getTenantPlan(tenantId!)
+  const minFrom = getHistoryWindow(plan)
+
   let dateFilter: Record<string, Date> = {}
   if (dateParam) {
     const start = new Date(dateParam)
     start.setHours(0, 0, 0, 0)
     const end = new Date(dateParam)
     end.setHours(23, 59, 59, 999)
-    dateFilter = { gte: start, lte: end }
+    dateFilter = { gte: clampFromDate(plan, start), lte: end }
   } else {
-    if (fromParam) dateFilter.gte = new Date(fromParam)
+    if (fromParam) {
+      dateFilter.gte = clampFromDate(plan, new Date(fromParam))
+    } else if (minFrom) {
+      // No `from` requested → still clamp to the plan window (FREE = last 7d only)
+      dateFilter.gte = minFrom
+    }
     if (toParam) {
       const to = new Date(toParam)
       to.setHours(23, 59, 59, 999)

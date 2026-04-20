@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
-import { can } from "@/lib/permissions"
+import { can, hasFeature } from "@/lib/permissions"
+import { getTenantPlan, checkQuota } from "@/lib/plan-guard"
 import { z } from "zod"
 
 const schema = z.object({
@@ -17,6 +18,11 @@ const schema = z.object({
 export async function GET() {
   const { error, tenantId } = await getSessionTenant()
   if (error) return error
+  // Plan gate — FREE doesn't have suppliers feature.
+  const plan = await getTenantPlan(tenantId!)
+  if (!hasFeature(plan, "feature:suppliers")) {
+    return NextResponse.json({ suppliers: [], locked: true })
+  }
   try {
     const suppliers = await db.supplier.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" }, include: { _count: { select: { products: true } } } })
     return NextResponse.json({ suppliers })
@@ -31,6 +37,19 @@ export async function POST(req: NextRequest) {
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
   if (!can(session.user.role, "suppliers:manage"))
     return NextResponse.json({ error: "Sin permisos para gestionar proveedores" }, { status: 403 })
+
+  // Plan feature gate — FREE doesn't have suppliers
+  const plan = await getTenantPlan(tenantId!)
+  if (!hasFeature(plan, "feature:suppliers")) {
+    return NextResponse.json({
+      error: `Proveedores no está incluido en el plan ${plan}. Suscribite al plan Starter o superior para gestionar proveedores.`,
+    }, { status: 402 })
+  }
+
+  // Hard count limit (paid plans = unlimited, but defensive)
+  const quota = await checkQuota(tenantId!, "suppliers", plan)
+  if (!quota.ok) return NextResponse.json({ error: quota.message }, { status: 403 })
+
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })

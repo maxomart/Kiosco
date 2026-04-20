@@ -13,10 +13,47 @@ interface Subscription {
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  FREE: ["Hasta 500 productos", "1 usuario", "POS básico", "Caja registradora", "Gastos y cargas"],
-  STARTER: ["Hasta 5.000 productos", "2 usuarios", "Reportes completos", "Historial de ventas", "Todo el plan Free"],
-  PROFESSIONAL: ["Productos ilimitados", "5 usuarios", "Exportar CSV/Excel", "Importar productos masivo", "Clientes + fidelidad", "Todo el plan Starter"],
-  BUSINESS: ["Todo ilimitado", "15 usuarios", "API acceso", "Soporte prioritario", "Múltiples sucursales", "Todo el plan Professional"],
+  FREE: [
+    "Hasta 50 productos",
+    "Hasta 200 ventas/mes",
+    "1 usuario",
+    "Hasta 25 clientes · 3 categorías",
+    "POS, caja y reportes básicos del día",
+    "Asistente IA — 5 mensajes/día",
+    "Historial de 7 días",
+  ],
+  STARTER: [
+    "Hasta 500 productos",
+    "Hasta 2.000 ventas/mes",
+    "3 usuarios",
+    "Clientes y categorías ilimitados",
+    "Proveedores, gastos y cargas",
+    "Reportes avanzados con gráficos",
+    "WhatsApp — alertas de stock bajo",
+    "Importar / exportar CSV",
+    "Logo personalizado",
+    "Asistente IA — 50 mensajes/día",
+    "Historial de 90 días",
+  ],
+  PROFESSIONAL: [
+    "Hasta 5.000 productos",
+    "Ventas ilimitadas",
+    "10 usuarios",
+    "Programa de fidelidad (puntos)",
+    "Multi-caja simultánea",
+    "WhatsApp resumen diario",
+    "Asistente IA — 500 mensajes/día",
+    "Historial de 1 año",
+    "Soporte prioritario por email",
+  ],
+  BUSINESS: [
+    "Todo ilimitado",
+    "Multi-tienda (varias sucursales)",
+    "API access",
+    "Asistente IA — 5.000 mensajes/día",
+    "Historial ilimitado",
+    "Soporte por WhatsApp directo",
+  ],
 }
 
 const PLAN_ICONS: Record<string, React.ElementType> = {

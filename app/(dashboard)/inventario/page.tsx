@@ -155,13 +155,14 @@ export default function InventarioPage() {
           </button>
           {(() => {
             const productLimit = PLAN_LIMITS[plan].products
-            const atLimit = total >= productLimit
+            const isUnlimited = !isFinite(productLimit)
+            const atLimit = !isUnlimited && total >= productLimit
             return (
               <button
                 onClick={() => { setEditProduct(null); setShowModal(true) }}
                 disabled={atLimit}
-                title={atLimit ? `Plan ${plan}: máximo ${productLimit} productos` : undefined}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+                title={atLimit ? `Plan ${plan}: máximo ${productLimit} productos` : isUnlimited ? undefined : `${total} / ${productLimit} productos en plan ${plan}`}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-medium transition-colors"
               >
                 <Plus size={16} /> {atLimit ? "Límite alcanzado" : "Nuevo Producto"}
               </button>

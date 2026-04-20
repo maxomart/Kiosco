@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { can } from "@/lib/permissions"
+import { checkQuota } from "@/lib/plan-guard"
 
 export async function GET() {
   const { error, tenantId } = await getSessionTenant()
@@ -22,6 +23,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Sin permisos para gestionar categorías" }, { status: 403 })
   const { name } = await req.json()
   if (!name?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 })
+
+  // Plan hard limit (FREE = 3 categories)
+  const quota = await checkQuota(tenantId!, "categories")
+  if (!quota.ok) return NextResponse.json({ error: quota.message }, { status: 403 })
+
   try {
     const category = await db.category.create({ data: { name: name.trim(), tenantId: tenantId! } })
     return NextResponse.json({ category }, { status: 201 })

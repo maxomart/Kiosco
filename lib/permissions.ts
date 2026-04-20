@@ -108,16 +108,21 @@ export type PlanFeature =
   | "feature:reports_full"    // Charts, top products, payment breakdown, ranges
   | "feature:expenses"        // Expense tracking
   | "feature:recharges"       // Supplier recharges
+  | "feature:suppliers"       // Suppliers CRUD (locked on FREE — kiosks need this when they grow)
   | "feature:multiple_users"  // Multi-user (any user beyond the owner)
   | "feature:api"             // API access
   | "feature:csv_import"      // Bulk CSV import
   | "feature:csv_export"      // CSV export
   | "feature:loyalty"         // Loyalty points
   | "feature:theme_picker"    // Custom brand color
+  | "feature:custom_logo"     // Upload tenant logo
   | "feature:advanced_pos"    // POS discounts, multiple payment methods, etc.
   | "feature:ai_assistant"    // AI bot — basic for FREE, full for paid
   | "feature:ai_assistant_full" // Unlimited AI usage + proactive insights
   | "feature:whatsapp"        // WhatsApp notifications
+  | "feature:multi_cash"      // Multiple simultaneous cash sessions
+  | "feature:multi_store"     // Multiple stores under one account
+  | "feature:priority_support" // Priority support channel
 
 type PlanGate = Record<PlanFeature, Plan[]>
 
@@ -127,25 +132,30 @@ const PLAN_FEATURES: PlanGate = {
   "feature:reports_full":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:expenses":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:recharges":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:suppliers":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multiple_users":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:api":               ["BUSINESS", "ENTERPRISE"],
   "feature:csv_import":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:csv_export":        ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:csv_export":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:theme_picker":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:custom_logo":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:advanced_pos":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant_full": ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:whatsapp":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:multi_store":       ["BUSINESS", "ENTERPRISE"],
+  "feature:priority_support":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 }
 
 /** Per-day AI message quota by plan (soft cap). */
 export const AI_DAILY_QUOTA: Record<Plan, number> = {
-  FREE: 10,
-  STARTER: 100,
+  FREE: 5,
+  STARTER: 50,
   PROFESSIONAL: 500,
-  BUSINESS: 2000,
-  ENTERPRISE: 10000,
+  BUSINESS: 5000,
+  ENTERPRISE: 20000,
 }
 
 /** True if the plan unlocks the feature. */
