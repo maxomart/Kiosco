@@ -9,13 +9,46 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 export const metadata: Metadata = {
   title: { default: "RetailAR - Sistema de Gestión", template: "%s | RetailAR" },
   description: "Sistema de gestión para negocios retail argentinos: kioscos, farmacias, verdulerías y minisúper",
+  applicationName: "RetailAR",
   manifest: "/manifest.json",
-  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000"
+  ),
+  keywords: [
+    "software para kiosco",
+    "POS Argentina",
+    "sistema de gestión kiosco",
+    "punto de venta",
+    "software farmacia",
+    "control de stock",
+    "facturación Argentina",
+    "caja registradora digital",
+    "gestión minisúper",
+  ],
+  authors: [{ name: "RetailAR" }],
+  referrer: "strict-origin-when-cross-origin",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  formatDetection: { telephone: false },
   openGraph: {
     title: "RetailAR - Sistema de Gestión para Negocios",
     description: "POS, inventario y reportes para kioscos, farmacias y minisúper",
     locale: "es_AR",
     type: "website",
+    siteName: "RetailAR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RetailAR - Sistema de Gestión para Negocios",
+    description: "POS, inventario y reportes para kioscos, farmacias y minisúper",
   },
 }
 

@@ -4,10 +4,14 @@ import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 import { z } from "zod"
 import { authConfig } from "@/lib/auth.config"
+import { checkLoginRateLimit, recordLoginFailure, resetLoginAttempts } from "@/lib/rate-limit"
+
+// Dummy hash fijo para timing-attack mitigation (bcrypt de "dummy-password-fixed")
+const DUMMY_HASH = "$2a$12$CwTycUXWue0Thq9StjUM0uJ8/Z1XqJZqFgJN/yGt7dEJkFbK5RQgS"
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(4),
+  email: z.string().email().max(254),
+  password: z.string().min(8).max(128),
 })
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -23,12 +27,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const parsed = loginSchema.safeParse(credentials)
           if (!parsed.success) {
-            console.error("[AUTH] Invalid credentials shape:", parsed.error.flatten())
+            // No loguear detalles — puede exponer pattern del atacante
             return null
           }
 
           const email = parsed.data.email.trim().toLowerCase()
           const password = parsed.data.password
+
+          // Rate limiting: bloquea tras N intentos fallidos
+          const rate = checkLoginRateLimit(email)
+          if (!rate.allowed) {
+            // Respuesta genérica — no revelar que está bloqueado para email específico
+            return null
+          }
 
           const user = await db.user.findUnique({
             where: { email },
@@ -44,24 +55,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
           })
 
-          if (!user) {
-            console.error(`[AUTH] User not found: ${email}`)
-            return null
-          }
-          if (!user.active) {
-            console.error(`[AUTH] User inactive: ${email}`)
-            return null
-          }
-          if (!user.password) {
-            console.error(`[AUTH] User has no password: ${email}`)
+          // Timing attack mitigation: correr bcrypt también cuando no existe/está inactivo
+          if (!user || !user.active || !user.password) {
+            await bcrypt.compare(password, DUMMY_HASH)
+            recordLoginFailure(email)
             return null
           }
 
           const match = await bcrypt.compare(password, user.password)
           if (!match) {
-            console.error(`[AUTH] Password mismatch for: ${email}`)
+            recordLoginFailure(email)
             return null
           }
+
+          // Login OK → reset contador
+          resetLoginAttempts(email)
 
           console.log(`[AUTH] Login OK: ${email} (${user.role})`)
           return {
@@ -73,7 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             tenantId: user.tenantId,
           } as any
         } catch (err) {
-          console.error("[AUTH] authorize threw:", err)
+          console.error("[AUTH] authorize threw:", (err as Error).message)
           return null
         }
       },
