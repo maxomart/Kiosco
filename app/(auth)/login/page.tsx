@@ -46,7 +46,7 @@ export default function LoginPage() {
         toast.error("Email o contraseña incorrectos.")
       } else {
         toast.success("Bienvenido de vuelta!")
-        router.push("/pos")
+        router.push("/inicio")
         router.refresh()
       }
     } catch {

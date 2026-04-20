@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
+  Home,
   ShoppingCart,
   Package,
   Receipt,
@@ -34,6 +35,7 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
+  { href: "/inicio", label: "Inicio", icon: Home },
   { href: "/pos", label: "POS", icon: ShoppingCart },
   { href: "/inventario", label: "Inventario", icon: Package },
   { href: "/ventas", label: "Ventas", icon: Receipt },

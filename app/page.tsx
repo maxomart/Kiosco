@@ -1,7 +1,11 @@
+import { redirect } from "next/navigation"
+import { auth } from "@/lib/auth"
 import Link from "next/link"
 import { ShoppingBag, Zap, Shield, TrendingUp, Package, CreditCard, Users, BarChart3, CheckCircle, ArrowRight, Store, Smartphone, Clock } from "lucide-react"
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth()
+  if (session) redirect("/inicio")
   return (
     <div className="min-h-screen bg-gray-950 text-white overflow-x-hidden">
       {/* Navbar */}

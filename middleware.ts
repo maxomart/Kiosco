@@ -3,7 +3,8 @@ import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
+  const token = await getToken({ req, secret })
   const { pathname } = req.nextUrl
   const isLoggedIn = !!token
 
@@ -21,13 +22,14 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/caja") ||
     pathname.startsWith("/gastos") ||
     pathname.startsWith("/cargas") ||
-    pathname.startsWith("/configuracion")
+    pathname.startsWith("/configuracion") ||
+    pathname.startsWith("/inicio")
 
   const isAdminRoute = pathname.startsWith("/admin")
 
   // Redirect logged-in users away from auth pages
   if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL("/pos", req.nextUrl))
+    return NextResponse.redirect(new URL("/inicio", req.nextUrl))
   }
 
   // Protect dashboard routes
