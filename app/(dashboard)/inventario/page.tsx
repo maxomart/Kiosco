@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag } from "lucide-react"
+import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag, PackagePlus, Lock } from "lucide-react"
 import { formatCurrency, PLAN_LIMITS, type Plan } from "@/lib/utils"
+import { hasFeature } from "@/lib/permissions"
 import ProductModal from "@/components/inventario/ProductModal"
 import ImportModal from "@/components/inventario/ImportModal"
 import { CategoryManagerModal } from "@/components/inventario/CategoryManagerModal"
+import { StockBulkModal } from "@/components/inventario/StockBulkModal"
 
 interface Product {
   id: string
@@ -44,6 +46,7 @@ export default function InventarioPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [showStockBulk, setShowStockBulk] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [plan, setPlan] = useState<Plan>("FREE")
@@ -150,6 +153,19 @@ export default function InventarioPage() {
           <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
             <Upload size={16} /> Importar
           </button>
+          {(() => {
+            const bulkUnlocked = hasFeature(plan, "feature:csv_import")
+            return (
+              <button
+                onClick={() => bulkUnlocked ? setShowStockBulk(true) : (window.location.href = "/configuracion/suscripcion")}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-700/30 hover:bg-emerald-700/50 text-emerald-300 text-sm transition-colors border border-emerald-700/40"
+                title={bulkUnlocked ? "Cargar stock de varios productos a la vez" : "Disponible desde Plan Básico"}
+              >
+                <PackagePlus size={16} /> Carga masiva
+                {!bulkUnlocked && <Lock size={12} className="text-amber-400" />}
+              </button>
+            )
+          })()}
           <button onClick={() => setShowCategories(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
             <Tag size={16} /> Categorías
           </button>
@@ -364,6 +380,10 @@ export default function InventarioPage() {
       )}
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onDone={() => { setShowImport(false); load() }} />
+      )}
+
+      {showStockBulk && (
+        <StockBulkModal onClose={() => setShowStockBulk(false)} onDone={() => { setShowStockBulk(false); load() }} />
       )}
 
       <CategoryManagerModal
