@@ -20,6 +20,7 @@ import { formatCurrency } from "@/lib/utils"
 import StatCard from "@/components/shared/StatCard"
 import WeeklySalesChart from "@/components/shared/WeeklySalesChart"
 import { AnimatedStagger, AnimatedItem } from "@/components/shared/AnimatedStagger"
+import { Progress } from "@/components/ui/progress"
 
 // ---------------------------------------------------------------------------
 // Data fetching helpers
@@ -227,28 +228,47 @@ function LowStockAlert({
 }) {
   if (!products.length) return null
   return (
-    <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-        <h3 className="text-sm font-semibold text-amber-300">
-          Stock bajo ({products.length} producto{products.length > 1 ? "s" : ""})
-        </h3>
+    <div className="card-glow rounded-xl p-5 border-l-2 border-l-amber-500/60">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+          <AlertTriangle className="w-4 h-4 text-amber-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-white">
+            Stock bajo · {products.length} producto{products.length > 1 ? "s" : ""}
+          </h3>
+          <p className="text-xs text-gray-500">Necesitan reposición pronto</p>
+        </div>
         <Link
           href="/inventario?filter=lowstock"
-          className="ml-auto text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+          className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 flex-shrink-0"
         >
           Ver todos <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
-      <ul className="space-y-1.5">
-        {products.slice(0, 5).map((p) => (
-          <li key={p.id} className="flex items-center justify-between text-xs">
-            <span className="text-gray-300 truncate max-w-[70%]">{p.name}</span>
-            <span className="text-amber-400 font-medium tabular-nums">
-              {p.stock} / min {p.minStock}
-            </span>
-          </li>
-        ))}
+      <ul className="space-y-3">
+        {products.slice(0, 5).map((p) => {
+          // Proporción: 0 stock = 0%, stock=minStock = 100%
+          const pct = p.minStock > 0
+            ? Math.min(100, Math.round((p.stock / p.minStock) * 100))
+            : 0
+          const tone = pct < 25 ? "danger" : pct < 60 ? "warning" : "brand"
+          return (
+            <li key={p.id} className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs gap-3">
+                <span className="text-gray-200 truncate font-medium">{p.name}</span>
+                <span className={`font-mono tabular-nums flex-shrink-0 ${
+                  tone === "danger" ? "text-red-400" :
+                  tone === "warning" ? "text-amber-400" :
+                  "text-gray-300"
+                }`}>
+                  {p.stock} / {p.minStock}
+                </span>
+              </div>
+              <Progress value={pct} tone={tone} className="h-1.5" />
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -256,20 +276,29 @@ function LowStockAlert({
 
 function AIResumenSection({ resumen }: { resumen: string | null }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-lg bg-purple-900/60 flex items-center justify-center">
-          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+    <div className="card-glow rounded-xl p-5 relative overflow-hidden">
+      {/* Glow decorativo en el fondo */}
+      <div
+        className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-40 pointer-events-none"
+        style={{ background: "color-mix(in oklab, var(--color-accent) 50%, transparent)" }}
+        aria-hidden
+      />
+      <div className="flex items-center gap-2 mb-3 relative">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center"
+          style={{ background: "color-mix(in oklab, var(--color-accent) 20%, transparent)", border: "1px solid color-mix(in oklab, var(--color-accent) 40%, transparent)" }}
+        >
+          <Sparkles className="w-4 h-4 text-accent" />
         </div>
         <h2 className="text-sm font-semibold text-gray-100">Resumen IA del día</h2>
-        <span className="ml-auto text-xs text-gray-600 flex items-center gap-1">
+        <span className="ml-auto text-xs text-gray-500 flex items-center gap-1">
           <RefreshCw className="w-3 h-3" /> Actualizado hoy
         </span>
       </div>
       {resumen ? (
-        <p className="text-sm text-gray-300 leading-relaxed">{resumen}</p>
+        <p className="text-sm text-gray-300 leading-relaxed relative">{resumen}</p>
       ) : (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-gray-500 italic relative">
           No hay suficiente información para generar un resumen. Realizá tu primera
           venta del día para activar el análisis automático.
         </p>
@@ -307,6 +336,10 @@ export default async function DashboardPage() {
 
   const avgTicket = todayCount > 0 ? todayTotal / todayCount : 0
 
+  // Series de sparkline derivadas de weeklyData
+  const revenueTrend = weeklyData.map((d) => d.total)
+  const countTrend = weeklyData.map((d) => d.count)
+
   return (
     <AnimatedStagger className="max-w-7xl mx-auto space-y-6">
       {/* Greeting */}
@@ -341,6 +374,8 @@ export default async function DashboardPage() {
           iconBg="bg-purple-900/40"
           change={revenueChange ?? undefined}
           changeLabel="vs ayer"
+          sparkline={revenueTrend}
+          sparklineColor="text-purple-400"
         />
         <StatCard
           title="Transacciones"
@@ -349,6 +384,8 @@ export default async function DashboardPage() {
           iconColor="text-blue-400"
           iconBg="bg-blue-900/40"
           subtitle={todayCount > 0 ? `Ticket prom: ${formatCurrency(avgTicket)}` : undefined}
+          sparkline={countTrend}
+          sparklineColor="text-blue-400"
         />
         <StatCard
           title="Ganancias hoy"
@@ -361,6 +398,8 @@ export default async function DashboardPage() {
               ? `Margen: ${((todayProfit / todayTotal) * 100).toFixed(1)}%`
               : undefined
           }
+          sparkline={revenueTrend}
+          sparklineColor="text-emerald-400"
         />
         <StatCard
           title="Stock bajo"
@@ -373,9 +412,9 @@ export default async function DashboardPage() {
       </AnimatedItem>
 
       {/* Main content grid */}
-      <AnimatedItem className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <AnimatedItem className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* Weekly chart – takes 2 cols */}
-        <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <div className="lg:col-span-2 card-glow rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-100">
               Ventas últimos 7 días
@@ -397,26 +436,26 @@ export default async function DashboardPage() {
         </div>
 
         {/* Quick actions – 1 col */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <div className="card-glow rounded-xl p-5 flex flex-col">
           <h2 className="text-sm font-semibold text-gray-100 mb-4">
             Acciones rápidas
           </h2>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 flex-1">
             {[
-              { href: "/pos", label: "Nueva venta", icon: ShoppingCart, color: "bg-purple-600 hover:bg-purple-700" },
-              { href: "/caja", label: "Gestionar caja", icon: DollarSign, color: "bg-emerald-700 hover:bg-emerald-600" },
-              { href: "/cargas", label: "Registrar carga", icon: Truck, color: "bg-blue-700 hover:bg-blue-600" },
-              { href: "/gastos", label: "Cargar gasto", icon: TrendingDown, color: "bg-amber-700 hover:bg-amber-600" },
-              { href: "/inventario", label: "Ver inventario", icon: Package, color: "bg-gray-700 hover:bg-gray-600" },
-            ].map(({ href, label, icon: Icon, color }) => (
+              { href: "/pos", label: "Nueva venta", icon: ShoppingCart, gradient: "from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500" },
+              { href: "/caja", label: "Gestionar caja", icon: DollarSign, gradient: "from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500" },
+              { href: "/cargas", label: "Registrar carga", icon: Truck, gradient: "from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500" },
+              { href: "/gastos", label: "Cargar gasto", icon: TrendingDown, gradient: "from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500" },
+              { href: "/inventario", label: "Ver inventario", icon: Package, gradient: "from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700" },
+            ].map(({ href, label, icon: Icon, gradient }) => (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-white text-sm font-medium transition-all duration-150 ${color}`}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-white text-sm font-medium transition-all duration-200 active:scale-[0.98] bg-gradient-to-r ${gradient} group`}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span>{label}</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-50" />
+                <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition" />
               </Link>
             ))}
           </div>

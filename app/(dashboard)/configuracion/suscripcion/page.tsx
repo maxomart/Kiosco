@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCircle, Zap, Crown, Building2, ArrowRight, ArrowDown, ExternalLink, AlertCircle, CreditCard } from "lucide-react"
+import { CheckCircle, Zap, Crown, Building2, ArrowRight, ArrowDown, ExternalLink, AlertCircle, CreditCard, Sparkles } from "lucide-react"
+import NumberFlow from "@number-flow/react"
+import { motion } from "framer-motion"
+import { BillingToggle, type BillingPeriod } from "@/components/shared/BillingToggle"
 
 function ArrowDownIcon() {
   return <ArrowDown size={12} />
@@ -14,6 +17,9 @@ import {
   PLAN_LABELS,
   formatCurrency,
 } from "@/lib/utils"
+
+// Precio anual = mensual × 12 × (1 - descuento). Mostramos el /mes efectivo.
+const ANNUAL_DISCOUNT = 0.2
 
 interface Subscription {
   plan: string
@@ -96,6 +102,7 @@ export default function SuscripcionPage() {
   const [upgrading, setUpgrading] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [period, setPeriod] = useState<BillingPeriod>("monthly")
   const searchParams = useSearchParams()
   const success = searchParams.get("success")
   const cancelled = searchParams.get("cancelled")
@@ -265,7 +272,18 @@ export default function SuscripcionPage() {
 
       {/* Plans grid */}
       <div>
-        <h2 className="text-white font-semibold mb-4">Planes disponibles</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 className="text-white font-semibold flex items-center gap-2">
+              <Sparkles size={16} className="text-accent" />
+              Planes disponibles
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {period === "annual" ? `Ahorrás ${Math.round(ANNUAL_DISCOUNT * 100)}% pagando anual` : "Cambiá a anual para ahorrar"}
+            </p>
+          </div>
+          <BillingToggle value={period} onChange={setPeriod} annualDiscount={ANNUAL_DISCOUNT} />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {(() => {
             const PLAN_ORDER = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
@@ -275,42 +293,82 @@ export default function SuscripcionPage() {
               const isCurrent = sub?.plan === plan
               const isUpgrade = idx > currentIdx
               const isDowngrade = idx < currentIdx
-              const priceARS = PLAN_PRICES_ARS[plan]
+              const monthlyARS = PLAN_PRICES_ARS[plan]
+              const displayPrice = period === "annual"
+                ? Math.round(monthlyARS * (1 - ANNUAL_DISCOUNT))
+                : monthlyARS
               const features = PLAN_FEATURES[plan]
               const isPopular = plan === "PROFESSIONAL" && !isCurrent
 
               return (
-                <div key={plan}
-                  className={`relative bg-gray-900 rounded-xl p-5 border-2 ${isCurrent ? PLAN_COLORS[plan] : isDowngrade ? "border-gray-800/60 opacity-70" : "border-gray-800"} flex flex-col`}>
+                <motion.div
+                  key={plan}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: idx * 0.05, ease: "easeOut" }}
+                  whileHover={{ y: -3, transition: { duration: 0.15 } }}
+                  className={`relative card-glow rounded-2xl p-5 flex flex-col ${
+                    isPopular ? "ring-1 ring-accent/60" : ""
+                  } ${isCurrent ? "ring-1 ring-emerald-500/60" : ""} ${
+                    isDowngrade ? "opacity-60" : ""
+                  }`}
+                >
                   {isPopular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-purple-600 rounded-full text-white text-xs font-bold">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-accent rounded-full text-accent-foreground text-[10px] font-bold tracking-wider">
                       MÁS POPULAR
                     </div>
                   )}
                   {isCurrent && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-600 rounded-full text-white text-xs font-bold">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-600 rounded-full text-white text-[10px] font-bold tracking-wider">
                       TU PLAN ACTUAL
                     </div>
                   )}
-                  <div className="flex items-center gap-2 mb-3">
-                    <Icon size={18} className={plan === "FREE" ? "text-gray-400" : plan === "STARTER" ? "text-blue-400" : plan === "PROFESSIONAL" ? "text-purple-400" : "text-yellow-400"} />
+                  <div className="flex items-center gap-2 mb-4">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                        plan === "FREE" ? "bg-gray-800" :
+                        plan === "STARTER" ? "bg-blue-500/15 border border-blue-500/30" :
+                        plan === "PROFESSIONAL" ? "bg-purple-500/15 border border-purple-500/30" :
+                        "bg-amber-500/15 border border-amber-500/30"
+                      }`}
+                    >
+                      <Icon size={18} className={
+                        plan === "FREE" ? "text-gray-400" :
+                        plan === "STARTER" ? "text-blue-400" :
+                        plan === "PROFESSIONAL" ? "text-purple-400" :
+                        "text-amber-400"
+                      } />
+                    </div>
                     <span className="text-white font-semibold">{PLAN_LABELS_AR[plan]}</span>
                   </div>
-                  <div className="mb-4">
-                    {priceARS === 0 ? (
+                  <div className="mb-1">
+                    {monthlyARS === 0 ? (
                       <span className="text-3xl font-bold text-white">Gratis</span>
                     ) : (
-                      <>
-                        <span className="text-3xl font-bold text-white">{formatCurrency(priceARS)}</span>
-                        <span className="text-gray-500 text-sm"> /mes</span>
-                      </>
+                      <div className="flex items-baseline gap-1 flex-wrap">
+                        <span className="text-3xl font-bold text-white tabular-nums">
+                          $ <NumberFlow value={displayPrice} format={{ useGrouping: true }} />
+                        </span>
+                        <span className="text-gray-500 text-sm">/mes</span>
+                      </div>
                     )}
                   </div>
-                  <ul className="space-y-2 mb-6 flex-1">
+                  {period === "annual" && monthlyARS > 0 && (
+                    <div className="flex items-center gap-1 mb-3">
+                      <span className="text-[11px] text-gray-500 line-through tabular-nums">
+                        {formatCurrency(monthlyARS)}
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-400">
+                        -{Math.round(ANNUAL_DISCOUNT * 100)}%
+                      </span>
+                    </div>
+                  )}
+                  {monthlyARS === 0 && <div className="mb-3" />}
+                  <ul className="space-y-2 mb-5 flex-1">
                     {features.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                        <CheckCircle size={14} className="text-green-400 mt-0.5 shrink-0" />
-                        {f}
+                        <CheckCircle size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                        <span>{f}</span>
                       </li>
                     ))}
                   </ul>
@@ -362,7 +420,7 @@ export default function SuscripcionPage() {
                       </button>
                     </div>
                   )}
-                </div>
+                </motion.div>
               )
             })
           })()}
