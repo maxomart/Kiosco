@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { ShoppingBag, Search, Eye, XCircle, ChevronDown, ChevronRight } from "lucide-react"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 
@@ -140,8 +140,8 @@ export default function VentasPage() {
                 </td>
               </tr>
             ) : sales.map(s => (
-              <>
-                <tr key={s.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors cursor-pointer"
+              <React.Fragment key={s.id}>
+                <tr className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors cursor-pointer"
                   onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
                   <td className="p-4 text-gray-500">
                     {expanded === s.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -202,7 +202,7 @@ export default function VentasPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
