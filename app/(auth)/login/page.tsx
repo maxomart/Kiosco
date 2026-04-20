@@ -48,8 +48,10 @@ export default function LoginPage() {
         toast.error("No se pudo iniciar sesión. Intentá de nuevo.")
       } else {
         toast.success("Bienvenido de vuelta!")
-        router.push("/inicio")
-        router.refresh()
+        // Force a full reload so the new session cookie is picked up by
+        // the server-rendered layouts. window.location avoids any stale
+        // router cache that could keep us on /login.
+        window.location.href = "/inicio"
       }
     } catch {
       toast.error("Ocurrió un error. Intentá de nuevo.")

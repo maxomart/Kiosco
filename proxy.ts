@@ -1,12 +1,15 @@
+import NextAuth from "next-auth"
 import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
+import { authConfig } from "@/lib/auth.config"
 
-export async function proxy(req: NextRequest) {
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET
-  const token = await getToken({ req, secret })
-  const { pathname } = req.nextUrl
-  const isLoggedIn = !!token
+const { auth } = NextAuth(authConfig)
+
+export const proxy = auth((req) => {
+  const { nextUrl } = req
+  const session = (req as any).auth
+  const isLoggedIn = !!session
+  const role = session?.user?.role
+  const { pathname } = nextUrl
 
   const isAuthRoute =
     pathname.startsWith("/login") ||
@@ -27,23 +30,24 @@ export async function proxy(req: NextRequest) {
 
   const isAdminRoute = pathname.startsWith("/admin")
 
-  // Redirect logged-in users away from auth pages
+  // Logged-in user on auth pages → send them to their home
   if (isAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL("/inicio", req.nextUrl))
+    const target = role === "SUPER_ADMIN" ? "/admin" : "/inicio"
+    return NextResponse.redirect(new URL(target, nextUrl))
   }
 
   // Protect dashboard routes
   if (isDashboard && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl))
+    return NextResponse.redirect(new URL("/login", nextUrl))
   }
 
   // Protect admin routes
-  if (isAdminRoute && (!isLoggedIn || (token as any)?.role !== "SUPER_ADMIN")) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl))
+  if (isAdminRoute && (!isLoggedIn || role !== "SUPER_ADMIN")) {
+    return NextResponse.redirect(new URL("/login", nextUrl))
   }
 
   return NextResponse.next()
-}
+}) as any
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|icons).*)"],

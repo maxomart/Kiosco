@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 import { z } from "zod"
+import { authConfig } from "@/lib/auth.config"
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -10,12 +11,7 @@ const loginSchema = z.object({
 })
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
-  trustHost: true,
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
+  ...authConfig,
   providers: [
     Credentials({
       name: "credentials",
@@ -75,7 +71,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             role: user.role,
             image: user.image,
             tenantId: user.tenantId,
-          }
+          } as any
         } catch (err) {
           console.error("[AUTH] authorize threw:", err)
           return null
@@ -83,24 +79,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = (user as any).role
-        token.id = user.id
-        token.tenantId = (user as any).tenantId ?? null
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.tenantId = token.tenantId as string | null
-      }
-      return session
-    },
-  },
   events: {
     async signIn({ user }) {
       await db.auditLog
