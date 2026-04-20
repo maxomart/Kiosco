@@ -1,16 +1,20 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { motion, type Variants } from "framer-motion"
 import { formatCurrency, formatDateTime, PAYMENT_METHOD_LABELS } from "@/lib/utils"
 import {
   TrendingUp, ShoppingCart, Package, AlertTriangle,
-  DollarSign, BarChart3, Clock, Sparkles, Loader2
+  DollarSign, BarChart3, Clock, Sparkles, Loader2,
+  Receipt, Wallet, Truck, ArrowRight
 } from "lucide-react"
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, BarChart, Bar
+  Tooltip, ResponsiveContainer
 } from "recharts"
 import Link from "next/link"
+import { AnimatedNumber } from "@/components/ui/animated-number"
+import { Progress } from "@/components/ui/progress"
 
 interface DashboardData {
   salesToday: { total: number; count: number }
@@ -27,36 +31,94 @@ interface Props {
   userName: string
 }
 
+const containerVar: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+}
+const itemVar: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+}
+
 function StatCard({
-  title, value, subtitle, icon: Icon, color, href
+  title, value, subtitle, icon: Icon, iconColor, href, money,
 }: {
   title: string
-  value: string
+  value: number | string
   subtitle?: string
   icon: React.ElementType
-  color: string
+  iconColor: string
   href?: string
+  money?: boolean
 }) {
   const content = (
-    <div className={`bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition group`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{title}</p>
-          <p className="text-2xl font-black text-gray-800 dark:text-white mt-1">{value}</p>
-          {subtitle && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{subtitle}</p>}
+    <motion.div
+      variants={itemVar}
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      className="card-glow rounded-2xl p-5 h-full group relative overflow-hidden"
+    >
+      <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-3xl"
+        style={{ background: `rgb(${iconColor} / 0.3)` }}
+      />
+      <div className="flex items-start justify-between relative">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-white/50 font-medium uppercase tracking-wider">{title}</p>
+          <div className="text-2xl md:text-3xl font-bold text-white mt-2">
+            {typeof value === "number" ? (
+              money ? (
+                <AnimatedNumber value={value} prefix="$ " format={{ maximumFractionDigits: 2 }} />
+              ) : (
+                <AnimatedNumber value={value} />
+              )
+            ) : value}
+          </div>
+          {subtitle && <p className="text-xs text-white/40 mt-1">{subtitle}</p>}
         </div>
-        <div className={`w-12 h-12 ${color} rounded-2xl flex items-center justify-center flex-shrink-0`}>
-          <Icon size={22} className="text-white" />
+        <div
+          className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ml-3"
+          style={{
+            background: `linear-gradient(135deg, rgb(${iconColor} / 0.2), rgb(${iconColor} / 0.08))`,
+            border: `1px solid rgb(${iconColor} / 0.3)`,
+          }}
+        >
+          <Icon size={20} style={{ color: `rgb(${iconColor})` }} />
         </div>
       </div>
-    </div>
+    </motion.div>
   )
-
   if (href) return <Link href={href}>{content}</Link>
   return content
 }
 
-// Formatear horas para el gráfico
+function QuickAction({
+  label, icon: Icon, href, tone,
+}: {
+  label: string
+  icon: React.ElementType
+  href: string
+  tone: "purple" | "emerald" | "sky" | "orange" | "indigo"
+}) {
+  const TONES: Record<string, string> = {
+    purple: "from-purple-500/80 to-indigo-500/80 hover:from-purple-500 hover:to-indigo-500",
+    emerald: "from-emerald-500/80 to-teal-500/80 hover:from-emerald-500 hover:to-teal-500",
+    sky: "from-sky-500/80 to-blue-500/80 hover:from-sky-500 hover:to-blue-500",
+    orange: "from-orange-500/80 to-rose-500/80 hover:from-orange-500 hover:to-rose-500",
+    indigo: "from-indigo-500/80 to-purple-500/80 hover:from-indigo-500 hover:to-purple-500",
+  }
+  return (
+    <Link
+      href={href}
+      className={`bg-gradient-to-br ${TONES[tone]} text-white rounded-2xl px-4 py-3.5 flex items-center justify-between transition-all active:scale-[0.98] group`}
+    >
+      <div className="flex items-center gap-3">
+        <Icon size={18} />
+        <span className="font-semibold text-sm">{label}</span>
+      </div>
+      <ArrowRight size={16} className="opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition" />
+    </Link>
+  )
+}
+
 const formatHour = (h: number) => `${h}:00`
 
 export default function DashboardClient({ data, userName }: Props) {
@@ -81,19 +143,15 @@ export default function DashboardClient({ data, userName }: Props) {
         if (!res.ok) return
         const json = await res.json()
         if (!cancelled && json.summary) setAiSummary(json.summary)
-      } catch {
-        // silent
-      } finally {
-        if (!cancelled) setAiLoading(false)
-      }
+      } catch {}
+      finally { if (!cancelled) setAiLoading(false) }
     }
     load()
     return () => { cancelled = true }
   }, [])
 
-  // Llenar horas vacías en el gráfico
   const hoursData = Array.from({ length: 14 }, (_, i) => {
-    const h = i + 7 // 7am a 9pm
+    const h = i + 7
     const found = data.salesByHour.find(r => r.hour === h)
     return {
       hour: formatHour(h),
@@ -103,141 +161,145 @@ export default function DashboardClient({ data, userName }: Props) {
   })
 
   return (
-    <div className="p-6 space-y-6">
+    <motion.div
+      className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto"
+      variants={containerVar}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Bienvenida */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-          {greeting}, {userName.split(" ")[0]} 👋
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">
-          {mounted ? `Resumen del día · ${new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}` : "Resumen del día"}
-        </p>
-      </div>
+      <motion.div variants={itemVar} className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white tracking-tight">
+            {greeting}, {userName.split(" ")[0]} <span className="inline-block animate-float-slow">👋</span>
+          </h1>
+          <p className="text-white/50 text-sm mt-1">
+            {mounted ? new Date().toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "Resumen del día"}
+          </p>
+        </div>
+      </motion.div>
 
-      {/* Resumen IA del día */}
+      {/* Resumen IA */}
       {(aiLoading || aiSummary) && (
-        <div className="bg-gradient-to-r from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-4 flex items-start gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-            {aiLoading ? (
-              <Loader2 size={18} className="text-white animate-spin" />
-            ) : (
-              <Sparkles size={18} className="text-white" />
-            )}
+        <motion.div
+          variants={itemVar}
+          className="card-glow rounded-2xl p-4 flex items-start gap-3 relative overflow-hidden"
+        >
+          <div className="absolute inset-0 animate-shimmer pointer-events-none" />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative"
+            style={{
+              background: "linear-gradient(135deg, rgb(var(--glow-primary)), rgb(var(--glow-secondary)))",
+            }}
+          >
+            {aiLoading ? <Loader2 size={18} className="text-white animate-spin" /> : <Sparkles size={18} className="text-white" />}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-0.5">
-              Resumen con IA
-            </p>
-            <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
+          <div className="flex-1 min-w-0 relative">
+            <p className="text-[11px] font-bold text-purple-300 uppercase tracking-[0.15em] mb-0.5">Resumen con IA</p>
+            <p className="text-sm text-white/80 leading-relaxed">
               {aiLoading ? "Analizando tu día..." : aiSummary}
             </p>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Estadísticas principales */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Ventas de hoy"
-          value={formatCurrency(data.salesToday.total)}
-          subtitle={`${data.salesToday.count} transacciones`}
-          icon={DollarSign}
-          color="bg-green-500"
-        />
-        <StatCard
-          title="Ventas del mes"
-          value={formatCurrency(data.salesMonth.total)}
-          subtitle={`${data.salesMonth.count} transacciones`}
-          icon={TrendingUp}
-          color="bg-blue-500"
-        />
-        <StatCard
-          title="Productos activos"
-          value={String(data.totalProducts)}
-          icon={Package}
-          color="bg-purple-500"
-          href="/inventario"
-        />
-        <StatCard
-          title="Stock bajo"
-          value={String(data.lowStockProducts.length)}
-          subtitle="requieren atención"
-          icon={AlertTriangle}
-          color="bg-orange-500"
-          href="/inventario"
-        />
+        <StatCard title="Ventas de hoy" value={data.salesToday.total} subtitle={`${data.salesToday.count} transacciones`} icon={DollarSign} iconColor="34 197 94" money />
+        <StatCard title="Ventas del mes" value={data.salesMonth.total} subtitle={`${data.salesMonth.count} transacciones`} icon={TrendingUp} iconColor="59 130 246" money />
+        <StatCard title="Productos activos" value={data.totalProducts} icon={Package} iconColor="139 92 246" href="/inventario" />
+        <StatCard title="Stock bajo" value={data.lowStockProducts.length} subtitle="requieren atención" icon={AlertTriangle} iconColor="249 115 22" href="/inventario" />
       </div>
 
-      {/* Gráfico de ventas por hora */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="font-bold text-gray-800 dark:text-white">Ventas por hora — Hoy</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Monto total por hora del día</p>
+      {/* Gráfico + acciones rápidas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div variants={itemVar} className="lg:col-span-2 card-glow rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-bold text-white">Ventas últimos 7 días</h2>
+              <p className="text-xs text-white/40 mt-0.5">Monto total por hora · hoy</p>
+            </div>
+            <Link href="/reportes" className="text-sm text-purple-300 hover:text-purple-200 flex items-center gap-1">
+              Ver reportes <ArrowRight size={14} />
+            </Link>
           </div>
-          <BarChart3 size={20} className="text-gray-300" />
-        </div>
-        <div className="h-48">
-          {mounted ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={hoursData}>
-                <defs>
-                  <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-                <Tooltip
-                  formatter={(val: number) => [formatCurrency(val), "Ventas"]}
-                  contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="ventas"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  fill="url(#colorVentas)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full bg-gray-50 dark:bg-gray-700/30 rounded-xl animate-pulse" />
-          )}
-        </div>
+          <div className="h-56">
+            {mounted ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={hoursData}>
+                  <defs>
+                    <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="rgb(var(--glow-primary))" stopOpacity={0.5} />
+                      <stop offset="95%" stopColor="rgb(var(--glow-primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="hour" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.5)" }} stroke="rgba(255,255,255,0.1)" />
+                  <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.5)" }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} stroke="rgba(255,255,255,0.1)" />
+                  <Tooltip
+                    formatter={(val: number) => [formatCurrency(val), "Ventas"]}
+                    contentStyle={{
+                      background: "#0d0d18",
+                      borderRadius: "12px",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "#fff",
+                    }}
+                    cursor={{ stroke: "rgb(var(--glow-primary))", strokeWidth: 1, strokeDasharray: "3 3" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="ventas"
+                    stroke="rgb(var(--glow-primary))"
+                    strokeWidth={2.5}
+                    fill="url(#colorVentas)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full bg-white/5 rounded-xl animate-pulse" />
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVar} className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="font-bold text-white text-sm">Acciones rápidas</h2>
+          </div>
+          <div className="space-y-2.5">
+            <QuickAction label="Nueva venta" icon={ShoppingCart} href="/pos" tone="purple" />
+            <QuickAction label="Gestionar caja" icon={Wallet} href="/caja" tone="emerald" />
+            <QuickAction label="Registrar carga" icon={Truck} href="/cargas" tone="sky" />
+            <QuickAction label="Cargar gasto" icon={Receipt} href="/gastos" tone="orange" />
+            <QuickAction label="Ver inventario" icon={Package} href="/inventario" tone="indigo" />
+          </div>
+        </motion.div>
       </div>
 
       {/* Fila inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Últimas ventas */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+        <motion.div variants={itemVar} className="card-glow rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-800 dark:text-white">Últimas ventas</h2>
-            <Link href="/reportes" className="text-blue-600 text-sm hover:underline">Ver todas</Link>
+            <h2 className="font-bold text-white">Últimas ventas</h2>
+            <Link href="/reportes" className="text-purple-300 text-sm hover:text-purple-200">Ver todas</Link>
           </div>
           {data.recentSales.length === 0 ? (
-            <div className="text-center py-8 text-gray-300">
+            <div className="text-center py-8 text-white/30">
               <ShoppingCart size={40} className="mx-auto mb-2" />
               <p className="text-sm">No hay ventas hoy</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {data.recentSales.slice(0, 6).map((sale: any) => (
-                <div key={sale.id} className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-700 last:border-0">
+                <div key={sale.id} className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
                   <div>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    <p className="text-sm font-semibold text-white">
                       #{sale.number} · {sale.items.length} producto{sale.items.length !== 1 ? "s" : ""}
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {formatDateTime(sale.createdAt)} · {sale.user?.name}
-                    </p>
+                    <p className="text-xs text-white/40">{formatDateTime(sale.createdAt)} · {sale.user?.name}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-gray-800 dark:text-gray-200">{formatCurrency(sale.total)}</p>
-                    <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">
+                    <p className="font-bold text-white">{formatCurrency(sale.total)}</p>
+                    <span className="text-[10px] bg-white/5 text-white/60 px-2 py-0.5 rounded-full border border-white/10">
                       {PAYMENT_METHOD_LABELS[sale.paymentMethod] ?? sale.paymentMethod}
                     </span>
                   </div>
@@ -245,60 +307,63 @@ export default function DashboardClient({ data, userName }: Props) {
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
 
-        {/* Stock bajo */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+        <motion.div variants={itemVar} className="card-glow rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-800 dark:text-white">Alertas de stock</h2>
-            <Link href="/inventario" className="text-blue-600 text-sm hover:underline">Gestionar</Link>
+            <h2 className="font-bold text-white">Alertas de stock</h2>
+            <Link href="/inventario" className="text-purple-300 text-sm hover:text-purple-200">Gestionar</Link>
           </div>
           {data.lowStockProducts.length === 0 ? (
-            <div className="text-center py-8 text-gray-300">
-              <Package size={40} className="mx-auto mb-2" />
-              <p className="text-sm text-green-500">¡Todo el stock está OK!</p>
+            <div className="text-center py-8">
+              <Package size={40} className="mx-auto mb-2 text-emerald-400/50" />
+              <p className="text-sm text-emerald-300">¡Todo el stock está OK!</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {data.lowStockProducts.map((product: any) => (
-                <div key={product.id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle size={16} className="text-orange-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{product.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-orange-400 rounded-full"
-                          style={{ width: `${Math.min(100, (product.stock / product.idealStock) * 100)}%` }}
-                        />
+            <div className="space-y-3.5">
+              {data.lowStockProducts.map((product: any) => {
+                const pct = product.idealStock > 0
+                  ? Math.min(100, (product.stock / product.idealStock) * 100)
+                  : 0
+                const tone = pct < 25 ? "danger" : pct < 50 ? "warning" : "brand"
+                return (
+                  <div key={product.id} className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <AlertTriangle size={15} className="text-orange-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-semibold text-white truncate">{product.name}</p>
+                        <span className="text-xs text-orange-300 font-medium flex-shrink-0 ml-2">
+                          {product.stock}/{product.minStock} {product.unit}
+                        </span>
                       </div>
-                      <span className="text-xs text-orange-600 font-medium flex-shrink-0">
-                        {product.stock}/{product.minStock} {product.unit}
-                      </span>
+                      <Progress value={pct} tone={tone as any} className="h-1.5" />
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
-      {/* Acceso rápido a POS */}
-      <Link
-        href="/pos"
-        className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-5 hover:from-blue-700 hover:to-indigo-700 transition shadow-lg shadow-blue-500/30 group"
-      >
-        <div>
-          <p className="font-bold text-lg">Ir a la Caja</p>
-          <p className="text-blue-200 text-sm">Abrir el punto de venta</p>
-        </div>
-        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:bg-white/30 transition">
-          <ShoppingCart size={24} />
-        </div>
-      </Link>
-    </div>
+      {/* CTA final */}
+      <motion.div variants={itemVar}>
+        <Link
+          href="/pos"
+          className="relative overflow-hidden flex items-center justify-between rounded-2xl p-5 group border border-white/10 bg-gradient-to-br from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:via-indigo-500 hover:to-purple-600 transition-all brand-glow"
+        >
+          <div className="absolute inset-0 animate-shimmer pointer-events-none opacity-40" />
+          <div className="relative">
+            <p className="font-bold text-lg text-white">Ir a la Caja</p>
+            <p className="text-white/70 text-sm">Abrir el punto de venta</p>
+          </div>
+          <div className="relative w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:bg-white/30 group-hover:scale-105 transition">
+            <ShoppingCart size={24} className="text-white" />
+          </div>
+        </Link>
+      </motion.div>
+    </motion.div>
   )
 }

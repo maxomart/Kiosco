@@ -24,71 +24,158 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+
+    /* Tema personalizable (editable por tenant) */
+    --brand-hue: 265;          /* Purple por default */
+    --brand-sat: 85%;
+    --brand-light: 60%;
+    --sidebar-from: #0b0b14;
+    --sidebar-via: #0f0f1a;
+    --sidebar-to: #070711;
+    --app-bg-from: #050510;
+    --app-bg-via: #0a0a18;
+    --app-bg-to: #07071a;
+    --glow-primary: 139 92 246;     /* purple-500 en RGB */
+    --glow-secondary: 99 102 241;   /* indigo-500 en RGB */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 240 12% 6%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 240 10% 9%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 240 10% 9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
+    --primary: 265 85% 65%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 240 8% 14%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --muted: 240 8% 14%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 240 8% 14%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 45%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --border: 240 10% 18%;
+    --input: 240 10% 18%;
+    --ring: 265 85% 65%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
 }
 
-/* POS - Botones grandes táctiles */
+/* ─────────────────────────────────────────────
+   Fondos con profundidad (app + sidebar)
+   ──────────────────────────────────────────── */
+.app-surface {
+  background:
+    radial-gradient(1200px 600px at 90% -10%, rgba(var(--glow-primary) / 0.18), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(var(--glow-secondary) / 0.14), transparent 55%),
+    linear-gradient(160deg, var(--app-bg-from) 0%, var(--app-bg-via) 50%, var(--app-bg-to) 100%);
+  position: relative;
+}
+.app-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+}
+
+.sidebar-surface {
+  background: linear-gradient(180deg, var(--sidebar-from) 0%, var(--sidebar-via) 55%, var(--sidebar-to) 100%);
+  position: relative;
+}
+.sidebar-surface::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,0.06) 30%, rgba(255,255,255,0.06) 70%, transparent);
+}
+
+/* Tarjeta con borde luminoso sutil (glassmorphism adaptado) */
+.card-glow {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 20px 40px -20px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.card-glow:hover {
+  border-color: rgba(var(--glow-primary) / 0.35);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 20px 40px -20px rgba(var(--glow-primary) / 0.4);
+}
+
+/* Glow ring reutilizable */
+.brand-glow {
+  box-shadow: 0 0 0 1px rgba(var(--glow-primary) / 0.35),
+              0 18px 40px -10px rgba(var(--glow-primary) / 0.45);
+}
+
+/* POS - Botones táctiles */
 .pos-btn {
   @apply min-h-[4rem] text-lg font-bold select-none active:scale-95 transition-transform;
 }
 
-/* Scrollbar personalizada */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  @apply bg-gray-100;
-}
+/* Scrollbar personalizada (oscura) */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
+  background: rgba(255,255,255,0.08);
+  border-radius: 9999px;
 }
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
-}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
 /* Animaciones */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.animate-fadeIn { animation: fadeIn 0.15s ease-out; }
 
-.animate-fadeIn {
-  animation: fadeIn 0.15s ease-out;
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
 }
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(var(--glow-primary) / 0.12) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
 
 /* Modo sin internet */
 .offline-banner {
   @apply fixed top-0 left-0 right-0 z-50 bg-orange-500 text-white text-center py-1 text-sm font-medium;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

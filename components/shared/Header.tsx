@@ -72,9 +72,9 @@ export default function Header({ user }: HeaderProps) {
   }, [showNotifs])
 
   return (
-    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
+    <header className="bg-white/[0.02] border-b border-white/5 backdrop-blur-xl px-6 py-3 flex items-center justify-between relative z-10">
       {/* Reloj — solo client-side para evitar hydration mismatch */}
-      <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+      <div className="flex items-center gap-2 text-white/60">
         <Clock size={16} />
         <span className="text-sm font-mono">
           {mounted && now ? formatDateTime(now) : ""}
@@ -87,7 +87,7 @@ export default function Header({ user }: HeaderProps) {
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setShowNotifs(!showNotifs)}
-            className="relative p-2 text-gray-400 dark:text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition"
+            className="relative p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-xl transition"
           >
             <Bell size={20} />
             {notifCount > 0 && (
@@ -98,9 +98,9 @@ export default function Header({ user }: HeaderProps) {
           </button>
 
           {showNotifs && (
-            <div className="absolute right-0 top-12 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <h3 className="font-bold text-gray-800 dark:text-white text-sm">Notificaciones</h3>
+            <div className="absolute right-0 top-12 w-80 bg-[#0d0d18] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur">
+              <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+                <h3 className="font-bold text-white text-sm">Notificaciones</h3>
                 {notifCount > 0 && (
                   <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs px-2 py-0.5 rounded-full font-medium">
                     {notifCount} nueva{notifCount !== 1 ? "s" : ""}
@@ -149,12 +149,18 @@ export default function Header({ user }: HeaderProps) {
 
         {/* Usuario */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
-            <User size={18} className="text-blue-600" />
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center brand-glow"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(var(--glow-primary) / 0.35), rgba(var(--glow-secondary) / 0.25))",
+            }}
+          >
+            <User size={18} className="text-white" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{user.name}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-400">
+            <p className="text-sm font-semibold text-white">{user.name}</p>
+            <p className="text-xs text-white/50">
               {ROLE_LABELS[user.role as string] ?? user.role}
             </p>
           </div>
@@ -163,7 +169,7 @@ export default function Header({ user }: HeaderProps) {
         {/* Logout */}
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="p-2 text-gray-400 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-gray-800 rounded-xl transition"
+          className="p-2 text-white/60 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
           title="Cerrar sesión"
         >
           <LogOut size={20} />

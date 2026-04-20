@@ -54,8 +54,7 @@ export default function Sidebar({ role }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "flex flex-col transition-all duration-300 relative",
-        "bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950",
+        "flex flex-col transition-all duration-300 relative sidebar-surface",
         collapsed ? "w-16" : "w-60"
       )}
     >
@@ -64,7 +63,13 @@ export default function Sidebar({ role }: SidebarProps) {
         "flex items-center gap-3 px-4 py-5 border-b border-white/5",
         collapsed && "justify-center px-2"
       )}>
-        <div className="flex-shrink-0 w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+        <div
+          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center brand-glow"
+          style={{
+            background:
+              "linear-gradient(135deg, rgb(var(--glow-primary)), rgb(var(--glow-secondary)))",
+          }}
+        >
           <ShoppingBag size={20} className="text-white" />
         </div>
         {!collapsed && (
@@ -85,12 +90,15 @@ export default function Sidebar({ role }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group",
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group relative",
                 active
-                  ? "bg-white/10 text-white shadow-sm"
-                  : "text-gray-500 hover:bg-white/5 hover:text-gray-200",
+                  ? "bg-white/[0.06] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  : "text-gray-400 hover:bg-white/[0.04] hover:text-gray-100",
                 collapsed && "justify-center"
               )}
+              style={active ? {
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px rgba(var(--glow-primary) / 0.2)",
+              } : undefined}
               title={collapsed ? item.label : undefined}
             >
               <Icon
@@ -114,7 +122,7 @@ export default function Sidebar({ role }: SidebarProps) {
       {/* Botón colapsar */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-16 w-6 h-6 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-700 hover:text-white transition shadow-md"
+        className="absolute -right-3 top-16 w-6 h-6 bg-[#131322] border border-white/10 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:border-purple-400/60 transition shadow-md z-20"
       >
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
       </button>
@@ -122,7 +130,7 @@ export default function Sidebar({ role }: SidebarProps) {
       {/* Footer */}
       {!collapsed && (
         <div className="px-4 py-3 border-t border-white/5">
-          <p className="text-gray-600 text-xs text-center">v0.1.0 · Argentina 🇦🇷</p>
+          <p className="text-gray-500 text-xs text-center">v0.1.0 · Argentina 🇦🇷</p>
         </div>
       )}
     </aside>

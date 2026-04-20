@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import Sidebar from "@/components/shared/Sidebar"
 import Header from "@/components/shared/Header"
 import OfflineBanner from "@/components/shared/OfflineBanner"
+import { ThemeCustomizer } from "@/components/shared/ThemeCustomizer"
 
 export default async function DashboardLayout({
   children,
@@ -16,15 +17,16 @@ export default async function DashboardLayout({
   if (session.user.role === "SUPER_ADMIN") redirect("/admin")
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-950 overflow-hidden">
+    <div className="flex h-screen app-surface overflow-hidden text-white">
       <OfflineBanner />
       <Sidebar role={session.user.role as string} />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative">
         <Header user={session.user} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto relative z-10">
           {children}
         </main>
       </div>
+      <ThemeCustomizer />
     </div>
   )
 }
