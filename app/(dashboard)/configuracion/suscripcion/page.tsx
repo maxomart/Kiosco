@@ -2,14 +2,23 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCircle, Zap, Crown, Building2, ArrowRight, ExternalLink, AlertCircle } from "lucide-react"
-import { PLAN_LIMITS, PLAN_PRICES_USD, PLAN_LABELS } from "@/lib/utils"
+import { CheckCircle, Zap, Crown, Building2, ArrowRight, ExternalLink, AlertCircle, CreditCard } from "lucide-react"
+import {
+  PLAN_LIMITS,
+  PLAN_PRICES_ARS,
+  PLAN_LABELS_AR,
+  PLAN_LABELS,
+  formatCurrency,
+} from "@/lib/utils"
 
 interface Subscription {
   plan: string
   status: string
   currentPeriodEnd: string | null
   stripeCustomerId: string | null
+  mpPreapprovalId: string | null
+  mpStatus: string | null
+  paymentProvider: string | null
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -82,9 +91,11 @@ export default function SuscripcionPage() {
   const [loading, setLoading] = useState(true)
   const [upgrading, setUpgrading] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const searchParams = useSearchParams()
   const success = searchParams.get("success")
   const cancelled = searchParams.get("cancelled")
+  const mpResult = searchParams.get("mp")
 
   useEffect(() => {
     fetch("/api/configuracion/suscripcion")
@@ -92,8 +103,30 @@ export default function SuscripcionPage() {
       .then(d => { setSub(d.subscription); setLoading(false) })
   }, [])
 
-  const handleUpgrade = async (plan: string) => {
-    setUpgrading(plan)
+  const handleUpgradeMP = async (plan: string) => {
+    setUpgrading(`mp:${plan}`)
+    try {
+      const res = await fetch("/api/billing/mp/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      })
+      if (res.ok) {
+        const { initPoint } = await res.json()
+        window.location.href = initPoint
+      } else {
+        const d = await res.json().catch(() => ({}))
+        alert(d.error || "Error al iniciar pago con Mercado Pago")
+        setUpgrading(null)
+      }
+    } catch {
+      alert("Error de red al contactar Mercado Pago")
+      setUpgrading(null)
+    }
+  }
+
+  const handleUpgradeStripe = async (plan: string) => {
+    setUpgrading(`stripe:${plan}`)
     const res = await fetch("/api/stripe/create-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -120,10 +153,28 @@ export default function SuscripcionPage() {
         const d = await res.json().catch(() => ({}))
         alert(d.error || "No se pudo abrir el portal de facturación")
       }
-    } catch (e) {
+    } catch {
       alert("Error de red al abrir el portal")
     } finally {
       setPortalLoading(false)
+    }
+  }
+
+  const handleCancelMP = async () => {
+    if (!confirm("¿Seguro que querés cancelar tu suscripción de Mercado Pago? El plan vuelve a Gratis al finalizar el período pago.")) return
+    setCancelling(true)
+    try {
+      const res = await fetch("/api/billing/mp/cancel", { method: "POST" })
+      if (res.ok) {
+        const data = await fetch("/api/configuracion/suscripcion").then(r => r.json())
+        setSub(data.subscription)
+        alert("Suscripción cancelada en Mercado Pago.")
+      } else {
+        const d = await res.json().catch(() => ({}))
+        alert(d.error || "No se pudo cancelar")
+      }
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -131,6 +182,8 @@ export default function SuscripcionPage() {
     ACTIVE: "Activo", TRIALING: "Prueba gratuita", PAST_DUE: "Pago vencido",
     CANCELLED: "Cancelado", FREE: "Plan gratuito",
   }
+
+  const isMP = sub?.paymentProvider === "mercadopago"
 
   return (
     <div className="p-6 space-y-8">
@@ -144,6 +197,12 @@ export default function SuscripcionPage() {
         <div className="flex items-center gap-3 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-xl text-green-400">
           <CheckCircle size={18} />
           <span>¡Suscripción activada! Bienvenido a tu nuevo plan.</span>
+        </div>
+      )}
+      {mpResult === "success" && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-sky-500/10 border border-sky-500/30 rounded-xl text-sky-400">
+          <CheckCircle size={18} />
+          <span>Volviste de Mercado Pago. La activación puede tardar unos segundos en confirmarse.</span>
         </div>
       )}
       {cancelled && (
@@ -160,10 +219,20 @@ export default function SuscripcionPage() {
             <div>
               <p className="text-gray-500 text-sm">Plan actual</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-2xl font-bold text-white">{PLAN_LABELS[sub.plan] || sub.plan}</span>
+                <span className="text-2xl font-bold text-white">{PLAN_LABELS_AR[sub.plan as keyof typeof PLAN_LABELS_AR] ?? sub.plan}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs ${PLAN_BADGE_COLORS[sub.plan] || "bg-gray-700 text-gray-300"}`}>
                   {STATUS_LABELS[sub.status] || sub.status}
                 </span>
+                {isMP && (
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-sky-500/20 text-sky-300">
+                    Suscrito vía Mercado Pago
+                  </span>
+                )}
+                {sub.paymentProvider === "stripe" && (
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-indigo-500/20 text-indigo-300">
+                    Suscrito vía Stripe
+                  </span>
+                )}
               </div>
               {sub.currentPeriodEnd && (
                 <p className="text-gray-500 text-xs mt-1">
@@ -171,13 +240,21 @@ export default function SuscripcionPage() {
                 </p>
               )}
             </div>
-            {sub.stripeCustomerId && (
-              <button onClick={handlePortal} disabled={portalLoading}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors disabled:opacity-50">
-                <ExternalLink size={15} />
-                {portalLoading ? "Cargando..." : "Gestionar facturación"}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {sub.stripeCustomerId && !isMP && (
+                <button onClick={handlePortal} disabled={portalLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors disabled:opacity-50">
+                  <ExternalLink size={15} />
+                  {portalLoading ? "Cargando..." : "Gestionar facturación"}
+                </button>
+              )}
+              {isMP && sub.mpPreapprovalId && sub.status !== "CANCELLED" && (
+                <button onClick={handleCancelMP} disabled={cancelling}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-sm transition-colors disabled:opacity-50">
+                  {cancelling ? "Cancelando..." : "Cancelar suscripción"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -189,8 +266,7 @@ export default function SuscripcionPage() {
           {(["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const).map(plan => {
             const Icon = PLAN_ICONS[plan]
             const isCurrent = sub?.plan === plan
-            const price = PLAN_PRICES_USD[plan]
-            const limits = PLAN_LIMITS[plan]
+            const priceARS = PLAN_PRICES_ARS[plan]
             const features = PLAN_FEATURES[plan]
             const isPopular = plan === "PROFESSIONAL"
 
@@ -204,15 +280,15 @@ export default function SuscripcionPage() {
                 )}
                 <div className="flex items-center gap-2 mb-3">
                   <Icon size={18} className={plan === "FREE" ? "text-gray-400" : plan === "STARTER" ? "text-blue-400" : plan === "PROFESSIONAL" ? "text-purple-400" : "text-yellow-400"} />
-                  <span className="text-white font-semibold">{PLAN_LABELS[plan]}</span>
+                  <span className="text-white font-semibold">{PLAN_LABELS_AR[plan]}</span>
                 </div>
                 <div className="mb-4">
-                  {price === 0 ? (
+                  {priceARS === 0 ? (
                     <span className="text-3xl font-bold text-white">Gratis</span>
                   ) : (
                     <>
-                      <span className="text-3xl font-bold text-white">${price}</span>
-                      <span className="text-gray-500 text-sm">/mes USD</span>
+                      <span className="text-3xl font-bold text-white">{formatCurrency(priceARS)}</span>
+                      <span className="text-gray-500 text-sm"> /mes</span>
                     </>
                   )}
                 </div>
@@ -233,20 +309,43 @@ export default function SuscripcionPage() {
                     Plan base
                   </div>
                 ) : (
-                  <button onClick={() => handleUpgrade(plan)} disabled={!!upgrading}
-                    className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50
-                      ${plan === "PROFESSIONAL" ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-gray-800 hover:bg-gray-700 text-gray-200"}`}>
-                    {upgrading === plan ? "Redirigiendo..." : (
-                      <><ArrowRight size={14} /> Suscribirse</>
-                    )}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleUpgradeMP(plan)}
+                      disabled={!!upgrading}
+                      className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50
+                        bg-sky-500 hover:bg-sky-600 text-white`}
+                    >
+                      {upgrading === `mp:${plan}` ? "Redirigiendo..." : (
+                        <>
+                          <CreditCard size={14} />
+                          Pagar con Mercado Pago
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleUpgradeStripe(plan)}
+                      disabled={!!upgrading}
+                      className="w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-300"
+                    >
+                      {upgrading === `stripe:${plan}` ? "Redirigiendo..." : (
+                        <>
+                          <ArrowRight size={12} />
+                          Pagar con tarjeta internacional (Stripe)
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             )
           })}
         </div>
         <p className="text-gray-600 text-xs mt-3 text-center">
-          Todos los planes incluyen 14 días de prueba gratuita. Pagos procesados por Stripe. Cancelá cuando quieras.
+          Pagos en pesos procesados por <span className="text-sky-400">Mercado Pago</span>. También podés pagar con tarjeta internacional vía Stripe (USD). Cancelá cuando quieras.
+        </p>
+        <p className="text-gray-700 text-[11px] mt-1 text-center">
+          Plan label técnico: <span className="font-mono">{sub?.plan ? PLAN_LABELS[sub.plan as keyof typeof PLAN_LABELS] ?? sub.plan : "—"}</span>
         </p>
       </div>
     </div>

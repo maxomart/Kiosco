@@ -8,9 +8,28 @@ export async function GET() {
   try {
     const subscription = await db.subscription.findUnique({
       where: { tenantId: tenantId! },
-      select: { plan: true, status: true, currentPeriodEnd: true, stripeCustomerId: true },
+      select: {
+        plan: true,
+        status: true,
+        currentPeriodEnd: true,
+        stripeCustomerId: true,
+        mpPreapprovalId: true,
+        mpStatus: true,
+        paymentProvider: true,
+      },
     })
-    return NextResponse.json({ subscription: subscription ?? { plan: "FREE", status: "FREE", currentPeriodEnd: null, stripeCustomerId: null } })
+    return NextResponse.json({
+      subscription:
+        subscription ?? {
+          plan: "FREE",
+          status: "FREE",
+          currentPeriodEnd: null,
+          stripeCustomerId: null,
+          mpPreapprovalId: null,
+          mpStatus: null,
+          paymentProvider: null,
+        },
+    })
   } catch (err) {
     console.error("[GET /api/configuracion/suscripcion]", err)
     return NextResponse.json({ error: "Error al obtener suscripción" }, { status: 500 })
