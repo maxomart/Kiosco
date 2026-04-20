@@ -1,23 +1,40 @@
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import crypto from "crypto"
 import { slugify } from "../lib/utils"
 
 const db = new PrismaClient()
+
+// Credenciales DEMO — sólo para este seed. Cambiar / rotar en producción.
+function generateDemoPassword(length = 14) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%"
+  const bytes = crypto.randomBytes(length)
+  let out = ""
+  for (let i = 0; i < length; i++) out += chars[bytes[i] % chars.length]
+  return out
+}
+
+const generatedLog: Array<{ email: string; password: string; role: string }> = []
 
 async function main() {
   console.log("🌱 Seeding database...")
 
   // ── SUPER ADMIN ──────────────────────────────────────────────
-  const superAdminPassword = await bcrypt.hash(
-    process.env.SUPERADMIN_PASSWORD ?? "SuperAdmin2026!",
-    12
-  )
+  const superAdminEmail = (process.env.SUPERADMIN_EMAIL ?? "admin@retailar.app").toLowerCase()
+  const superAdminPlain = process.env.SUPERADMIN_PASSWORD || generateDemoPassword(18)
+  if (process.env.SUPERADMIN_PASSWORD && process.env.SUPERADMIN_PASSWORD.length < 10) {
+    throw new Error("SUPERADMIN_PASSWORD debe tener al menos 10 caracteres")
+  }
+  if (!process.env.SUPERADMIN_PASSWORD) {
+    generatedLog.push({ email: superAdminEmail, password: superAdminPlain, role: "SUPER_ADMIN" })
+  }
+  const superAdminPassword = await bcrypt.hash(superAdminPlain, 12)
   const superAdmin = await db.user.upsert({
-    where: { email: process.env.SUPERADMIN_EMAIL ?? "admin@retailar.app" },
+    where: { email: superAdminEmail },
     update: { role: "SUPER_ADMIN", active: true },
     create: {
       name: process.env.SUPERADMIN_NAME ?? "Super Admin",
-      email: process.env.SUPERADMIN_EMAIL ?? "admin@retailar.app",
+      email: superAdminEmail,
       password: superAdminPassword,
       role: "SUPER_ADMIN",
       tenantId: null,
@@ -58,22 +75,32 @@ async function main() {
       },
     })
 
-    const ownerPassword = await bcrypt.hash("Demo2026!", 12)
+    const demoOwnerEmail = "pedro@kioscodonpedro.com"
+    const demoOwnerPlain = process.env.SEED_DEMO_OWNER_PASSWORD || generateDemoPassword(14)
+    if (!process.env.SEED_DEMO_OWNER_PASSWORD) {
+      generatedLog.push({ email: demoOwnerEmail, password: demoOwnerPlain, role: "OWNER" })
+    }
     await db.user.create({
       data: {
         name: "Pedro García",
-        email: "pedro@kioscodonpedro.com",
-        password: ownerPassword,
+        email: demoOwnerEmail,
+        password: await bcrypt.hash(demoOwnerPlain, 12),
         role: "OWNER",
         active: true,
         tenantId: demoTenant.id,
       },
     })
+
+    const demoCashierEmail = "ana@kioscodonpedro.com"
+    const demoCashierPlain = process.env.SEED_DEMO_CASHIER_PASSWORD || generateDemoPassword(14)
+    if (!process.env.SEED_DEMO_CASHIER_PASSWORD) {
+      generatedLog.push({ email: demoCashierEmail, password: demoCashierPlain, role: "CASHIER" })
+    }
     await db.user.create({
       data: {
         name: "Ana Cajera",
-        email: "ana@kioscodonpedro.com",
-        password: await bcrypt.hash("Cajera2026!", 12),
+        email: demoCashierEmail,
+        password: await bcrypt.hash(demoCashierPlain, 12),
         role: "CASHIER",
         active: true,
         tenantId: demoTenant.id,
@@ -165,11 +192,16 @@ async function main() {
       },
     })
 
+    const demoFarmEmail = "laura@farmaciasol.com"
+    const demoFarmPlain = process.env.SEED_DEMO_FARMACIA_PASSWORD || generateDemoPassword(14)
+    if (!process.env.SEED_DEMO_FARMACIA_PASSWORD) {
+      generatedLog.push({ email: demoFarmEmail, password: demoFarmPlain, role: "OWNER" })
+    }
     await db.user.create({
       data: {
         name: "Laura Farmacéutica",
-        email: "laura@farmaciasol.com",
-        password: await bcrypt.hash("Farmacia2026!", 12),
+        email: demoFarmEmail,
+        password: await bcrypt.hash(demoFarmPlain, 12),
         role: "OWNER",
         active: true,
         tenantId: farmTenant.id,
@@ -179,6 +211,20 @@ async function main() {
   }
 
   console.log("✅ Seed completo!")
+
+  if (generatedLog.length > 0) {
+    console.log("")
+    console.log("==========================================================")
+    console.log("CREDENCIALES GENERADAS — GUARDALAS AHORA (no se repiten)")
+    console.log("==========================================================")
+    for (const { email, password, role } of generatedLog) {
+      console.log(`  [${role}]  ${email}  →  ${password}`)
+    }
+    console.log("")
+    console.log("Tip: definí SUPERADMIN_PASSWORD / SEED_DEMO_*_PASSWORD en env")
+    console.log("     para controlar las passwords sin que aparezcan en logs.")
+    console.log("")
+  }
 }
 
 main()

@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import Sidebar from "@/components/shared/Sidebar"
@@ -6,6 +7,10 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider"
 import { AssistantWidget } from "@/components/ai/AssistantWidget"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, noarchive: true, nocache: true },
+}
 
 export default async function DashboardLayout({
   children,
