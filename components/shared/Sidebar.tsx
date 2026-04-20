@@ -265,7 +265,7 @@ export default function Sidebar({ user, plan = "FREE", logoUrl, brandName }: Sid
       {/* Mobile sidebar (slide-in) */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-200 ease-in-out lg:hidden",
+          "fixed inset-y-0 left-0 z-50 w-64 sidebar-surface border-r border-gray-800 transform transition-transform duration-200 ease-in-out lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
         aria-label="Navegación principal"
@@ -276,7 +276,7 @@ export default function Sidebar({ user, plan = "FREE", logoUrl, brandName }: Sid
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden lg:flex flex-col bg-gray-900 border-r border-gray-800 transition-all duration-200 ease-in-out flex-shrink-0",
+          "hidden lg:flex flex-col sidebar-surface border-r border-gray-800 transition-all duration-200 ease-in-out flex-shrink-0",
           collapsed ? "w-16" : "w-56"
         )}
         aria-label="Navegación principal"

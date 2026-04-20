@@ -19,6 +19,7 @@ import { db } from "@/lib/db"
 import { formatCurrency } from "@/lib/utils"
 import StatCard from "@/components/shared/StatCard"
 import WeeklySalesChart from "@/components/shared/WeeklySalesChart"
+import { AnimatedStagger, AnimatedItem } from "@/components/shared/AnimatedStagger"
 
 // ---------------------------------------------------------------------------
 // Data fetching helpers
@@ -307,9 +308,9 @@ export default async function DashboardPage() {
   const avgTicket = todayCount > 0 ? todayTotal / todayCount : 0
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <AnimatedStagger className="max-w-7xl mx-auto space-y-6">
       {/* Greeting */}
-      <div>
+      <AnimatedItem>
         <h1 className="text-xl font-bold text-gray-100">
           Buen día, {session.user.name?.split(" ")[0] ?? "usuario"} 👋
         </h1>
@@ -321,15 +322,17 @@ export default async function DashboardPage() {
             year: "numeric",
           })}
         </p>
-      </div>
+      </AnimatedItem>
 
       {/* Low stock alert (full-width if present) */}
       {lowStockProducts.length > 0 && (
-        <LowStockAlert products={lowStockProducts} />
+        <AnimatedItem>
+          <LowStockAlert products={lowStockProducts} />
+        </AnimatedItem>
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <AnimatedItem className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Ventas del día"
           value={formatCurrency(todayTotal)}
@@ -367,10 +370,10 @@ export default async function DashboardPage() {
           iconBg={lowStockCount > 0 ? "bg-amber-900/40" : "bg-gray-800"}
           subtitle={lowStockCount > 0 ? "productos por reponer" : "Todo en orden"}
         />
-      </div>
+      </AnimatedItem>
 
       {/* Main content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <AnimatedItem className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Weekly chart – takes 2 cols */}
         <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
@@ -418,10 +421,12 @@ export default async function DashboardPage() {
             ))}
           </div>
         </div>
-      </div>
+      </AnimatedItem>
 
       {/* AI Summary */}
-      <AIResumenSection resumen={aiResumen} />
-    </div>
+      <AnimatedItem>
+        <AIResumenSection resumen={aiResumen} />
+      </AnimatedItem>
+    </AnimatedStagger>
   )
 }
