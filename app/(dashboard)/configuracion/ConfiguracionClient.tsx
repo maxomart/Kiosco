@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { ThemePicker } from "@/components/theme/ThemePicker"
+import { SurfacePicker } from "@/components/theme/SurfacePicker"
 import { useTheme } from "@/components/theme/ThemeProvider"
 
 interface TenantConfig {
@@ -125,6 +126,9 @@ export default function ConfiguracionPage() {
 
       {/* Theme picker — works even before initial config loads */}
       <ThemePicker />
+
+      {/* Fondo / surface picker */}
+      <SurfacePicker />
 
       {/* Business info form */}
       {loading ? (

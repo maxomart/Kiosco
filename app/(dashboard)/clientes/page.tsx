@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Plus, Search, Edit2, Trash2, Users, Star, Phone, Mail, X, Lock, Wallet } from "lucide-react"
 import { formatCurrency, formatDate, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 interface Client {
   id: string
@@ -43,6 +44,7 @@ export default function ClientesPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [plan, setPlan] = useState<Plan>("FREE")
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false)
+  const confirm = useConfirm()
   const PER_PAGE = 20
 
   useEffect(() => {
@@ -117,7 +119,13 @@ export default function ClientesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar cliente?")) return
+    const ok = await confirm({
+      title: "¿Eliminar cliente?",
+      description: "Se borra del sistema. Sus compras pasadas quedan registradas.",
+      confirmText: "Eliminar",
+      tone: "danger",
+    })
+    if (!ok) return
     setDeleting(id)
     await fetch(`/api/clientes/${id}`, { method: "DELETE" })
     await load()

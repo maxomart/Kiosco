@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Palette } from "lucide-react"
+import { Check, Moon, Palette, Sun, SunMoon } from "lucide-react"
 import { THEME_PRESETS, isValidHex } from "@/lib/theme"
 import { useTheme } from "./ThemeProvider"
 import { cn } from "@/lib/utils"
@@ -104,28 +104,29 @@ export function ThemePicker() {
         <div>
           <p className="text-sm text-gray-200 font-medium">Modo de visualización</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            Solo modo oscuro por ahora. Modo claro próximamente.
+            Elegí cómo se ve la interfaz. &quot;Auto&quot; sigue la preferencia de tu sistema.
           </p>
         </div>
         <div className="inline-flex bg-gray-800 border border-gray-700 rounded-lg p-1">
-          {(["dark", "light", "auto"] as const).map((m) => {
-            const disabled = m !== "dark"
-            const active = mode === m
+          {([
+            { value: "dark", label: "Oscuro", Icon: Moon },
+            { value: "light", label: "Claro", Icon: Sun },
+            { value: "auto", label: "Auto", Icon: SunMoon },
+          ] as const).map(({ value, label, Icon }) => {
+            const active = mode === value
             return (
               <button
-                key={m}
+                key={value}
                 type="button"
-                disabled={disabled}
-                onClick={() => setMode(m)}
+                onClick={() => setMode(value)}
                 className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all",
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
                   active
                     ? "bg-accent text-accent-foreground shadow"
-                    : "text-gray-400 hover:text-gray-200",
-                  disabled && "opacity-40 cursor-not-allowed"
+                    : "text-gray-400 hover:text-gray-200"
                 )}
               >
-                {m === "dark" ? "Oscuro" : m === "light" ? "Claro" : "Auto"}
+                <Icon size={13} /> {label}
               </button>
             )
           })}

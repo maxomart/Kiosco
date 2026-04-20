@@ -9,6 +9,7 @@ import ProductModal from "@/components/inventario/ProductModal"
 import ImportModal from "@/components/inventario/ImportModal"
 import { CategoryManagerModal } from "@/components/inventario/CategoryManagerModal"
 import { StockBulkModal } from "@/components/inventario/StockBulkModal"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 interface Product {
   id: string
@@ -50,6 +51,7 @@ export default function InventarioPage() {
   const [showCategories, setShowCategories] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [plan, setPlan] = useState<Plan>("FREE")
+  const confirm = useConfirm()
   const PER_PAGE = 20
 
   const load = useCallback(async () => {
@@ -84,7 +86,13 @@ export default function InventarioPage() {
   }, [])
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar producto?")) return
+    const ok = await confirm({
+      title: "¿Eliminar producto?",
+      description: "Se quita del catálogo y ya no va a aparecer en el POS. Esta acción no se puede deshacer.",
+      confirmText: "Eliminar",
+      tone: "danger",
+    })
+    if (!ok) return
     setDeleting(id)
     await fetch(`/api/productos/${id}`, { method: "DELETE" })
     await load()
@@ -92,7 +100,13 @@ export default function InventarioPage() {
   }
 
   const handleBulkDelete = async () => {
-    if (!confirm(`¿Eliminar ${selected.length} productos?`)) return
+    const ok = await confirm({
+      title: `¿Eliminar ${selected.length} productos?`,
+      description: "Se quitan del catálogo. Esta acción no se puede deshacer.",
+      confirmText: "Eliminar todos",
+      tone: "danger",
+    })
+    if (!ok) return
     await fetch("/api/productos/bulk", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },

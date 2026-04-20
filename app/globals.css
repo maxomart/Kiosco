@@ -47,6 +47,26 @@
   --surface-glow-intensity: 1;
 }
 
+/* Light mode — aplica cuando data-theme="light" en <html> (ThemeProvider) */
+html[data-theme="light"] {
+  --color-bg-base: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f1f5f9;
+  --color-border-subtle: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #1e293b;
+  --color-text-muted: #64748b;
+
+  --surface-app-from: #f8fafc;
+  --surface-app-via: #f1f5f9;
+  --surface-app-to: #e2e8f0;
+  --surface-sidebar-from: #ffffff;
+  --surface-sidebar-via: #f8fafc;
+  --surface-sidebar-to: #f1f5f9;
+}
+
 /* Map tokens into Tailwind v4's @theme so utilities like bg-accent work */
 @theme {
   --color-gray-950: oklch(13% 0.01 261);

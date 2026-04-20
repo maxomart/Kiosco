@@ -5,8 +5,8 @@ import Sidebar from "@/components/shared/Sidebar"
 import Header from "@/components/shared/Header"
 import { ThemeProvider } from "@/components/theme/ThemeProvider"
 import { SurfaceThemeProvider } from "@/components/theme/SurfaceThemeProvider"
-import { SurfaceCustomizer } from "@/components/theme/SurfaceCustomizer"
 import { AssistantWidget } from "@/components/ai/AssistantWidget"
+import { ConfirmProvider } from "@/components/shared/ConfirmDialog"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
 
@@ -65,17 +65,18 @@ export default async function DashboardLayout({
   return (
     <ThemeProvider initialAccent={initialAccent} initialMode={initialMode}>
       <SurfaceThemeProvider>
-        <div className="flex h-screen app-surface overflow-hidden">
-          <Sidebar user={session.user} plan={plan as any} logoUrl={logoUrl} brandName={brandName} />
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-10">
-            <Header user={session.user} plan={plan as any} />
-            <main className="flex-1 overflow-auto p-4 lg:p-6">
-              {children}
-            </main>
+        <ConfirmProvider>
+          <div className="flex h-screen app-surface overflow-hidden">
+            <Sidebar user={session.user} plan={plan as any} logoUrl={logoUrl} brandName={brandName} />
+            <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-10">
+              <Header user={session.user} plan={plan as any} />
+              <main className="flex-1 overflow-auto p-4 lg:p-6">
+                {children}
+              </main>
+            </div>
+            {aiEnabled && <AssistantWidget plan={plan as any} />}
           </div>
-          {aiEnabled && <AssistantWidget plan={plan as any} />}
-          <SurfaceCustomizer />
-        </div>
+        </ConfirmProvider>
       </SurfaceThemeProvider>
     </ThemeProvider>
   )

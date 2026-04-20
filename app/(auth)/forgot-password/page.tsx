@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { Loader2, Mail, ArrowLeft, CheckCircle } from "lucide-react"
+import { ArrowLeft, CheckCircle, KeyRound, Loader2 } from "lucide-react"
 
 export default function ForgotPasswordPage() {
+  const emailId = useId()
   const [email, setEmail] = useState("")
   const [emailError, setEmailError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -27,7 +28,6 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate()) return
-
     setLoading(true)
     try {
       await fetch("/api/auth/forgot-password", {
@@ -35,7 +35,6 @@ export default function ForgotPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       })
-      // Always show success to avoid email enumeration
       setSent(true)
     } catch {
       toast.error("Ocurrió un error. Intentá de nuevo.")
@@ -46,27 +45,29 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl shadow-black/40">
+      <div className="relative bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-7 sm:p-8 shadow-2xl shadow-black/50">
         {sent ? (
-          /* Success state */
-          <div className="text-center py-4">
-            <div className="flex justify-center mb-4">
-              <div className="w-14 h-14 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                <CheckCircle className="w-7 h-7 text-green-400" />
+          <div className="text-center">
+            <div className="flex justify-center mb-5">
+              <div
+                className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center"
+                aria-hidden
+              >
+                <CheckCircle className="w-7 h-7 text-emerald-400" />
               </div>
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Revisá tu correo</h2>
-            <p className="text-sm text-gray-400 leading-relaxed">
+            <h2 className="text-xl font-semibold text-white">Revisá tu correo</h2>
+            <p className="text-sm text-gray-400 mt-2 leading-relaxed">
               Si el mail{" "}
-              <span className="text-gray-200 font-medium">{email}</span>{" "}
-              está registrado, recibirás instrucciones para restablecer tu contraseña.
+              <span className="text-white font-medium">{email}</span> está
+              registrado, recibirás instrucciones para restablecer tu contraseña.
             </p>
             <p className="text-xs text-gray-600 mt-3">
               No olvides revisar la carpeta de spam.
             </p>
             <Link
               href="/login"
-              className="mt-6 inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+              className="mt-6 inline-flex items-center gap-1.5 text-sm text-white hover:text-gray-200 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Volver al inicio de sesión
@@ -74,61 +75,64 @@ export default function ForgotPasswordPage() {
           </div>
         ) : (
           <>
-            {/* Header */}
-            <div className="mb-8">
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors mb-6"
+            <div className="flex justify-center mb-5">
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 30px -10px rgba(0,0,0,0.8)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                }}
+                aria-hidden
               >
-                <ArrowLeft className="w-4 h-4" />
-                Volver
-              </Link>
-              <h1 className="text-2xl font-bold text-white mb-1">
-                ¿Olvidaste tu contraseña?
+                <KeyRound className="w-6 h-6 text-white" strokeWidth={2} />
+              </div>
+            </div>
+
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-semibold text-white tracking-tight">
+                Recuperar contraseña
               </h1>
-              <p className="text-sm text-gray-400">
-                Ingresá tu email y te enviamos instrucciones para restablecerla.
+              <p className="text-sm text-gray-400 mt-1.5">
+                Ingresá tu email y te mandamos instrucciones.
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} noValidate className="space-y-5">
-              {/* Email */}
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div>
                 <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-gray-300 mb-1.5"
+                  htmlFor={emailId}
+                  className="block text-xs font-medium text-gray-300 mb-1.5"
                 >
                   Email
                 </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value)
-                      if (emailError) setEmailError("")
-                    }}
-                    placeholder="tu@email.com"
-                    className={`w-full bg-gray-950 border rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition focus:ring-2 focus:ring-purple-600/60 focus:border-purple-600 ${
-                      emailError
-                        ? "border-red-500/70 focus:ring-red-500/40 focus:border-red-500"
-                        : "border-gray-700 hover:border-gray-600"
-                    }`}
-                  />
-                </div>
+                <input
+                  id={emailId}
+                  type="email"
+                  autoComplete="email"
+                  placeholder="tu@email.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (emailError) setEmailError("")
+                  }}
+                  className={`w-full bg-black/40 border rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition focus:ring-2 focus:ring-white/20 focus:border-white/30 ${
+                    emailError
+                      ? "border-red-500/60"
+                      : "border-white/10 hover:border-white/20"
+                  }`}
+                />
                 {emailError && (
                   <p className="mt-1.5 text-xs text-red-400">{emailError}</p>
                 )}
               </div>
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-2.5 text-sm transition-colors shadow-lg shadow-purple-900/30"
+                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed text-black font-semibold rounded-lg py-2.5 text-sm transition-colors"
               >
                 {loading ? (
                   <>
@@ -139,6 +143,16 @@ export default function ForgotPasswordPage() {
                   "Enviar instrucciones"
                 )}
               </button>
+
+              <div className="pt-4 border-t border-white/10 text-center">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Volver al inicio de sesión
+                </Link>
+              </div>
             </form>
           </>
         )}

@@ -13,6 +13,7 @@ import { Modal } from "@/components/ui"
 import { discardSale, clearPendingSales, type PendingSale } from "@/lib/offline-store"
 import { formatCurrency } from "@/lib/utils"
 import toast from "react-hot-toast"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 interface Props {
   pendingList: PendingSale[]
@@ -27,9 +28,16 @@ export function SyncStatusClient({
   pendingList, onClose, onChange, isOnline, isSyncing, flush,
 }: Props) {
   const [confirmClear, setConfirmClear] = useState(false)
+  const confirm = useConfirm()
 
   const handleDiscard = async (id: string) => {
-    if (!confirm("¿Descartar esta venta? Esta acción no se puede deshacer.")) return
+    const ok = await confirm({
+      title: "¿Descartar esta venta?",
+      description: "Se pierden los datos locales y no se va a intentar sincronizar más. No se puede deshacer.",
+      confirmText: "Descartar",
+      tone: "danger",
+    })
+    if (!ok) return
     await discardSale(id)
     await onChange()
     toast.success("Venta descartada")

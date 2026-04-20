@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Plus, Trash2, Mail, Shield, X, Copy, Loader2, AlertCircle } from "lucide-react"
 import { formatDate } from "@/lib/utils"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 interface User {
   id: string
@@ -30,6 +31,7 @@ export default function UsuariosPage() {
   const [form, setForm] = useState({ name: "", email: "", role: "CASHIER" as User["role"] })
   const [newUserCreds, setNewUserCreds] = useState<{ email: string; password: string } | null>(null)
   const [limitError, setLimitError] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const load = async () => {
     setLoading(true)
@@ -63,7 +65,13 @@ export default function UsuariosPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Desactivar este usuario?")) return
+    const ok = await confirm({
+      title: "¿Desactivar este usuario?",
+      description: "Ya no va a poder iniciar sesión. Podés reactivarlo creándolo de nuevo.",
+      confirmText: "Desactivar",
+      tone: "danger",
+    })
+    if (!ok) return
     setDeleting(id)
     await fetch(`/api/configuracion/usuarios/${id}`, { method: "DELETE" })
     await load()

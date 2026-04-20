@@ -13,11 +13,30 @@ interface ThemeContextValue {
   setAccent: (hex: string) => void
   mode: ThemeMode
   setMode: (mode: ThemeMode) => void
+  /** Resolved current scheme — "light" or "dark" even when mode is "auto". */
+  resolved: "light" | "dark"
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 const STORAGE_KEY = "retailar:theme-accent"
+const MODE_KEY = "retailar:theme-mode"
+
+function resolveMode(mode: ThemeMode): "light" | "dark" {
+  if (mode === "auto") {
+    if (typeof window === "undefined") return "dark"
+    return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"
+  }
+  return mode
+}
+
+function applyScheme(resolved: "light" | "dark") {
+  if (typeof document === "undefined") return
+  const root = document.documentElement
+  if (resolved === "light") root.setAttribute("data-theme", "light")
+  else root.removeAttribute("data-theme")
+  root.style.colorScheme = resolved
+}
 
 export function ThemeProvider({
   children,
@@ -31,34 +50,62 @@ export function ThemeProvider({
   const seed = initialAccent && isValidHex(initialAccent) ? initialAccent : DEFAULT_ACCENT
   const [accent, setAccentState] = useState<string>(seed)
   const [mode, setModeState] = useState<ThemeMode>(initialMode)
+  const [resolved, setResolved] = useState<"light" | "dark">(
+    initialMode === "light" ? "light" : "dark"
+  )
 
-  // Apply CSS vars on first render and on every change
+  // Apply accent CSS vars
   useEffect(() => {
     applyAccent(accent)
   }, [accent])
 
-  // If no SSR initial value provided, hydrate from localStorage / API
+  // Resolve + apply theme scheme (light / dark / auto)
   useEffect(() => {
-    if (initialAccent) return
-    if (typeof window === "undefined") return
+    const apply = () => {
+      const r = resolveMode(mode)
+      setResolved(r)
+      applyScheme(r)
+    }
+    apply()
+    if (mode !== "auto") return
+    const mq = window.matchMedia?.("(prefers-color-scheme: light)")
+    if (!mq) return
+    const handler = () => apply()
     try {
-      const cached = localStorage.getItem(STORAGE_KEY)
-      if (cached && isValidHex(cached)) {
-        setAccentState(cached)
-        return
+      mq.addEventListener("change", handler)
+      return () => mq.removeEventListener("change", handler)
+    } catch {
+      // Safari < 14
+      mq.addListener(handler)
+      return () => mq.removeListener(handler)
+    }
+  }, [mode])
+
+  // Hydrate accent + mode from localStorage when no SSR seed was given
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (!initialAccent) {
+      try {
+        const cached = localStorage.getItem(STORAGE_KEY)
+        if (cached && isValidHex(cached)) setAccentState(cached)
+      } catch {}
+      fetch("/api/configuracion")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          const hex = data?.config?.themeColor
+          if (hex && isValidHex(hex)) {
+            setAccentState(hex)
+            try { localStorage.setItem(STORAGE_KEY, hex) } catch {}
+          }
+        })
+        .catch(() => {})
+    }
+    try {
+      const cachedMode = localStorage.getItem(MODE_KEY) as ThemeMode | null
+      if (cachedMode === "light" || cachedMode === "dark" || cachedMode === "auto") {
+        setModeState(cachedMode)
       }
     } catch {}
-    // Fall back to fetching from API
-    fetch("/api/configuracion")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        const hex = data?.config?.themeColor
-        if (hex && isValidHex(hex)) {
-          setAccentState(hex)
-          try { localStorage.setItem(STORAGE_KEY, hex) } catch {}
-        }
-      })
-      .catch(() => {})
   }, [initialAccent])
 
   const setAccent = useCallback((hex: string) => {
@@ -69,11 +116,11 @@ export function ThemeProvider({
 
   const setMode = useCallback((next: ThemeMode) => {
     setModeState(next)
-    // light mode wiring is a TODO — for now we always render dark.
+    try { localStorage.setItem(MODE_KEY, next) } catch {}
   }, [])
 
   return (
-    <ThemeContext.Provider value={{ accent, setAccent, mode, setMode }}>
+    <ThemeContext.Provider value={{ accent, setAccent, mode, setMode, resolved }}>
       {children}
     </ThemeContext.Provider>
   )
@@ -88,6 +135,7 @@ export function useTheme(): ThemeContextValue {
       setAccent: () => {},
       mode: "dark",
       setMode: () => {},
+      resolved: "dark" as const,
     }
   }
   return ctx

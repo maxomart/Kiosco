@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { DollarSign, Lock, Unlock, AlertCircle, CheckCircle, History, TrendingUp, Users } from "lucide-react"
+import toast from "react-hot-toast"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 interface CashSession {
   id: string
@@ -29,6 +31,7 @@ export default function CajaPage() {
   const [closeNotes, setCloseNotes] = useState("")
   const [working, setWorking] = useState(false)
   const [view, setView] = useState<"current" | "history">("current")
+  const confirm = useConfirm()
 
   const load = async () => {
     setLoading(true)
@@ -54,26 +57,31 @@ export default function CajaPage() {
 
   const handleOpen = async () => {
     const amount = parseFloat(openAmount)
-    if (isNaN(amount) || amount < 0) return alert("Ingresá un monto válido")
+    if (isNaN(amount) || amount < 0) return toast.error("Ingresá un monto válido")
     setWorking(true)
     const res = await fetch("/api/caja", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ openingBalance: amount }),
     })
-    if (res.ok) { setOpenAmount(""); await load() }
-    else { const d = await res.json(); alert(d.error || "Error al abrir caja") }
+    if (res.ok) { setOpenAmount(""); toast.success("Caja abierta"); await load() }
+    else { const d = await res.json(); toast.error(d.error || "Error al abrir caja") }
     setWorking(false)
   }
 
   const handleClose = async () => {
     if (!current) return
     const amount = parseFloat(closeAmount)
-    if (isNaN(amount) || amount < 0) return alert("Ingresá el monto de cierre")
+    if (isNaN(amount) || amount < 0) return toast.error("Ingresá el monto de cierre")
     const expected = Number(current.openingBalance) + salesTotal
     const diff = amount - expected
     if (Math.abs(diff) > 1000) {
-      const ok = confirm(`Diferencia de ${formatCurrency(diff)}. ¿Confirmar cierre de todas formas?`)
+      const ok = await confirm({
+        title: "Diferencia detectada",
+        description: `Diferencia de ${formatCurrency(diff)}. ¿Confirmar cierre de todas formas?`,
+        confirmText: "Cerrar igualmente",
+        tone: "warning",
+      })
       if (!ok) return
     }
     setWorking(true)
@@ -82,8 +90,8 @@ export default function CajaPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ closingBalance: amount, notes: closeNotes }),
     })
-    if (res.ok) { setCloseAmount(""); setCloseNotes(""); await load() }
-    else { const d = await res.json(); alert(d.error || "Error al cerrar caja") }
+    if (res.ok) { setCloseAmount(""); setCloseNotes(""); toast.success("Caja cerrada"); await load() }
+    else { const d = await res.json(); toast.error(d.error || "Error al cerrar caja") }
     setWorking(false)
   }
 

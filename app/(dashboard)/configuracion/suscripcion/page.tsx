@@ -5,7 +5,9 @@ import { useSearchParams } from "next/navigation"
 import { CheckCircle, Zap, Crown, Building2, ArrowRight, ArrowDown, ExternalLink, AlertCircle, CreditCard, Sparkles } from "lucide-react"
 import NumberFlow from "@number-flow/react"
 import { motion } from "framer-motion"
+import toast from "react-hot-toast"
 import { BillingToggle, type BillingPeriod } from "@/components/shared/BillingToggle"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 function ArrowDownIcon() {
   return <ArrowDown size={12} />
@@ -103,6 +105,7 @@ export default function SuscripcionPage() {
   const [portalLoading, setPortalLoading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [period, setPeriod] = useState<BillingPeriod>("monthly")
+  const confirm = useConfirm()
   const searchParams = useSearchParams()
   const success = searchParams.get("success")
   const cancelled = searchParams.get("cancelled")
@@ -127,11 +130,11 @@ export default function SuscripcionPage() {
         window.location.href = initPoint
       } else {
         const d = await res.json().catch(() => ({}))
-        alert(d.error || "Error al iniciar pago con Mercado Pago")
+        toast.error(d.error || "Error al iniciar pago con Mercado Pago")
         setUpgrading(null)
       }
     } catch {
-      alert("Error de red al contactar Mercado Pago")
+      toast.error("Error de red al contactar Mercado Pago")
       setUpgrading(null)
     }
   }
@@ -148,7 +151,7 @@ export default function SuscripcionPage() {
       window.location.href = url
     } else {
       const d = await res.json()
-      alert(d.error || "Error al crear sesión de pago")
+      toast.error(d.error || "Error al crear sesión de pago")
       setUpgrading(null)
     }
   }
@@ -162,28 +165,38 @@ export default function SuscripcionPage() {
         window.location.href = url
       } else {
         const d = await res.json().catch(() => ({}))
-        alert(d.error || "No se pudo abrir el portal de facturación")
+        toast.error(d.error || "No se pudo abrir el portal de facturación")
       }
     } catch {
-      alert("Error de red al abrir el portal")
+      toast.error("Error de red al abrir el portal")
     } finally {
       setPortalLoading(false)
     }
   }
 
   const handleCancelMP = async () => {
-    if (!confirm("¿Seguro que querés cancelar tu suscripción de Mercado Pago? El plan vuelve a Gratis al finalizar el período pago.")) return
+    const ok = await confirm({
+      title: "¿Cancelar suscripción?",
+      description:
+        "Cancelás la renovación automática en Mercado Pago. Tu plan vuelve a Gratis al finalizar el período actual pagado.",
+      confirmText: "Sí, cancelar",
+      cancelText: "Volver",
+      tone: "danger",
+    })
+    if (!ok) return
     setCancelling(true)
     try {
       const res = await fetch("/api/billing/mp/cancel", { method: "POST" })
       if (res.ok) {
         const data = await fetch("/api/configuracion/suscripcion").then(r => r.json())
         setSub(data.subscription)
-        alert("Suscripción cancelada en Mercado Pago.")
+        toast.success("Suscripción cancelada en Mercado Pago.")
       } else {
         const d = await res.json().catch(() => ({}))
-        alert(d.error || "No se pudo cancelar")
+        toast.error(d.error || "No se pudo cancelar")
       }
+    } catch {
+      toast.error("Error de red al cancelar")
     } finally {
       setCancelling(false)
     }
@@ -286,12 +299,31 @@ export default function SuscripcionPage() {
           </div>
           <BillingToggle value={period} onChange={setPeriod} annualDiscount={ANNUAL_DISCOUNT} />
         </div>
+        {sub?.plan === "ENTERPRISE" && (
+          <div className="mb-5 rounded-2xl card-glow p-6 flex items-start gap-4">
+            <div className="shrink-0 w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+              <Crown size={22} className="text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-semibold">Ya estás en el plan Empresa</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Tenés acceso a todas las funciones sin límites. Si necesitás reducir tu plan o
+                cambiar las condiciones comerciales, contactá al equipo de soporte.
+              </p>
+              <a
+                href="mailto:soporte@retailar.com?subject=Cambio%20de%20plan%20Enterprise"
+                className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-semibold transition"
+              >
+                Contactar soporte
+              </a>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {(() => {
             const PLAN_ORDER = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
-            // "ENTERPRISE" no está en el orden (es fuera-de-menú / custom),
-            // así que lo mapeamos al tope: si el tenant está en Enterprise,
-            // currentIdx = 4 y todos los demás son downgrade.
+            // "ENTERPRISE" se muestra en una card aparte (arriba). En este grid
+            // marcamos todos como "ya desbloqueado" para el tenant Enterprise.
             const subPlan = sub?.plan
             const isEnterprise = subPlan === "ENTERPRISE"
             const orderIdx = subPlan ? PLAN_ORDER.indexOf(subPlan as typeof PLAN_ORDER[number]) : 0
@@ -388,7 +420,11 @@ export default function SuscripcionPage() {
                       - isDowngrade → mensaje discreto "Plan inferior" (no botón activo)
                       - isUpgrade → MP + Stripe (Stripe solo mensual)
                       - Enterprise actual → todos son downgrade */}
-                  {isCurrent ? (
+                  {isEnterprise ? (
+                    <div className="w-full py-2.5 rounded-lg bg-emerald-600/10 border border-emerald-600/30 text-center text-emerald-300 text-xs">
+                      Incluido en tu plan Empresa
+                    </div>
+                  ) : isCurrent ? (
                     <div className="w-full py-2.5 rounded-lg bg-emerald-600/10 border border-emerald-600/30 text-center text-emerald-300 text-sm font-medium">
                       ✓ Estás en este plan
                     </div>

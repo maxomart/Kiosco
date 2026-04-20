@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Plus, Trash2, TrendingDown } from "lucide-react"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 interface Expense {
   id: string
@@ -28,6 +29,7 @@ export default function GastosPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -67,7 +69,13 @@ export default function GastosPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar gasto?")) return
+    const ok = await confirm({
+      title: "¿Eliminar gasto?",
+      description: "Se borra del registro de gastos. Esta acción no se puede deshacer.",
+      confirmText: "Eliminar",
+      tone: "danger",
+    })
+    if (!ok) return
     setDeleting(id)
     await fetch(`/api/gastos/${id}`, { method: "DELETE" })
     await load()

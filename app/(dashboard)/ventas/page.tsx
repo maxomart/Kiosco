@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react"
 import { ShoppingBag, Search, Eye, XCircle, ChevronDown, ChevronRight } from "lucide-react"
+import toast from "react-hot-toast"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 interface SaleItem { productName: string; quantity: number; unitPrice: number; subtotal: number }
 interface Sale {
@@ -45,6 +47,7 @@ export default function VentasPage() {
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split("T")[0] })
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0])
+  const confirm = useConfirm()
   const PER_PAGE = 25
 
   const load = useCallback(async () => {
@@ -64,10 +67,17 @@ export default function VentasPage() {
   useEffect(() => { load() }, [load])
 
   const handleCancel = async (id: string) => {
-    if (!confirm("¿Anular esta venta? Se reversará el stock.")) return
+    const ok = await confirm({
+      title: "¿Anular esta venta?",
+      description: "Se reversa el stock y la venta queda marcada como anulada.",
+      confirmText: "Anular venta",
+      tone: "danger",
+    })
+    if (!ok) return
     setCancelling(id)
     const res = await fetch(`/api/ventas/${id}/anular`, { method: "POST" })
-    if (!res.ok) { const d = await res.json(); alert(d.error || "Error al anular") }
+    if (!res.ok) { const d = await res.json(); toast.error(d.error || "Error al anular") }
+    else toast.success("Venta anulada")
     await load()
     setCancelling(null)
   }

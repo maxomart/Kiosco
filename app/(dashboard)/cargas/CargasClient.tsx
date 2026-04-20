@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Plus, Trash2, Truck, Users } from "lucide-react"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { SupplierManagerModal } from "@/components/shared/SupplierManagerModal"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 // NOTE: The current Recharge schema (prisma) tracks supplier-based recharges
 // (e.g. telephony / utility credits) with cost, amount and profit — NOT product
@@ -34,6 +35,7 @@ export default function CargasPage() {
   const [error, setError] = useState<string | null>(null)
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split("T")[0] })
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0])
+  const confirm = useConfirm()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -84,7 +86,13 @@ export default function CargasPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar esta carga?")) return
+    const ok = await confirm({
+      title: "¿Eliminar esta carga?",
+      description: "Se quita del registro. Esta acción no se puede deshacer.",
+      confirmText: "Eliminar",
+      tone: "danger",
+    })
+    if (!ok) return
     setDeleting(id)
     await fetch(`/api/cargas/${id}`, { method: "DELETE" })
     await load()

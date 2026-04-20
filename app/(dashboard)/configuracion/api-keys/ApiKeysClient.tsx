@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { Key, Plus, Trash2, Copy, Check, AlertTriangle, Eye, EyeOff } from "lucide-react"
+import toast from "react-hot-toast"
 import { Modal } from "@/components/ui/Modal"
 import { formatDateTime } from "@/lib/utils"
+import { useConfirm } from "@/components/shared/ConfirmDialog"
 
 interface ApiKey {
   id: string
@@ -27,6 +29,7 @@ export default function ApiKeysClient() {
   const [generated, setGenerated] = useState<{ raw: string; prefix: string } | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const confirm = useConfirm()
 
   const load = async () => {
     setLoading(true)
@@ -41,7 +44,7 @@ export default function ApiKeysClient() {
   useEffect(() => { load() }, [])
 
   const handleCreate = async () => {
-    if (!name.trim()) return alert("Poné un nombre descriptivo")
+    if (!name.trim()) return toast.error("Poné un nombre descriptivo")
     setCreating(true)
     const res = await fetch("/api/configuracion/api-keys", {
       method: "POST",
@@ -58,16 +61,22 @@ export default function ApiKeysClient() {
       await load()
     } else {
       const d = await res.json().catch(() => ({}))
-      alert(d.error || "Error al crear clave")
+      toast.error(d.error || "Error al crear clave")
     }
     setCreating(false)
   }
 
   const handleRevoke = async (id: string, label: string) => {
-    if (!confirm(`Revocar la clave "${label}"? Las integraciones que la usen dejarán de funcionar.`)) return
+    const ok = await confirm({
+      title: `¿Revocar la clave "${label}"?`,
+      description: "Las integraciones que la usen van a dejar de funcionar inmediatamente.",
+      confirmText: "Revocar",
+      tone: "danger",
+    })
+    if (!ok) return
     const res = await fetch(`/api/configuracion/api-keys/${id}`, { method: "DELETE" })
-    if (res.ok) await load()
-    else alert("Error al revocar")
+    if (res.ok) { toast.success("Clave revocada"); await load() }
+    else toast.error("Error al revocar")
   }
 
   const copyToClipboard = async () => {
