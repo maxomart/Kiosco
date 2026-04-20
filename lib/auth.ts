@@ -24,36 +24,61 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials)
-        if (!parsed.success) return null
+        try {
+          const parsed = loginSchema.safeParse(credentials)
+          if (!parsed.success) {
+            console.error("[AUTH] Invalid credentials shape:", parsed.error.flatten())
+            return null
+          }
 
-        const { email, password } = parsed.data
+          const email = parsed.data.email.trim().toLowerCase()
+          const password = parsed.data.password
 
-        const user = await db.user.findUnique({
-          where: { email, active: true },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            image: true,
-            password: true,
-            tenantId: true,
-          },
-        })
+          const user = await db.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              image: true,
+              password: true,
+              tenantId: true,
+              active: true,
+            },
+          })
 
-        if (!user || !user.password) return null
+          if (!user) {
+            console.error(`[AUTH] User not found: ${email}`)
+            return null
+          }
+          if (!user.active) {
+            console.error(`[AUTH] User inactive: ${email}`)
+            return null
+          }
+          if (!user.password) {
+            console.error(`[AUTH] User has no password: ${email}`)
+            return null
+          }
 
-        const match = await bcrypt.compare(password, user.password)
-        if (!match) return null
+          const match = await bcrypt.compare(password, user.password)
+          if (!match) {
+            console.error(`[AUTH] Password mismatch for: ${email}`)
+            return null
+          }
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          image: user.image,
-          tenantId: user.tenantId,
+          console.log(`[AUTH] Login OK: ${email} (${user.role})`)
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            image: user.image,
+            tenantId: user.tenantId,
+          }
+        } catch (err) {
+          console.error("[AUTH] authorize threw:", err)
+          return null
         }
       },
     }),

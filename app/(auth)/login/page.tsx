@@ -43,7 +43,9 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        toast.error("Email o contraseña incorrectos.")
+        toast.error("Email o contraseña incorrectos. Verificá tus datos o creá una cuenta.")
+      } else if (!result?.ok) {
+        toast.error("No se pudo iniciar sesión. Intentá de nuevo.")
       } else {
         toast.success("Bienvenido de vuelta!")
         router.push("/inicio")
