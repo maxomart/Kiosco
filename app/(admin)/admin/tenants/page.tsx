@@ -9,8 +9,8 @@ interface Tenant {
   name: string
   slug: string
   active: boolean
-  businessType: string
   createdAt: string
+  config?: { businessType: string | null } | null
   subscription: { plan: string; status: string } | null
   _count: { users: number; products: number; sales: number }
 }
@@ -122,7 +122,7 @@ export default function AdminTenantsPage() {
               <tr key={t.id} className="hover:bg-gray-800/30 transition-colors">
                 <td className="p-4">
                   <p className="text-white font-medium">{t.name}</p>
-                  <p className="text-gray-500 text-xs mt-0.5">{t.slug} · {t.businessType}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{t.slug} · {t.config?.businessType ?? "—"}</p>
                 </td>
                 <td className="p-4">
                   <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 text-xs">

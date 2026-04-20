@@ -7,22 +7,20 @@ export async function GET() {
   if (error) return error
 
   const [tenant, tenantConfig] = await Promise.all([
-    db.tenant.findUnique({ where: { id: tenantId! }, select: { name: true, businessType: true, phone: true, address: true, taxId: true } }),
+    db.tenant.findUnique({ where: { id: tenantId! }, select: { name: true } }),
     db.tenantConfig.findUnique({ where: { tenantId: tenantId! } }),
   ])
 
   return NextResponse.json({
     config: {
       name: tenant?.name ?? "",
-      businessType: tenant?.businessType ?? "KIOSCO",
-      phone: tenant?.phone ?? null,
-      address: tenant?.address ?? null,
-      taxId: tenant?.taxId ?? null,
+      businessType: tenantConfig?.businessType ?? "KIOSCO",
+      phone: tenantConfig?.phone ?? null,
+      address: tenantConfig?.address ?? null,
+      taxId: tenantConfig?.taxId ?? null,
+      email: tenantConfig?.email ?? null,
       currency: tenantConfig?.currency ?? "ARS",
       timezone: tenantConfig?.timezone ?? "America/Argentina/Buenos_Aires",
-      loyaltyEnabled: tenantConfig?.loyaltyEnabled ?? false,
-      loyaltyPointsPerPeso: tenantConfig?.loyaltyPointsPerPeso ?? 1,
-      loyaltyPointValue: tenantConfig?.loyaltyPointValue ?? 1,
     },
   })
 }
@@ -38,28 +36,30 @@ export async function PUT(req: NextRequest) {
       where: { id: tenantId! },
       data: {
         name: body.name?.trim() || undefined,
-        businessType: body.businessType || undefined,
-        phone: body.phone || null,
-        address: body.address || null,
-        taxId: body.taxId || null,
       },
     }),
     db.tenantConfig.upsert({
       where: { tenantId: tenantId! },
       create: {
         tenantId: tenantId!,
+        businessName: body.name?.trim() || undefined,
+        businessType: body.businessType || undefined,
+        phone: body.phone || null,
+        address: body.address || null,
+        taxId: body.taxId || null,
+        email: body.email || null,
         currency: body.currency ?? "ARS",
         timezone: body.timezone ?? "America/Argentina/Buenos_Aires",
-        loyaltyEnabled: body.loyaltyEnabled ?? false,
-        loyaltyPointsPerPeso: body.loyaltyPointsPerPeso ?? 1,
-        loyaltyPointValue: body.loyaltyPointValue ?? 1,
       },
       update: {
+        businessName: body.name?.trim() || undefined,
+        businessType: body.businessType || undefined,
+        phone: body.phone || null,
+        address: body.address || null,
+        taxId: body.taxId || null,
+        email: body.email || null,
         currency: body.currency ?? "ARS",
         timezone: body.timezone ?? "America/Argentina/Buenos_Aires",
-        loyaltyEnabled: body.loyaltyEnabled ?? false,
-        loyaltyPointsPerPeso: body.loyaltyPointsPerPeso ?? 1,
-        loyaltyPointValue: body.loyaltyPointValue ?? 1,
       },
     }),
   ])

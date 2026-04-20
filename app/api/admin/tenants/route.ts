@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       include: {
         subscription: { select: { plan: true, status: true, currentPeriodEnd: true } },
+        config: { select: { businessType: true } },
         _count: { select: { users: true, products: true, sales: true } },
       },
     }),

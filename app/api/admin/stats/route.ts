@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
 
   const [tenants, users, subs, recent] = await Promise.all([
-    db.tenant.findMany({ select: { id: true, businessType: true, active: true } }),
+    db.tenant.findMany({ select: { id: true, active: true, config: { select: { businessType: true } } } }),
     db.user.count(),
     db.subscription.findMany({ select: { plan: true, status: true } }),
     db.tenant.findMany({
@@ -33,7 +33,10 @@ export async function GET() {
     .reduce((acc, s) => acc + (PLAN_PRICES_USD[s.plan as Plan] ?? 0), 0)
 
   const businessCounts: Record<string, number> = {}
-  for (const t of tenants) businessCounts[t.businessType] = (businessCounts[t.businessType] ?? 0) + 1
+  for (const t of tenants) {
+    const bt = t.config?.businessType ?? "OTRO"
+    businessCounts[bt] = (businessCounts[bt] ?? 0) + 1
+  }
   const byBusinessType = Object.entries(businessCounts).map(([type, count]) => ({ type, count }))
 
   return NextResponse.json({
