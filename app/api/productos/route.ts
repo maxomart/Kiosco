@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { z } from "zod"
+import { PLAN_LIMITS, type Plan } from "@/lib/utils"
 
 const schema = z.object({
   name: z.string().min(1),
@@ -63,6 +64,18 @@ export async function POST(req: NextRequest) {
 
   const d = parsed.data
   const tid = tenantId!
+
+  // Plan limit check
+  const [productCount, sub] = await Promise.all([
+    db.product.count({ where: { tenantId: tid, active: true } }),
+    db.subscription.findUnique({ where: { tenantId: tid }, select: { plan: true } }),
+  ])
+  const plan = (sub?.plan ?? "FREE") as Plan
+  const productLimit = PLAN_LIMITS[plan].products
+  if (productCount >= productLimit) {
+    return NextResponse.json({ error: `Límite del plan ${plan}: máximo ${productLimit} productos. Actualizá para agregar más.` }, { status: 403 })
+  }
+
   try {
     const product = await db.$transaction(async (tx) => {
       const p = await tx.product.create({ data: { ...d, tenantId: tid } })

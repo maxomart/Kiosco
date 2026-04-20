@@ -18,7 +18,7 @@ const signupSchema = z.object({
     .min(2, "El nombre del negocio debe tener al menos 2 caracteres.")
     .max(100, "El nombre del negocio es demasiado largo."),
   businessType: z.enum(VALID_BUSINESS_TYPES, {
-    errorMap: () => ({ message: "Tipo de negocio inválido." }),
+    message: "Tipo de negocio inválido.",
   }),
   ownerName: z
     .string()
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     // Validate with Zod
     const parsed = signupSchema.safeParse(body)
     if (!parsed.success) {
-      const errors = parsed.error.errors.map((e) => ({
+      const errors = parsed.error.issues.map((e) => ({
         path: e.path,
         message: e.message,
       }))

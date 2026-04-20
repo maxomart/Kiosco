@@ -14,7 +14,12 @@ export async function POST(req: NextRequest) {
     BUSINESS: process.env.STRIPE_PRICE_BUSINESS ?? "",
   }
 
-  const body = await req.json()
+  let body: any
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
+  }
   const { plan } = body
   if (!PRICE_IDS[plan]) return NextResponse.json({ error: "Plan inválido" }, { status: 400 })
 

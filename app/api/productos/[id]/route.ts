@@ -27,20 +27,22 @@ async function ownerCheck(id: string, tenantId: string | null, isSuperAdmin: boo
   return "ok"
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, tenantId, isSuperAdmin } = await getSessionTenant()
   if (error) return error
-  const check = await ownerCheck(params.id, tenantId, isSuperAdmin)
+  const { id } = await params
+  const check = await ownerCheck(id, tenantId, isSuperAdmin)
   if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
   if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-  const product = await db.product.findUnique({ where: { id: params.id }, include: { category: true, supplier: true } })
+  const product = await db.product.findUnique({ where: { id }, include: { category: true, supplier: true } })
   return NextResponse.json({ product })
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, tenantId, session, isSuperAdmin } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  const check = await ownerCheck(params.id, tenantId, isSuperAdmin)
+  const { id } = await params
+  const check = await ownerCheck(id, tenantId, isSuperAdmin)
   if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
   if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
 
@@ -49,9 +51,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
 
   try {
-    const oldProduct = await db.product.findUnique({ where: { id: params.id } })
+    const oldProduct = await db.product.findUnique({ where: { id } })
     const product = await db.$transaction(async (tx) => {
-      const p = await tx.product.update({ where: { id: params.id }, data: parsed.data })
+      const p = await tx.product.update({ where: { id }, data: parsed.data })
       if (parsed.data.stock !== undefined && oldProduct && parsed.data.stock !== oldProduct.stock) {
         await tx.stockMovement.create({ data: { productId: p.id, type: "ADJUSTMENT", quantity: parsed.data.stock - oldProduct.stock, stockBefore: oldProduct.stock, stockAfter: parsed.data.stock, reason: "Ajuste manual", userId: session.user.id! } })
       }
@@ -64,12 +66,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, tenantId, session, isSuperAdmin } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  const check = await ownerCheck(params.id, tenantId, isSuperAdmin)
+  const { id } = await params
+  const check = await ownerCheck(id, tenantId, isSuperAdmin)
   if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
   if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-  await db.product.update({ where: { id: params.id }, data: { active: false } })
+  await db.product.update({ where: { id }, data: { active: false } })
   return NextResponse.json({ ok: true })
 }

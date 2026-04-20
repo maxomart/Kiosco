@@ -10,10 +10,11 @@ async function own(id: string, tenantId: string | null, sup: boolean) {
   if (!s) return "not_found"; if (!sup && s.tenantId !== tenantId) return "forbidden"; return "ok"
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, tenantId, isSuperAdmin } = await getSessionTenant()
   if (error) return error
-  const check = await own(params.id, tenantId, isSuperAdmin)
+  const { id } = await params
+  const check = await own(id, tenantId, isSuperAdmin)
   if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
   if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   let body: unknown
@@ -25,7 +26,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   try {
-    const supplier = await db.supplier.update({ where: { id: params.id }, data: { ...parsed.data, email: parsed.data.email || null }, include: { _count: { select: { products: true } } } })
+    const supplier = await db.supplier.update({ where: { id }, data: { ...parsed.data, email: parsed.data.email || null }, include: { _count: { select: { products: true } } } })
     return NextResponse.json({ supplier })
   } catch (err) {
     console.error("[PUT /api/proveedores/[id]]", err)
@@ -33,14 +34,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, tenantId, isSuperAdmin } = await getSessionTenant()
   if (error) return error
-  const check = await own(params.id, tenantId, isSuperAdmin)
+  const { id } = await params
+  const check = await own(id, tenantId, isSuperAdmin)
   if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
   if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   try {
-    await db.supplier.update({ where: { id: params.id }, data: { active: false } })
+    await db.supplier.update({ where: { id }, data: { active: false } })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[DELETE /api/proveedores/[id]]", err)

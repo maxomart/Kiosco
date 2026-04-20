@@ -18,10 +18,11 @@ async function own(id: string, tenantId: string | null, sup: boolean) {
   if (!c) return "not_found"; if (!sup && c.tenantId !== tenantId) return "forbidden"; return "ok"
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, tenantId, isSuperAdmin } = await getSessionTenant()
   if (error) return error
-  const check = await own(params.id, tenantId, isSuperAdmin)
+  const { id } = await params
+  const check = await own(id, tenantId, isSuperAdmin)
   if (check !== "ok") return NextResponse.json({ error: check === "not_found" ? "No encontrado" : "No autorizado" }, { status: check === "not_found" ? 404 : 403 })
   let body: unknown
   try {
@@ -32,7 +33,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   try {
-    const client = await db.client.update({ where: { id: params.id }, data: { ...parsed.data, email: parsed.data.email || null } })
+    const client = await db.client.update({ where: { id }, data: { ...parsed.data, email: parsed.data.email || null } })
     return NextResponse.json({ client })
   } catch (err: any) {
     if (err?.code === "P2002") return NextResponse.json({ error: "DNI ya en uso" }, { status: 400 })
@@ -40,13 +41,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, tenantId, isSuperAdmin } = await getSessionTenant()
   if (error) return error
-  const check = await own(params.id, tenantId, isSuperAdmin)
+  const { id } = await params
+  const check = await own(id, tenantId, isSuperAdmin)
   if (check !== "ok") return NextResponse.json({ error: check === "not_found" ? "No encontrado" : "No autorizado" }, { status: check === "not_found" ? 404 : 403 })
   try {
-    await db.client.update({ where: { id: params.id }, data: { active: false } })
+    await db.client.update({ where: { id }, data: { active: false } })
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("[DELETE /api/clientes/[id]]", err)

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, session, tenantId, isSuperAdmin } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
   if (!["ADMIN", "OWNER", "SUPER_ADMIN"].includes(session.user.role ?? ""))
@@ -11,7 +11,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const body = await req.json().catch(() => ({}))
   const reason: string = body.reason || "Anulación manual"
 
-  const sale = await db.sale.findUnique({ where: { id: params.id }, include: { items: true } })
+  const { id } = await params
+  const sale = await db.sale.findUnique({ where: { id }, include: { items: true } })
   if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 })
   if (!isSuperAdmin && sale.tenantId !== tenantId) return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   if (sale.status !== "COMPLETED") return NextResponse.json({ error: "Solo se pueden anular ventas completadas" }, { status: 400 })
