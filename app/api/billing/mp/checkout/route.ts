@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  let body: { plan?: string }
+  let body: { plan?: string; period?: string }
   try {
     body = await req.json()
   } catch {
@@ -34,10 +34,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Plan inválido" }, { status: 400 })
   }
 
-  const amount = PLAN_PRICES_ARS[plan]
-  if (!amount || amount <= 0) {
+  const period: "monthly" | "annual" =
+    body.period === "annual" ? "annual" : "monthly"
+  const ANNUAL_DISCOUNT = 0.2
+
+  const monthlyAmount = PLAN_PRICES_ARS[plan]
+  if (!monthlyAmount || monthlyAmount <= 0) {
     return NextResponse.json({ error: "Plan sin precio configurado" }, { status: 400 })
   }
+
+  // Anual: cobra 12 meses con 20% descuento como una sola suscripción anual.
+  const amount =
+    period === "annual"
+      ? Math.round(monthlyAmount * 12 * (1 - ANNUAL_DISCOUNT))
+      : monthlyAmount
 
   const tenant = await db.tenant.findUnique({
     where: { id: tenantId! },
@@ -55,9 +65,10 @@ export async function POST(req: NextRequest) {
     preapproval = await createPreapproval({
       payerEmail: session.user.email!,
       backUrl,
-      reason: `RetailAR ${PLAN_LABELS_AR[plan]} mensual`,
+      reason: `RetailAR ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
       externalReference: tenantId!,
       amountARS: amount,
+      frequencyType: period === "annual" ? "years" : "months",
     })
   } catch (err: any) {
     console.error("[mp/checkout] createPreapproval error:", err)

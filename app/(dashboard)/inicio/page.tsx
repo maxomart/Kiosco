@@ -370,12 +370,12 @@ export default async function DashboardPage() {
           title="Ventas del día"
           value={formatCurrency(todayTotal)}
           icon={Receipt}
-          iconColor="text-purple-400"
-          iconBg="bg-purple-900/40"
+          iconColor="text-accent"
+          iconBg="bg-accent-soft border border-accent/20"
           change={revenueChange ?? undefined}
           changeLabel="vs ayer"
           sparkline={revenueTrend}
-          sparklineColor="text-purple-400"
+          sparklineColor="text-accent"
         />
         <StatCard
           title="Transacciones"
@@ -442,22 +442,34 @@ export default async function DashboardPage() {
           </h2>
           <div className="flex flex-col gap-2 flex-1">
             {[
-              { href: "/pos", label: "Nueva venta", icon: ShoppingCart, gradient: "from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500" },
-              { href: "/caja", label: "Gestionar caja", icon: DollarSign, gradient: "from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500" },
-              { href: "/cargas", label: "Registrar carga", icon: Truck, gradient: "from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500" },
-              { href: "/gastos", label: "Cargar gasto", icon: TrendingDown, gradient: "from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500" },
-              { href: "/inventario", label: "Ver inventario", icon: Package, gradient: "from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700" },
-            ].map(({ href, label, icon: Icon, gradient }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-white text-sm font-medium transition-all duration-200 active:scale-[0.98] bg-gradient-to-r ${gradient} group`}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span>{label}</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition" />
-              </Link>
-            ))}
+              { href: "/pos", label: "Nueva venta", icon: ShoppingCart, primary: true },
+              { href: "/caja", label: "Gestionar caja", icon: DollarSign, tone: "emerald" },
+              { href: "/cargas", label: "Registrar carga", icon: Truck, tone: "sky" },
+              { href: "/gastos", label: "Cargar gasto", icon: TrendingDown, tone: "amber" },
+              { href: "/inventario", label: "Ver inventario", icon: Package, tone: "slate" },
+            ].map(({ href, label, icon: Icon, primary, tone }) => {
+              // Primera acción = accent del tenant (destacada).
+              // Las otras mantienen tonos semánticos para diferenciarlas a primera vista.
+              const isPrimary = !!primary
+              const toneClass = (() => {
+                if (isPrimary) return "bg-accent hover:bg-accent-hover text-accent-foreground brand-glow"
+                if (tone === "emerald") return "bg-emerald-600/90 hover:bg-emerald-500 text-white"
+                if (tone === "sky") return "bg-sky-600/90 hover:bg-sky-500 text-white"
+                if (tone === "amber") return "bg-amber-600/90 hover:bg-amber-500 text-white"
+                return "bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700"
+              })()
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-[0.98] ${toneClass} group`}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span>{label}</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition" />
+                </Link>
+              )
+            })}
           </div>
         </div>
       </AnimatedItem>

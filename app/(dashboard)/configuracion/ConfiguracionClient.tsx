@@ -110,15 +110,15 @@ export default function ConfiguracionPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {sections.map(s => (
           <Link key={s.href} href={s.href}
-            className="flex items-center gap-4 p-4 bg-gray-900 rounded-xl border border-gray-800 hover-lift hover:border-gray-700 group">
-            <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center group-hover:bg-accent-soft transition-colors duration-200">
-              <s.icon size={18} className="text-gray-400 group-hover:text-accent transition-colors duration-200" />
+            className="flex items-center gap-4 p-4 card-glow rounded-xl hover:border-accent/40 group">
+            <div className="w-10 h-10 rounded-lg bg-accent-soft border border-accent/20 flex items-center justify-center group-hover:bg-accent group-hover:border-accent transition-colors duration-200">
+              <s.icon size={18} className="text-accent group-hover:text-accent-foreground transition-colors duration-200" />
             </div>
             <div className="flex-1">
               <p className="text-white text-sm font-medium">{s.label}</p>
               <p className="text-gray-500 text-xs mt-0.5">{s.desc}</p>
             </div>
-            <ChevronRight size={16} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
+            <ChevronRight size={16} className="text-gray-600 group-hover:text-accent transition-colors" />
           </Link>
         ))}
       </div>

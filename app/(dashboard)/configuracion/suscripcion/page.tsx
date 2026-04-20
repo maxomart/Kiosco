@@ -120,7 +120,7 @@ export default function SuscripcionPage() {
       const res = await fetch("/api/billing/mp/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, period }),
       })
       if (res.ok) {
         const { initPoint } = await res.json()
@@ -279,7 +279,9 @@ export default function SuscripcionPage() {
               Planes disponibles
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              {period === "annual" ? `Ahorrás ${Math.round(ANNUAL_DISCOUNT * 100)}% pagando anual` : "Cambiá a anual para ahorrar"}
+              {period === "annual"
+                ? `Ahorrás ${Math.round(ANNUAL_DISCOUNT * 100)}% pagando anual · solo disponible vía Mercado Pago`
+                : "Cambiá a anual y ahorrás 20%"}
             </p>
           </div>
           <BillingToggle value={period} onChange={setPeriod} annualDiscount={ANNUAL_DISCOUNT} />
@@ -287,7 +289,14 @@ export default function SuscripcionPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {(() => {
             const PLAN_ORDER = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
-            const currentIdx = sub ? PLAN_ORDER.indexOf(sub.plan as typeof PLAN_ORDER[number]) : 0
+            // "ENTERPRISE" no está en el orden (es fuera-de-menú / custom),
+            // así que lo mapeamos al tope: si el tenant está en Enterprise,
+            // currentIdx = 4 y todos los demás son downgrade.
+            const subPlan = sub?.plan
+            const isEnterprise = subPlan === "ENTERPRISE"
+            const orderIdx = subPlan ? PLAN_ORDER.indexOf(subPlan as typeof PLAN_ORDER[number]) : 0
+            const currentIdx = isEnterprise ? PLAN_ORDER.length : (orderIdx === -1 ? 0 : orderIdx)
+
             return PLAN_ORDER.map((plan, idx) => {
               const Icon = PLAN_ICONS[plan]
               const isCurrent = sub?.plan === plan
@@ -373,7 +382,12 @@ export default function SuscripcionPage() {
                     ))}
                   </ul>
 
-                  {/* CTA logic: current → "Plan actual"; FREE & nobody → "Plan base"; upgrade → buttons; downgrade → secondary */}
+                  {/* CTA logic:
+                      - isCurrent → "Estás en este plan"
+                      - FREE y currentIdx === 0 (sin subscription) → "Plan base"
+                      - isDowngrade → mensaje discreto "Plan inferior" (no botón activo)
+                      - isUpgrade → MP + Stripe (Stripe solo mensual)
+                      - Enterprise actual → todos son downgrade */}
                   {isCurrent ? (
                     <div className="w-full py-2.5 rounded-lg bg-emerald-600/10 border border-emerald-600/30 text-center text-emerald-300 text-sm font-medium">
                       ✓ Estás en este plan
@@ -383,41 +397,38 @@ export default function SuscripcionPage() {
                       Plan base
                     </div>
                   ) : isDowngrade ? (
-                    <button
-                      onClick={() => {
-                        if (!confirm(`¿Querés bajar a ${PLAN_LABELS_AR[plan]}? Si tenés una suscripción activa primero cancelala. Plan inferior = perdés features (ver comparativa).`)) return
-                        // For downgrade we route to the same MP checkout — MP will replace the preapproval
-                        // Note: requires user to manually cancel current sub first per MP rules
-                        handleUpgradeMP(plan)
-                      }}
-                      disabled={!!upgrading}
-                      className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700"
-                      title="Para bajar de plan, primero cancelá la suscripción actual"
-                    >
-                      <ArrowDownIcon /> Bajar a este plan
-                    </button>
+                    <div className="w-full py-2.5 rounded-lg border border-gray-800 text-center text-gray-600 text-xs">
+                      Plan inferior · cancelá tu plan actual primero
+                    </div>
                   ) : (
                     /* isUpgrade */
                     <div className="space-y-2">
                       <button
                         onClick={() => handleUpgradeMP(plan)}
                         disabled={!!upgrading}
-                        className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-sky-500 hover:bg-sky-600 text-white"
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-accent hover:bg-accent-hover text-accent-foreground"
                       >
                         {upgrading === `mp:${plan}` ? "Redirigiendo..." : (
                           <>
                             <CreditCard size={14} />
                             Mejorar a {PLAN_LABELS_AR[plan]}
+                            {period === "annual" && " (anual)"}
                           </>
                         )}
                       </button>
-                      <button
-                        onClick={() => handleUpgradeStripe(plan)}
-                        disabled={!!upgrading}
-                        className="w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-400"
-                      >
-                        {upgrading === `stripe:${plan}` ? "Redirigiendo..." : "o pagar con tarjeta internacional (Stripe USD)"}
-                      </button>
+                      {period === "monthly" ? (
+                        <button
+                          onClick={() => handleUpgradeStripe(plan)}
+                          disabled={!!upgrading}
+                          className="w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-400"
+                        >
+                          {upgrading === `stripe:${plan}` ? "Redirigiendo..." : "o pagar con tarjeta internacional (Stripe USD)"}
+                        </button>
+                      ) : (
+                        <p className="text-[11px] text-gray-600 text-center">
+                          Anual solo por Mercado Pago
+                        </p>
+                      )}
                     </div>
                   )}
                 </motion.div>

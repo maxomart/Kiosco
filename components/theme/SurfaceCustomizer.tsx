@@ -26,14 +26,15 @@ export function SurfaceCustomizer() {
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "fixed bottom-5 right-5 z-40 w-11 h-11 rounded-full flex items-center justify-center",
-          "bg-accent text-accent-foreground shadow-lg hover:scale-105 transition-transform",
-          "ring-1 ring-white/10 no-print"
+          "fixed bottom-5 left-5 z-30 w-10 h-10 rounded-full flex items-center justify-center",
+          "bg-gray-900/90 backdrop-blur border border-gray-800 text-gray-300",
+          "hover:bg-gray-800 hover:text-white hover:border-accent/60 transition-all",
+          "shadow-lg no-print"
         )}
         title="Personalizar fondo"
         aria-label="Personalizar fondo"
       >
-        <Palette size={18} />
+        <Palette size={16} />
       </button>
 
       <AnimatePresence>

@@ -39,6 +39,8 @@ export interface CreatePreapprovalInput {
   reason: string
   externalReference: string
   amountARS: number
+  /** "months" or "years" — defaults to months. */
+  frequencyType?: "months" | "years"
 }
 
 export interface PreapprovalResponse {
@@ -67,7 +69,7 @@ export async function createPreapproval(
     back_url: input.backUrl,
     auto_recurring: {
       frequency: 1,
-      frequency_type: "months",
+      frequency_type: input.frequencyType ?? "months",
       transaction_amount: input.amountARS,
       currency_id: "ARS",
     },
