@@ -6,9 +6,11 @@ import toast from "react-hot-toast"
 import { usePOSStore } from "@/store/posStore"
 import { CartPanel } from "@/components/pos/CartPanel"
 import { PaymentModal } from "@/components/pos/PaymentModal"
+import { OfflineBanner } from "@/components/pos/OfflineBanner"
 import { useDebounce } from "@/lib/hooks/useDebounce"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
+import { cacheProducts, searchProducts as searchOffline } from "@/lib/offline-store"
 
 interface Product {
   id: string; name: string; barcode: string | null; sku: string | null
@@ -28,22 +30,54 @@ export default function POSPage() {
   const debouncedQuery = useDebounce(query, 280)
   const { addToCart, cart } = usePOSStore()
 
-  // Search products
+  // Cache full product catalog on mount so search/scanner work offline.
+  // Best-effort — if we're offline at first load the SW serves the
+  // last response from /api/productos via runtime cache.
+  useEffect(() => {
+    fetch("/api/productos?limit=200")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.products) cacheProducts(d.products) })
+      .catch(() => { /* offline first-load → fall back to whatever IDB has */ })
+  }, [])
+
+  // Search products — try API first, fall back to IDB on network error.
   useEffect(() => {
     if (!debouncedQuery.trim()) { setProducts([]); return }
     setLoading(true)
     fetch(`/api/productos/buscar?q=${encodeURIComponent(debouncedQuery)}&limit=30`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status)
+        return r.json()
+      })
       .then(d => setProducts(d.products ?? []))
-      .catch(() => toast.error("Error buscando productos"))
+      .catch(async () => {
+        // Network/server error → offline fallback.
+        try {
+          const offline = await searchOffline(debouncedQuery, 30)
+          setProducts(offline as any)
+          if (offline.length === 0 && navigator.onLine === false) {
+            toast("Buscando offline — sin resultados en caché", { icon: "📡" })
+          }
+        } catch {
+          toast.error("Error buscando productos")
+        }
+      })
       .finally(() => setLoading(false))
   }, [debouncedQuery])
 
   // Barcode scanner (USB scanner sends chars rapidly then Enter)
   const handleBarcodeScan = useCallback(async (barcode: string) => {
-    const res = await fetch(`/api/productos/buscar?q=${encodeURIComponent(barcode)}&limit=1`)
-    const data = await res.json()
-    const p: Product | undefined = data.products?.[0]
+    let p: Product | undefined
+    try {
+      const res = await fetch(`/api/productos/buscar?q=${encodeURIComponent(barcode)}&limit=1`)
+      if (!res.ok) throw new Error("HTTP " + res.status)
+      const data = await res.json()
+      p = data.products?.[0]
+    } catch {
+      // Offline fallback — search the cached catalog by barcode/name/sku.
+      const offline = await searchOffline(barcode, 1)
+      p = offline[0] as any
+    }
     if (!p) { toast.error(`Código no encontrado: ${barcode}`); return }
     if (p.stock <= 0 && !p.soldByWeight) { toast.error(`Sin stock: ${p.name}`); return }
     addToCart({ productId: p.id, productName: p.name, barcode: p.barcode, unitPrice: p.salePrice, costPrice: p.costPrice, stock: p.stock, taxRate: "STANDARD", soldByWeight: p.soldByWeight })
@@ -76,7 +110,9 @@ export default function POSPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] gap-4 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
+      <OfflineBanner />
+      <div className="flex flex-1 gap-4 overflow-hidden">
       {/* LEFT: Search + Products */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Search bar */}
@@ -155,6 +191,7 @@ export default function POSPage() {
       </div>
 
       {showPayment && <PaymentModal onClose={() => setShowPayment(false)} />}
+      </div>
     </div>
   )
 }

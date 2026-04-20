@@ -5,6 +5,7 @@ import { X, Loader2, Check, Banknote, CreditCard, Smartphone, Wallet, QrCode, Pr
 import toast from "react-hot-toast"
 import { usePOSStore } from "@/store/posStore"
 import { formatCurrency, PAYMENT_METHODS, cn } from "@/lib/utils"
+import { enqueueSale } from "@/lib/offline-store"
 
 interface Props { onClose: () => void }
 
@@ -38,7 +39,7 @@ export function PaymentModal({ onClose }: Props) {
   const [method, setMethod] = useState("CASH")
   const [cashReceived, setCashReceived] = useState("")
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<{ saleId: string; number: number; total: number; change: number; method: string } | null>(null)
+  const [success, setSuccess] = useState<{ saleId: string; number: number | string; total: number; change: number; method: string; offline?: boolean } | null>(null)
 
   // MP state
   const [mpQrUrl, setMpQrUrl] = useState<string | null>(null)
@@ -158,32 +159,74 @@ export function PaymentModal({ onClose }: Props) {
         notes: mpRef ? `MP ref: ${mpRef}` : null,
       }
 
-      const res = await fetch("/api/ventas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        const detail = data?.details?.fieldErrors
-          ? Object.entries(data.details.fieldErrors).map(([k, v]) => `${k}: ${(v as string[]).join(", ")}`).join(" | ")
-          : data?.error ?? "Error al procesar la venta"
-        toast.error(detail)
+      // Offline-first short-circuit: if the browser knows we're offline,
+      // skip the fetch and queue right away.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        await queueOffline(payload)
         return
       }
+
+      try {
+        const res = await fetch("/api/ventas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          // Server error / 503 from SW → if we're now offline, fall back
+          // to the queue. Otherwise surface the validation error.
+          if (res.status === 503 || (typeof navigator !== "undefined" && !navigator.onLine)) {
+            await queueOffline(payload)
+            return
+          }
+          const detail = data?.details?.fieldErrors
+            ? Object.entries(data.details.fieldErrors).map(([k, v]) => `${k}: ${(v as string[]).join(", ")}`).join(" | ")
+            : data?.error ?? "Error al procesar la venta"
+          toast.error(detail)
+          return
+        }
+        setSuccess({
+          saleId: data.sale.id,
+          number: data.sale.number,
+          total: totalAmount,
+          change: method === "CASH" && cashReceived ? change : 0,
+          method,
+        })
+        clearCart()
+      } catch (e) {
+        // Network error → queue offline.
+        console.warn("[PaymentModal] network error, queuing offline", e)
+        await queueOffline(payload)
+      }
+    } catch (e) {
+      console.error("[PaymentModal] error", e)
+      toast.error("Error inesperado")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Queue a sale to IndexedDB and show success state with offline flag.
+  const queueOffline = async (payload: any) => {
+    try {
+      const localId = await enqueueSale(payload)
+      // Notify any mounted useOfflineSync() consumers to refresh count.
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("retailar:offline-sale-enqueued"))
+      }
       setSuccess({
-        saleId: data.sale.id,
-        number: data.sale.number,
+        saleId: localId,
+        number: "OFFLINE-" + localId.slice(0, 4).toUpperCase(),
         total: totalAmount,
         change: method === "CASH" && cashReceived ? change : 0,
         method,
+        offline: true,
       })
       clearCart()
-    } catch (e) {
-      console.error("[PaymentModal] network error", e)
-      toast.error("Error de conexión")
-    } finally {
-      setLoading(false)
+    } catch (err) {
+      console.error("[PaymentModal] enqueueSale failed", err)
+      toast.error("No se pudo guardar la venta offline")
     }
   }
 
@@ -218,9 +261,16 @@ export function PaymentModal({ onClose }: Props) {
           <div className="w-16 h-16 bg-green-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check size={32} className="text-green-400" />
           </div>
-          <h2 className="text-xl font-bold text-gray-100 mb-1">¡Venta registrada!</h2>
+          <h2 className="text-xl font-bold text-gray-100 mb-1">
+            {success.offline ? "Venta guardada offline" : "¡Venta registrada!"}
+          </h2>
           <p className="text-gray-400 mb-1">Venta #{success.number}</p>
-          <p className="text-2xl font-bold text-accent mb-6">{formatCurrency(success.total)}</p>
+          <p className="text-2xl font-bold text-accent mb-2">{formatCurrency(success.total)}</p>
+          {success.offline && (
+            <div className="bg-amber-900/30 border border-amber-800 rounded-lg p-2 mb-4 text-xs text-amber-200">
+              Se sincronizará automáticamente cuando vuelva la conexión.
+            </div>
+          )}
           {success.method === "CASH" && success.change > 0 && (
             <div className="bg-green-900/20 border border-green-800 rounded-xl p-3 mb-4">
               <p className="text-sm text-gray-400">Vuelto</p>
@@ -228,8 +278,9 @@ export function PaymentModal({ onClose }: Props) {
             </div>
           )}
           <div className="flex gap-2">
-            <button onClick={printTicket}
-              className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
+            <button onClick={printTicket} disabled={!!success.offline}
+              title={success.offline ? "El ticket se podrá imprimir luego de sincronizar" : "Imprimir ticket"}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-100 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
               <Printer size={16} /> Imprimir ticket
             </button>
             <button onClick={onClose} className="flex-1 bg-accent hover:bg-accent-hover text-accent-foreground font-semibold py-3 rounded-xl transition">
