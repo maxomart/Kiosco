@@ -1,0 +1,23 @@
+import { NextRequest, NextResponse } from "next/server"
+import { db } from "@/lib/db"
+import { getSessionTenant } from "@/lib/tenant"
+
+export async function GET() {
+  const { error, tenantId } = await getSessionTenant()
+  if (error) return error
+  const categories = await db.category.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" } })
+  return NextResponse.json({ categories })
+}
+
+export async function POST(req: NextRequest) {
+  const { error, tenantId, session } = await getSessionTenant()
+  if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const { name } = await req.json()
+  if (!name?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 })
+  try {
+    const category = await db.category.create({ data: { name: name.trim(), tenantId: tenantId! } })
+    return NextResponse.json({ category }, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: "Categoría ya existe" }, { status: 400 })
+  }
+}

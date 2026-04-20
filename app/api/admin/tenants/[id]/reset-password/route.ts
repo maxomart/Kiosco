@@ -1,0 +1,23 @@
+import { NextRequest, NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
+import { db } from "@/lib/db"
+import { auth } from "@/lib/auth"
+import { generatePassword } from "@/lib/utils"
+
+export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await auth()
+  if (!session || session.user.role !== "SUPER_ADMIN")
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+
+  const owner = await db.user.findFirst({
+    where: { tenantId: params.id, role: "OWNER" },
+    select: { id: true, email: true },
+  })
+  if (!owner) return NextResponse.json({ error: "Owner no encontrado" }, { status: 404 })
+
+  const newPassword = generatePassword(12)
+  const hashed = await bcrypt.hash(newPassword, 10)
+  await db.user.update({ where: { id: owner.id }, data: { password: hashed } })
+
+  return NextResponse.json({ email: owner.email, password: newPassword })
+}

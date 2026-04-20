@@ -1,0 +1,273 @@
+import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import { db } from "@/lib/db"
+import { getSessionTenant } from "@/lib/tenant"
+
+const TAX_RATES: Record<string, number> = {
+  ZERO: 0,
+  REDUCED: 0.105,
+  STANDARD: 0.21,
+}
+
+const SaleItemSchema = z.object({
+  productId: z.string().min(1),
+  productName: z.string().min(1),
+  quantity: z.number().int().positive(),
+  unitPrice: z.number().nonnegative(),
+  costPrice: z.number().nonnegative(),
+  discount: z.number().min(0).max(100),
+  subtotal: z.number().nonnegative(),
+  taxRate: z.enum(["ZERO", "REDUCED", "STANDARD"]),
+  soldByWeight: z.boolean().optional().default(false),
+})
+
+const CreateSaleSchema = z.object({
+  items: z.array(SaleItemSchema).min(1),
+  subtotal: z.number().nonnegative(),
+  discountPercent: z.number().min(0).max(100),
+  discountAmount: z.number().nonnegative(),
+  taxAmount: z.number().nonnegative(),
+  total: z.number().nonnegative(),
+  paymentMethod: z.string().min(1),
+  cashReceived: z.number().nonnegative().optional().nullable(),
+  change: z.number().nonnegative().optional().nullable(),
+  clientId: z.string().optional().nullable(),
+  cashSessionId: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+})
+
+export async function POST(req: NextRequest) {
+  const { error, tenantId, session } = await getSessionTenant()
+  if (error) return error
+
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
+  }
+
+  const parsed = CreateSaleSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Datos inválidos", details: parsed.error.flatten() },
+      { status: 422 }
+    )
+  }
+
+  const data = parsed.data
+  const userId = session!.user.id
+
+  try {
+    const sale = await db.$transaction(async (tx) => {
+      // ---- 1. Stock check (inside transaction to prevent race conditions) ----
+      for (const item of data.items) {
+        const product = await tx.product.findFirst({
+          where: { id: item.productId, tenantId: tenantId! },
+          select: { id: true, stock: true, name: true, soldByWeight: true },
+        })
+
+        if (!product) {
+          throw new Error(`Producto no encontrado: ${item.productId}`)
+        }
+
+        // Weight-sold products may have fractional stock logic; skip integer check
+        if (!product.soldByWeight && product.stock < item.quantity) {
+          throw new Error(
+            `Stock insuficiente para "${item.productName}". Disponible: ${product.stock}, requerido: ${item.quantity}`
+          )
+        }
+      }
+
+      // ---- 2. Get next sale number for tenant ----
+      const lastSale = await tx.sale.findFirst({
+        where: { tenantId: tenantId! },
+        orderBy: { number: "desc" },
+        select: { number: true },
+      })
+      const nextNumber = (lastSale?.number ?? 0) + 1
+
+      // ---- 3. Create sale ----
+      const createdSale = await tx.sale.create({
+        data: {
+          number: nextNumber,
+          subtotal: data.subtotal,
+          discountAmount: data.discountAmount,
+          discountPercent: data.discountPercent,
+          taxAmount: data.taxAmount,
+          total: data.total,
+          paymentMethod: data.paymentMethod,
+          cashReceived: data.cashReceived ?? null,
+          change: data.change ?? null,
+          status: "COMPLETED",
+          notes: data.notes ?? null,
+          tenantId: tenantId!,
+          userId,
+          clientId: data.clientId ?? null,
+          cashSessionId: data.cashSessionId ?? null,
+        },
+      })
+
+      // ---- 4. Create sale items, decrement stock, create stock movements ----
+      for (const item of data.items) {
+        const globalMultiplier = 1 - data.discountPercent / 100
+        const rate = TAX_RATES[item.taxRate] ?? 0
+        const afterDiscount = item.subtotal * globalMultiplier
+        const itemTaxAmount = afterDiscount * (rate / (1 + rate))
+
+        await tx.saleItem.create({
+          data: {
+            saleId: createdSale.id,
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            costPrice: item.costPrice,
+            discount: item.discount,
+            subtotal: item.subtotal,
+            taxRate: item.taxRate,
+            taxAmount: Math.round(itemTaxAmount * 100) / 100,
+          },
+        })
+
+        // Fetch current stock for movement log
+        const currentProduct = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { stock: true },
+        })
+
+        const stockBefore = currentProduct?.stock ?? 0
+        const stockAfter = stockBefore - item.quantity
+
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        })
+
+        await tx.stockMovement.create({
+          data: {
+            type: "SALE",
+            quantity: item.quantity,
+            stockBefore,
+            stockAfter,
+            unitCost: item.costPrice,
+            totalCost: item.costPrice * item.quantity,
+            reference: `VENTA-${nextNumber}`,
+            productId: item.productId,
+            userId,
+          },
+        })
+      }
+
+      // ---- 5. Loyalty points (1 point per peso, rounded) ----
+      if (data.clientId) {
+        const pointsEarned = Math.floor(data.total)
+        if (pointsEarned > 0) {
+          await tx.client.update({
+            where: { id: data.clientId },
+            data: { loyaltyPoints: { increment: pointsEarned } },
+          })
+
+          await tx.loyaltyTransaction.create({
+            data: {
+              points: pointsEarned,
+              description: `Venta #${nextNumber}`,
+              clientId: data.clientId,
+              saleId: createdSale.id,
+            },
+          })
+        }
+      }
+
+      return createdSale
+    })
+
+    // Return sale with items
+    const fullSale = await db.sale.findUnique({
+      where: { id: sale.id },
+      include: {
+        items: true,
+        user: { select: { name: true } },
+        client: { select: { name: true } },
+      },
+    })
+
+    return NextResponse.json({ sale: fullSale }, { status: 201 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Error interno"
+    // Stock/business logic errors → 409 Conflict
+    if (
+      message.includes("Stock insuficiente") ||
+      message.includes("Producto no encontrado")
+    ) {
+      return NextResponse.json({ error: message }, { status: 409 })
+    }
+    console.error("[POST /api/ventas]", err)
+    return NextResponse.json({ error: "Error al registrar venta" }, { status: 500 })
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const { error, tenantId } = await getSessionTenant()
+  if (error) return error
+
+  const { searchParams } = new URL(req.url)
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10))
+  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100)
+  const skip = (page - 1) * limit
+
+  const dateParam = searchParams.get("date")
+  const fromParam = searchParams.get("from")
+  const toParam = searchParams.get("to")
+
+  let dateFilter: Record<string, Date> = {}
+  if (dateParam) {
+    const start = new Date(dateParam)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(dateParam)
+    end.setHours(23, 59, 59, 999)
+    dateFilter = { gte: start, lte: end }
+  } else {
+    if (fromParam) dateFilter.gte = new Date(fromParam)
+    if (toParam) {
+      const to = new Date(toParam)
+      to.setHours(23, 59, 59, 999)
+      dateFilter.lte = to
+    }
+  }
+
+  const where = {
+    tenantId: tenantId!,
+    ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+  }
+
+  const [sales, total] = await Promise.all([
+    db.sale.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: { select: { name: true } },
+        client: { select: { name: true } },
+        items: {
+          select: {
+            id: true,
+            productName: true,
+            quantity: true,
+            unitPrice: true,
+            subtotal: true,
+          },
+        },
+      },
+    }),
+    db.sale.count({ where }),
+  ])
+
+  return NextResponse.json({
+    sales,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  })
+}

@@ -1,0 +1,11 @@
+{
+  "name": "RetailAR",
+  "short_name": "RetailAR",
+  "description": "Sistema de gestión para negocios retail argentinos",
+  "start_url": "/pos",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity"]
+}
