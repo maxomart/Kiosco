@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Key, Building2 } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Key, Building2, QrCode, FileCheck2 } from "lucide-react"
 import { BUSINESS_TYPES, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
 import { Button } from "@/components/ui/Button"
@@ -95,6 +95,8 @@ export default function ConfiguracionPage() {
     { icon: Users, label: "Usuarios y permisos", href: "/configuracion/usuarios", desc: "Agregar usuarios, roles y accesos" },
     { icon: Key, label: "API keys", href: "/configuracion/api-keys", desc: "Tokens para acceso programático (Business)" },
     { icon: Building2, label: "Multi-tienda", href: "/configuracion/multi-tienda", desc: "Gestionar varias sucursales (Business)" },
+    { icon: QrCode, label: "Mercado Pago", href: "/configuracion/mercadopago", desc: "Cobrá con QR desde el POS (Professional+)" },
+    { icon: FileCheck2, label: "Facturación AFIP", href: "/configuracion/afip", desc: "Emití facturas A/B/C con CAE (Starter+)" },
   ]
 
   return (
