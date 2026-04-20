@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-gray-950: oklch(13% 0.01 261);
+}
 
 @layer base {
   :root {
@@ -14,7 +16,9 @@
     --border: 217.2 32.6% 17.5%;
   }
   body {
-    @apply bg-gray-950 text-gray-100 antialiased;
+    background-color: #030712;
+    color: rgb(243 244 246);
+    -webkit-font-smoothing: antialiased;
     font-family: var(--font-inter, system-ui, sans-serif);
   }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -26,6 +30,9 @@
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .bg-gray-950 { background-color: #030712; }
+  .text-gray-950 { color: #030712; }
+  .border-gray-950 { border-color: #030712; }
 }
 
 @media print {

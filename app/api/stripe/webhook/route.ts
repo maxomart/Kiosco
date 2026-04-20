@@ -5,7 +5,6 @@ import { db } from "@/lib/db"
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
-export const config = { api: { bodyParser: false } }
 
 const PLAN_FROM_PRICE: Record<string, string> = {
   [process.env.STRIPE_PRICE_STARTER ?? ""]: "STARTER",
