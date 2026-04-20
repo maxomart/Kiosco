@@ -3,7 +3,7 @@ import { z } from "zod"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { hasFeature, AI_DAILY_QUOTA } from "@/lib/permissions"
-import { getAnthropic, isAnthropicConfigured, DEFAULT_MODEL } from "@/lib/anthropic"
+import { getOpenAI, isOpenAIConfigured, DEFAULT_MODEL } from "@/lib/openai"
 import { buildBusinessContext, renderContextForPrompt } from "@/lib/ai-context"
 import type { Plan } from "@/lib/utils"
 
@@ -44,10 +44,6 @@ QUÉ NO HACER:
 
 Si la pregunta es ambigua, hacé UNA pregunta de aclaración corta.`
 
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 async function getDailyUsage(tenantId: string): Promise<number> {
   const start = new Date()
   start.setHours(0, 0, 0, 0)
@@ -86,9 +82,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "El asistente IA no está incluido en tu plan." }, { status: 402 })
   }
 
-  if (!isAnthropicConfigured()) {
+  if (!isOpenAIConfigured()) {
     return NextResponse.json({
-      error: "El asistente IA no está configurado. El dueño debe agregar ANTHROPIC_API_KEY en Railway.",
+      error: "El asistente IA no está configurado. El dueño debe agregar OPENAI_API_KEY en Railway.",
     }, { status: 503 })
   }
 
@@ -97,7 +93,7 @@ export async function POST(req: NextRequest) {
   const quota = AI_DAILY_QUOTA[plan]
   if (usage >= quota) {
     return NextResponse.json({
-      error: `Llegaste al límite diario de tu plan ${plan} (${quota} mensajes). Vuelve mañana o suscribite a un plan superior.`,
+      error: `Llegaste al límite diario de tu plan ${plan} (${quota} mensajes). Volvé mañana o suscribite a un plan superior.`,
       quotaReached: true,
       quota,
       used: usage,
@@ -127,37 +123,45 @@ export async function POST(req: NextRequest) {
   const fullSystem = `${SYSTEM_PROMPT}\n\n## SNAPSHOT ACTUAL DEL NEGOCIO\n${contextText}`
 
   try {
-    const anthropic = getAnthropic()
-    const response = await anthropic.messages.create({
+    const openai = getOpenAI()
+    const response = await openai.chat.completions.create({
       model: DEFAULT_MODEL,
       max_tokens: 1024,
-      system: fullSystem,
-      messages: parsed.data.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      thinking: { type: "adaptive" },
-    } as any)
+      temperature: 0.7,
+      messages: [
+        { role: "system", content: fullSystem },
+        ...parsed.data.messages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+      ],
+    })
 
     // Record usage AFTER successful call (don't penalize failures)
     await recordUsage(tenantId!, session.user.id!)
 
-    // Pull text content from the response (skip thinking blocks)
-    const text = response.content
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
-      .join("\n")
+    const text = response.choices[0]?.message?.content ?? ""
 
     return NextResponse.json({
       reply: text,
-      usage: { input: response.usage.input_tokens, output: response.usage.output_tokens },
+      usage: {
+        input: response.usage?.prompt_tokens ?? 0,
+        output: response.usage?.completion_tokens ?? 0,
+      },
       quota,
       used: usage + 1,
     })
   } catch (err: any) {
-    console.error("[POST /api/ai/chat] anthropic error", err?.message)
-    return NextResponse.json({
-      error: err?.message ?? "Error del asistente IA",
-    }, { status: 500 })
+    console.error("[POST /api/ai/chat] openai error", err?.message)
+    // Surface a friendlier message for common cases
+    let userError = err?.message ?? "Error del asistente IA"
+    if (err?.status === 401) {
+      userError = "La OPENAI_API_KEY es inválida. Verificá la key en Railway."
+    } else if (err?.status === 429) {
+      userError = "OpenAI te está rate-limiteando. Probá de nuevo en unos segundos o revisá tu cuota."
+    } else if (err?.status === 402 || err?.code === "insufficient_quota") {
+      userError = "Te quedaste sin crédito en OpenAI. Recargá saldo en platform.openai.com/billing."
+    }
+    return NextResponse.json({ error: userError }, { status: 500 })
   }
 }

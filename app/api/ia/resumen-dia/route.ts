@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 
 // Stub endpoint for the home page's "AI summary of the day". Returns a
 // simple template-based summary so the dashboard isn't empty. Swap with
-// a real Claude/Anthropic call later by wiring ANTHROPIC_API_KEY.
+// a real LLM call later via OPENAI_API_KEY (lib/openai.ts).
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const requestedTenantId = searchParams.get("tenantId")

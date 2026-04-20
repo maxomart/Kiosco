@@ -397,7 +397,7 @@ export function AssistantWidget({ plan = "FREE" }: { plan?: Plan }) {
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-600 mt-1.5">
-                  Powered by Claude · El asistente puede equivocarse, verificá datos importantes
+                  Powered by OpenAI · El asistente puede equivocarse, verificá datos importantes
                 </p>
               </div>
             </>
