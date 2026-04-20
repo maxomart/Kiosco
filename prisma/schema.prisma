@@ -28,6 +28,8 @@ model Tenant {
   config      TenantConfig?
   subscription Subscription?
   apiKeys     ApiKey[]
+  combos      Combo[]
+  clientPayments ClientPayment[]
 
   @@index([active])
   @@index([createdAt])
@@ -74,6 +76,7 @@ model User {
   auditLogs      AuditLog[]
   cashSessions   CashSession[]
   apiKeysCreated ApiKey[]        @relation("ApiKeyCreatedBy")
+  clientPayments ClientPayment[]
 
   @@index([email])
   @@index([tenantId])
@@ -107,6 +110,7 @@ model Product {
 
   saleItems      SaleItem[]
   stockMovements StockMovement[]
+  comboItems     ComboItem[]
 
   @@unique([barcode, tenantId])
   @@unique([sku, tenantId])
@@ -188,7 +192,19 @@ model Sale {
   status          String   @default("COMPLETED")
   cancelReason    String?
   notes           String?
-  invoiceType     String?
+  invoiceType     String?  // "A" | "B" | "C" | "M" | "X" (X = ticket no fiscal)
+  // ─── AFIP electronic invoice fields ───────────────────────────────
+  cae             String?              // AFIP Authorization Code (CAE)
+  caeExpiresAt    DateTime?            // CAE valid until
+  pointOfSale     Int?                 // Punto de venta (1, 2, …)
+  invoiceNumber   Int?                 // Número de factura asignado por AFIP
+  afipQrUrl       String?              // QR data URL per RG 4892/2020
+  afipStatus      String?              // PENDING | APPROVED | REJECTED | NOT_REQUESTED
+  afipError       String?              // Error message from AFIP if rejected
+  customerDocType String?              // CUIT | CUIL | DNI | EXTRANJERO
+  customerDocNumber String?            // matched number
+  customerCondicionIVA String?         // RI | MONOTRIBUTO | EXENTO | CF
+  // ──────────────────────────────────────────────────────────────────
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -242,6 +258,14 @@ model Client {
   notes         String?
   active        Boolean  @default(true)
   loyaltyPoints Int      @default(0)
+  // ─── Cuenta corriente (credit account) ──────────────
+  creditLimit       Decimal  @default(0) @db.Decimal(12, 2)  // 0 = no credit
+  currentBalance    Decimal  @default(0) @db.Decimal(12, 2)  // owed by client (positive = client owes)
+  // ─── AFIP / fiscal ───────────────────────────────────
+  docType           String?  // CUIT | CUIL | DNI | EXTRANJERO
+  docNumber         String?  // For invoice A/B
+  condicionIVA      String?  // RI | MONOTRIBUTO | EXENTO | CF
+  // ──────────────────────────────────────────────────────
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -250,6 +274,7 @@ model Client {
 
   sales               Sale[]
   loyaltyTransactions LoyaltyTransaction[]
+  payments            ClientPayment[]
 
   @@unique([dni, tenantId])
   @@index([tenantId])
@@ -394,6 +419,23 @@ model TenantConfig {
   loyaltyPointsPerPeso    Decimal  @default(1)    @db.Decimal(8, 4)  // 1 = 1 point per ARS spent
   loyaltyPointValue       Decimal  @default(1)    @db.Decimal(8, 4)  // 1 = each point worth $1 ARS
 
+  // ─── AFIP / fiscal config ─────────────────────────────────────────────
+  afipEnabled         Boolean  @default(false)         // Master switch
+  afipMode            String   @default("HOMOLOGACION") // HOMOLOGACION | PRODUCCION
+  afipCondicionIVA    String?                           // RI | MONOTRIBUTO | EXENTO
+  afipPointOfSale     Int?     @default(1)              // Punto de venta default
+  afipCertProvider    String?                           // "tusfacturas" | "afipsdk" | "self"
+  afipCertCuit        String?                           // CUIT del emisor (sin guiones)
+  afipCertSecret      String?  @db.Text                 // API token of provider OR encrypted cert ref
+  afipLastSyncAt      DateTime?
+  afipLastError       String?  @db.Text
+
+  // MercadoPago integration
+  mpAccessToken       String?  @db.Text                 // Access token of merchant's MP account
+  mpPublicKey         String?
+  mpUserId            String?
+  mpStoreId           String?                           // For QR Pro
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -418,4 +460,62 @@ model AuditLog {
   @@index([userId])
   @@index([entity])
   @@index([createdAt])
+}
+
+// ============= CUENTA CORRIENTE (client credit accounts) =============
+model ClientPayment {
+  id          String   @id @default(cuid())
+  amount      Decimal  @db.Decimal(12, 2)         // positive = client paid us
+  paymentMethod String @default("CASH")
+  reference   String?                              // ref number, transfer id, etc.
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([createdAt])
+}
+
+// ============= COMBOS / PROMOTIONS =============
+model Combo {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  // Pricing strategy: FIXED (fixed combo price), DISCOUNT_PCT (% off when buying all items)
+  type        String   @default("FIXED")
+  fixedPrice  Decimal? @db.Decimal(12, 2)         // If type=FIXED
+  discountPct Decimal? @db.Decimal(5, 2)          // If type=DISCOUNT_PCT
+  active      Boolean  @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  items ComboItem[]
+
+  @@index([tenantId])
+  @@index([active])
+}
+
+model ComboItem {
+  id        String  @id @default(cuid())
+  quantity  Int     @default(1)
+
+  comboId   String
+  combo     Combo   @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([comboId, productId])
+  @@index([comboId])
 }
