@@ -159,9 +159,9 @@ export default function InventarioPage() {
               <button
                 onClick={() => bulkUnlocked ? setShowStockBulk(true) : (window.location.href = "/configuracion/suscripcion")}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-700/30 hover:bg-emerald-700/50 text-emerald-300 text-sm transition-colors border border-emerald-700/40"
-                title={bulkUnlocked ? "Cargar stock de varios productos a la vez" : "Disponible desde Plan Básico"}
+                title={bulkUnlocked ? "Editar stock de varios productos rápido" : "Disponible desde Plan Básico"}
               >
-                <PackagePlus size={16} /> Carga masiva
+                <PackagePlus size={16} /> Editar stock
                 {!bulkUnlocked && <Lock size={12} className="text-amber-400" />}
               </button>
             )

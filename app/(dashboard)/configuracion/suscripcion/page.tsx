@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCircle, Zap, Crown, Building2, ArrowRight, ExternalLink, AlertCircle, CreditCard } from "lucide-react"
+import { CheckCircle, Zap, Crown, Building2, ArrowRight, ArrowDown, ExternalLink, AlertCircle, CreditCard } from "lucide-react"
+
+function ArrowDownIcon() {
+  return <ArrowDown size={12} />
+}
 import {
   PLAN_LIMITS,
   PLAN_PRICES_ARS,
@@ -263,83 +267,105 @@ export default function SuscripcionPage() {
       <div>
         <h2 className="text-white font-semibold mb-4">Planes disponibles</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {(["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const).map(plan => {
-            const Icon = PLAN_ICONS[plan]
-            const isCurrent = sub?.plan === plan
-            const priceARS = PLAN_PRICES_ARS[plan]
-            const features = PLAN_FEATURES[plan]
-            const isPopular = plan === "PROFESSIONAL"
+          {(() => {
+            const PLAN_ORDER = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
+            const currentIdx = sub ? PLAN_ORDER.indexOf(sub.plan as typeof PLAN_ORDER[number]) : 0
+            return PLAN_ORDER.map((plan, idx) => {
+              const Icon = PLAN_ICONS[plan]
+              const isCurrent = sub?.plan === plan
+              const isUpgrade = idx > currentIdx
+              const isDowngrade = idx < currentIdx
+              const priceARS = PLAN_PRICES_ARS[plan]
+              const features = PLAN_FEATURES[plan]
+              const isPopular = plan === "PROFESSIONAL" && !isCurrent
 
-            return (
-              <div key={plan}
-                className={`relative bg-gray-900 rounded-xl p-5 border-2 ${isCurrent ? PLAN_COLORS[plan] : "border-gray-800"} flex flex-col`}>
-                {isPopular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-purple-600 rounded-full text-white text-xs font-bold">
-                    MÁS POPULAR
+              return (
+                <div key={plan}
+                  className={`relative bg-gray-900 rounded-xl p-5 border-2 ${isCurrent ? PLAN_COLORS[plan] : isDowngrade ? "border-gray-800/60 opacity-70" : "border-gray-800"} flex flex-col`}>
+                  {isPopular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-purple-600 rounded-full text-white text-xs font-bold">
+                      MÁS POPULAR
+                    </div>
+                  )}
+                  {isCurrent && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-600 rounded-full text-white text-xs font-bold">
+                      TU PLAN ACTUAL
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Icon size={18} className={plan === "FREE" ? "text-gray-400" : plan === "STARTER" ? "text-blue-400" : plan === "PROFESSIONAL" ? "text-purple-400" : "text-yellow-400"} />
+                    <span className="text-white font-semibold">{PLAN_LABELS_AR[plan]}</span>
                   </div>
-                )}
-                <div className="flex items-center gap-2 mb-3">
-                  <Icon size={18} className={plan === "FREE" ? "text-gray-400" : plan === "STARTER" ? "text-blue-400" : plan === "PROFESSIONAL" ? "text-purple-400" : "text-yellow-400"} />
-                  <span className="text-white font-semibold">{PLAN_LABELS_AR[plan]}</span>
-                </div>
-                <div className="mb-4">
-                  {priceARS === 0 ? (
-                    <span className="text-3xl font-bold text-white">Gratis</span>
+                  <div className="mb-4">
+                    {priceARS === 0 ? (
+                      <span className="text-3xl font-bold text-white">Gratis</span>
+                    ) : (
+                      <>
+                        <span className="text-3xl font-bold text-white">{formatCurrency(priceARS)}</span>
+                        <span className="text-gray-500 text-sm"> /mes</span>
+                      </>
+                    )}
+                  </div>
+                  <ul className="space-y-2 mb-6 flex-1">
+                    {features.map((f, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                        <CheckCircle size={14} className="text-green-400 mt-0.5 shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA logic: current → "Plan actual"; FREE & nobody → "Plan base"; upgrade → buttons; downgrade → secondary */}
+                  {isCurrent ? (
+                    <div className="w-full py-2.5 rounded-lg bg-emerald-600/10 border border-emerald-600/30 text-center text-emerald-300 text-sm font-medium">
+                      ✓ Estás en este plan
+                    </div>
+                  ) : plan === "FREE" && currentIdx === 0 ? (
+                    <div className="w-full py-2.5 rounded-lg border border-gray-800 text-center text-gray-600 text-sm">
+                      Plan base
+                    </div>
+                  ) : isDowngrade ? (
+                    <button
+                      onClick={() => {
+                        if (!confirm(`¿Querés bajar a ${PLAN_LABELS_AR[plan]}? Si tenés una suscripción activa primero cancelala. Plan inferior = perdés features (ver comparativa).`)) return
+                        // For downgrade we route to the same MP checkout — MP will replace the preapproval
+                        // Note: requires user to manually cancel current sub first per MP rules
+                        handleUpgradeMP(plan)
+                      }}
+                      disabled={!!upgrading}
+                      className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700"
+                      title="Para bajar de plan, primero cancelá la suscripción actual"
+                    >
+                      <ArrowDownIcon /> Bajar a este plan
+                    </button>
                   ) : (
-                    <>
-                      <span className="text-3xl font-bold text-white">{formatCurrency(priceARS)}</span>
-                      <span className="text-gray-500 text-sm"> /mes</span>
-                    </>
+                    /* isUpgrade */
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => handleUpgradeMP(plan)}
+                        disabled={!!upgrading}
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-sky-500 hover:bg-sky-600 text-white"
+                      >
+                        {upgrading === `mp:${plan}` ? "Redirigiendo..." : (
+                          <>
+                            <CreditCard size={14} />
+                            Mejorar a {PLAN_LABELS_AR[plan]}
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleUpgradeStripe(plan)}
+                        disabled={!!upgrading}
+                        className="w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-400"
+                      >
+                        {upgrading === `stripe:${plan}` ? "Redirigiendo..." : "o pagar con tarjeta internacional (Stripe USD)"}
+                      </button>
+                    </div>
                   )}
                 </div>
-                <ul className="space-y-2 mb-6 flex-1">
-                  {features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                      <CheckCircle size={14} className="text-green-400 mt-0.5 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                {isCurrent ? (
-                  <div className="w-full py-2.5 rounded-lg border border-gray-700 text-center text-gray-400 text-sm">
-                    Plan actual
-                  </div>
-                ) : plan === "FREE" ? (
-                  <div className="w-full py-2.5 rounded-lg border border-gray-800 text-center text-gray-600 text-sm">
-                    Plan base
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => handleUpgradeMP(plan)}
-                      disabled={!!upgrading}
-                      className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50
-                        bg-sky-500 hover:bg-sky-600 text-white`}
-                    >
-                      {upgrading === `mp:${plan}` ? "Redirigiendo..." : (
-                        <>
-                          <CreditCard size={14} />
-                          Pagar con Mercado Pago
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleUpgradeStripe(plan)}
-                      disabled={!!upgrading}
-                      className="w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-300"
-                    >
-                      {upgrading === `stripe:${plan}` ? "Redirigiendo..." : (
-                        <>
-                          <ArrowRight size={12} />
-                          Pagar con tarjeta internacional (Stripe)
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+              )
+            })
+          })()}
         </div>
         <p className="text-gray-600 text-xs mt-3 text-center">
           Pagos en pesos procesados por <span className="text-sky-400">Mercado Pago</span>. También podés pagar con tarjeta internacional vía Stripe (USD). Cancelá cuando quieras.

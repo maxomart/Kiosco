@@ -1,12 +1,23 @@
 "use client"
 
-import { useState, useRef, useMemo } from "react"
+/**
+ * Quick stock editor — replaces the old "upload Excel to update stock" flow.
+ *
+ * UX: pick a category → grid of products with editable stock per row.
+ * Shows current stock, has +/− buttons, and a typeable input. Tracks edits
+ * locally, shows a diff badge, and commits everything in one batch on save.
+ *
+ * For >50 products at once or an Excel from a proveedor, the import flow
+ * still exists. This modal is for "voy a contar el stock del estante" type
+ * workflows — typed and tap.
+ */
+
+import { useState, useEffect, useMemo, useCallback } from "react"
 import {
-  X, Upload, FileText, CheckCircle, AlertTriangle, Loader2,
-  PackagePlus, ArrowLeft, ArrowRight, Wand2, Type, FileSpreadsheet,
+  X, Search, Save, Loader2, Plus, Minus, RotateCcw, PackagePlus,
+  CheckCircle, Filter, AlertCircle,
 } from "lucide-react"
 import toast from "react-hot-toast"
-import * as XLSX from "xlsx"
 import { formatCurrency } from "@/lib/utils"
 
 interface Props {
@@ -14,505 +25,359 @@ interface Props {
   onDone: () => void
 }
 
-type Mode = "input" | "review" | "result"
-type InputType = "paste" | "file"
-
-interface Line {
-  identifier: string
-  quantity: number
-  costPrice?: number
-}
-
-interface MatchedRow {
-  line: number
-  productId: string
-  productName: string
+interface Product {
+  id: string
+  name: string
   barcode: string | null
   sku: string | null
-  currentStock: number
-  newStockADD: number
-  currentCostPrice: number
-  currentSalePrice: number
-  quantity: number
-  costPriceUpdate: number | null
+  stock: number
+  costPrice: number
+  salePrice: number
+  category: { id: string; name: string } | null
 }
 
-interface PreviewResp {
-  totalLines: number
-  matchedCount: number
-  unmatchedCount: number
-  matched: MatchedRow[]
-  unmatched: { line: number; identifier: string; quantity: number }[]
+interface Category {
+  id: string
+  name: string
 }
+
+type EditMode = "ABSOLUTE" | "DELTA"  // ABSOLUTE = type new total; DELTA = type +/-
 
 export function StockBulkModal({ onClose, onDone }: Props) {
-  const [step, setStep] = useState<Mode>("input")
-  const [inputType, setInputType] = useState<InputType>("paste")
-  const [pasteText, setPasteText] = useState("")
-  const [file, setFile] = useState<File | null>(null)
-  const [parsing, setParsing] = useState(false)
-  const [previewing, setPreviewing] = useState(false)
-  const [committing, setCommitting] = useState(false)
-  const [preview, setPreview] = useState<PreviewResp | null>(null)
-  const [updateMode, setUpdateMode] = useState<"ADD" | "SET">("ADD")
+  const [categories, setCategories] = useState<Category[]>([])
+  const [categoryId, setCategoryId] = useState<string>("__all__")
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
+  const [editMode, setEditMode] = useState<EditMode>("ABSOLUTE")
+  const [edits, setEdits] = useState<Record<string, number>>({}) // productId → newStock (absolute)
+  const [deltas, setDeltas] = useState<Record<string, number>>({}) // productId → delta (signed)
+  const [saving, setSaving] = useState(false)
   const [reference, setReference] = useState("")
-  const [updateCost, setUpdateCost] = useState(false)
-  const [result, setResult] = useState<{ updated: number; stockMovements: number } | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  const parseLines = (): Line[] => {
-    if (inputType !== "paste") return []
-    const lines = pasteText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-    return lines.map((l) => {
-      // Accept tab/comma/semicolon/multi-space separator
-      const parts = l.split(/\t|;|,|\s{2,}/).map((p) => p.trim()).filter(Boolean)
-      if (parts.length < 2) return null
-      const identifier = parts[0]
-      const qty = parseFloat(parts[1].replace(",", "."))
-      const cost = parts[2] ? parseFloat(parts[2].replace(",", ".")) : undefined
-      if (!identifier || isNaN(qty)) return null
-      return {
-        identifier,
-        quantity: Math.round(qty),
-        costPrice: cost && !isNaN(cost) ? cost : undefined,
-      }
-    }).filter((l): l is Line => l !== null)
-  }
+  // Load categories + initial product list (all categories)
+  useEffect(() => {
+    fetch("/api/categorias").then((r) => r.json()).then((d) => {
+      setCategories(d.categories ?? [])
+    }).catch(() => {})
+  }, [])
 
-  const parseFile = async (f: File): Promise<Line[]> => {
-    const buffer = await f.arrayBuffer()
-    const wb = XLSX.read(buffer, { type: "array" })
-    const ws = wb.Sheets[wb.SheetNames[0]]
-    if (!ws) throw new Error("Archivo vacío")
-    const matrix = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: null })
-    if (matrix.length === 0) return []
-
-    // Detect header row: first row with text
-    let headerIdx = 0
-    for (let i = 0; i < Math.min(5, matrix.length); i++) {
-      const r = matrix[i] ?? []
-      const stringCells = r.filter((c: any) => typeof c === "string" && c.trim()).length
-      const numericCells = r.filter((c: any) => typeof c === "number").length
-      if (stringCells >= 1 && numericCells === 0) { headerIdx = i; break }
-    }
-    const headers = (matrix[headerIdx] ?? []).map((h: any) => String(h ?? "").toLowerCase().trim())
-
-    // Find columns: identifier (barcode/sku/code), quantity, cost (optional)
-    const idCol = headers.findIndex((h: string) =>
-      /barra|codigo|cod|barcode|sku|ean/.test(h),
-    )
-    const qtyCol = headers.findIndex((h: string) =>
-      /cant|stock|qty|unidad|cantidad/.test(h),
-    )
-    const costCol = headers.findIndex((h: string) =>
-      /costo|precio|cost|price/.test(h),
-    )
-
-    if (idCol === -1 || qtyCol === -1) {
-      throw new Error("No detecté columnas de código y cantidad. La planilla debe tener al menos 2 columnas: código de barras (o SKU) y cantidad.")
-    }
-
-    return matrix
-      .slice(headerIdx + 1)
-      .map((r) => {
-        const id = String(r[idCol] ?? "").trim()
-        const q = typeof r[qtyCol] === "number" ? r[qtyCol] : parseFloat(String(r[qtyCol] ?? "").replace(",", "."))
-        const c = costCol >= 0 ? (typeof r[costCol] === "number" ? r[costCol] : parseFloat(String(r[costCol] ?? "").replace(",", "."))) : undefined
-        if (!id || isNaN(q)) return null
-        return {
-          identifier: id,
-          quantity: Math.round(q),
-          costPrice: c && !isNaN(c) ? c : undefined,
-        }
-      })
-      .filter((l): l is Line => l !== null)
-  }
-
-  const handleFile = (f: File) => {
-    if (!/\.(csv|xlsx|xls)$/i.test(f.name)) {
-      toast.error("Solo CSV o Excel")
-      return
-    }
-    if (f.size > 5 * 1024 * 1024) { toast.error("Máx 5 MB"); return }
-    setFile(f)
-  }
-
-  const handlePreview = async () => {
-    setPreviewing(true)
+  const load = useCallback(async () => {
+    setLoading(true)
     try {
-      let lines: Line[] = []
-      if (inputType === "paste") lines = parseLines()
-      else if (file) {
-        try { lines = await parseFile(file) }
-        catch (e: any) { toast.error(e.message ?? "Error al leer el archivo"); return }
+      const params = new URLSearchParams({ limit: "200" })
+      if (categoryId && categoryId !== "__all__") params.set("categoryId", categoryId)
+      const res = await fetch(`/api/productos?${params}`)
+      if (res.ok) {
+        const d = await res.json()
+        setProducts(
+          (d.products ?? []).map((p: any) => ({
+            ...p,
+            stock: Number(p.stock ?? 0),
+            costPrice: Number(p.costPrice ?? 0),
+            salePrice: Number(p.salePrice ?? 0),
+          })),
+        )
       }
-      if (lines.length === 0) {
-        toast.error("No detecté líneas válidas. Cada línea debe tener: código y cantidad.")
-        return
-      }
-
-      const res = await fetch("/api/productos/stock-bulk-preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error ?? "Error al previsualizar")
-        return
-      }
-      setPreview(data)
-      setStep("review")
     } finally {
-      setPreviewing(false)
+      setLoading(false)
     }
+  }, [categoryId])
+
+  useEffect(() => { load() }, [load])
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return products
+    const s = search.toLowerCase().trim()
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(s) ||
+        (p.barcode ?? "").includes(s) ||
+        (p.sku ?? "").toLowerCase().includes(s),
+    )
+  }, [products, search])
+
+  const editedCount = useMemo(() => {
+    let n = 0
+    if (editMode === "ABSOLUTE") {
+      for (const p of products) {
+        if (edits[p.id] !== undefined && edits[p.id] !== p.stock) n++
+      }
+    } else {
+      for (const id in deltas) {
+        if (deltas[id] !== 0) n++
+      }
+    }
+    return n
+  }, [edits, deltas, products, editMode])
+
+  const setStockAbsolute = (id: string, value: number) => {
+    setEdits((e) => ({ ...e, [id]: Math.max(0, Math.floor(value)) }))
+  }
+  const adjustDelta = (id: string, by: number) => {
+    setDeltas((d) => ({ ...d, [id]: (d[id] ?? 0) + by }))
+  }
+  const setDelta = (id: string, value: number) => {
+    setDeltas((d) => ({ ...d, [id]: Math.floor(value) }))
   }
 
-  const handleCommit = async () => {
-    if (!preview) return
-    setCommitting(true)
+  const reset = () => {
+    setEdits({})
+    setDeltas({})
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
     try {
-      const updates = preview.matched.map((m) => ({
-        id: m.productId,
-        stock: m.quantity,
-        ...(updateCost && m.costPriceUpdate ? { costPrice: m.costPriceUpdate } : {}),
-      }))
+      let updates: { id: string; stock: number }[]
+      let mode: "SET" | "ADD"
+
+      if (editMode === "ABSOLUTE") {
+        mode = "SET"
+        updates = products
+          .filter((p) => edits[p.id] !== undefined && edits[p.id] !== p.stock)
+          .map((p) => ({ id: p.id, stock: edits[p.id] }))
+      } else {
+        mode = "ADD"
+        updates = Object.entries(deltas)
+          .filter(([_, d]) => d !== 0)
+          .map(([id, d]) => ({ id, stock: d }))
+      }
+
+      if (updates.length === 0) {
+        toast("Nada para guardar", { icon: "ℹ️" })
+        return
+      }
+
       const res = await fetch("/api/productos/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: updateMode, reference: reference || null, updates }),
+        body: JSON.stringify({ mode, updates, reference: reference || null }),
       })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? "Error al cargar"); return }
-      setResult({ updated: data.updated, stockMovements: data.stockMovements })
-      setStep("result")
+      if (!res.ok) {
+        toast.error(data.error ?? "Error al guardar")
+        return
+      }
+      toast.success(`${data.updated} producto${data.updated === 1 ? "" : "s"} actualizado${data.updated === 1 ? "" : "s"}`)
+      onDone()
     } finally {
-      setCommitting(false)
+      setSaving(false)
     }
   }
 
-  const totals = useMemo(() => {
-    if (!preview) return { addedUnits: 0, valueAdded: 0 }
-    const addedUnits = preview.matched.reduce((s, m) => s + (m.quantity > 0 ? m.quantity : 0), 0)
-    const valueAdded = preview.matched.reduce((s, m) => s + (m.quantity > 0 ? m.quantity * m.currentCostPrice : 0), 0)
-    return { addedUnits, valueAdded }
-  }, [preview])
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center flex-shrink-0">
               <PackagePlus className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <h2 className="text-white font-semibold">Carga masiva de stock</h2>
-              <p className="text-xs text-gray-500">
-                {step === "input" && "Subí o pegá la lista de productos a cargar"}
-                {step === "review" && "Revisá antes de aplicar al inventario"}
-                {step === "result" && "Listo"}
+            <div className="min-w-0">
+              <h2 className="text-white font-semibold truncate">Editar stock rápido</h2>
+              <p className="text-xs text-gray-500 truncate">
+                Filtrá por categoría y editá las cantidades. Guardás todo de una.
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white" aria-label="Cerrar">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition flex-shrink-0" aria-label="Cerrar">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {/* ── INPUT STEP ─────────────────────────────────────────────────── */}
-          {step === "input" && (
-            <>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setInputType("paste")}
-                  className={`flex-1 flex items-center gap-2 justify-center px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                    inputType === "paste"
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-gray-800 text-gray-400 hover:text-gray-200"
-                  }`}
-                >
-                  <Type size={14} /> Pegar texto
-                </button>
-                <button
-                  onClick={() => setInputType("file")}
-                  className={`flex-1 flex items-center gap-2 justify-center px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                    inputType === "file"
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-gray-800 text-gray-400 hover:text-gray-200"
-                  }`}
-                >
-                  <FileSpreadsheet size={14} /> Subir Excel/CSV
-                </button>
-              </div>
+        {/* Filters bar */}
+        <div className="px-5 py-3 border-b border-gray-800 bg-gray-900/60 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar producto, código o SKU..."
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-accent transition"
+              />
+            </div>
+            <div className="relative">
+              <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-8 py-2 text-sm text-gray-100 focus:outline-none focus:border-accent transition appearance-none cursor-pointer"
+              >
+                <option value="__all__">Todas las categorías</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-              {inputType === "paste" && (
-                <>
-                  <div className="bg-accent-soft border border-accent/30 rounded-xl p-3 text-xs text-gray-300 leading-relaxed">
-                    Una línea por producto. Formato: <code className="bg-gray-800 px-1 rounded">codigo cantidad [costo]</code>
-                    <br />
-                    Separadores válidos: tab, coma, punto y coma. Ej:
-                    <pre className="mt-2 text-[11px] text-gray-400 bg-gray-800/50 rounded p-2 whitespace-pre-wrap">{`7790895001234 24
-7791234567890 12 850
-SKU-001 6`}</pre>
-                  </div>
-                  <textarea
-                    value={pasteText}
-                    onChange={(e) => setPasteText(e.target.value)}
-                    placeholder="Pegá tu lista acá..."
-                    rows={10}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-accent transition resize-none"
-                  />
-                  <p className="text-xs text-gray-500">
-                    {parseLines().length > 0 ? `${parseLines().length} líneas detectadas` : "Sin líneas válidas todavía"}
-                  </p>
-                </>
-              )}
+          {/* Mode toggle */}
+          <div className="flex gap-2 items-center text-xs">
+            <span className="text-gray-500">Modo:</span>
+            <button
+              onClick={() => setEditMode("ABSOLUTE")}
+              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                editMode === "ABSOLUTE" ? "bg-sky-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"
+              }`}
+              title="Tipear el stock total nuevo (ej: 'tengo 24')"
+            >
+              ✏️ Conteo total
+            </button>
+            <button
+              onClick={() => setEditMode("DELTA")}
+              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                editMode === "DELTA" ? "bg-emerald-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"
+              }`}
+              title="Sumar/restar al stock actual (ej: '+12 que llegaron')"
+            >
+              ➕ Sumar/restar
+            </button>
+            <span className="ml-auto text-gray-500">{filtered.length} productos</span>
+          </div>
+        </div>
 
-              {inputType === "file" && (
-                <>
-                  <div className="bg-accent-soft border border-accent/30 rounded-xl p-3 text-xs text-gray-300">
-                    Tu Excel/CSV necesita 2 columnas mínimas:
-                    <span className="font-medium"> código de barras (o SKU) y cantidad</span>.
-                    Opcionalmente una tercera con el costo nuevo si querés actualizarlo al mismo tiempo.
-                  </div>
+        {/* Products grid */}
+        <div className="flex-1 overflow-y-auto p-3">
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-gray-500">
+              <Loader2 size={20} className="animate-spin" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 text-sm">
+              {products.length === 0
+                ? "No hay productos en esta categoría todavía."
+                : "Ningún producto coincide con tu búsqueda."}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {filtered.map((p) => {
+                const newStock = editMode === "ABSOLUTE"
+                  ? (edits[p.id] !== undefined ? edits[p.id] : p.stock)
+                  : p.stock + (deltas[p.id] ?? 0)
+                const delta = newStock - p.stock
+                const isEdited = delta !== 0
+
+                return (
                   <div
-                    onClick={() => inputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition ${
-                      file ? "border-emerald-500 bg-emerald-500/5" : "border-gray-700 hover:border-gray-600"
+                    key={p.id}
+                    className={`flex items-center gap-3 p-2 rounded-xl transition ${
+                      isEdited ? "bg-emerald-900/15 border border-emerald-700/30" : "hover:bg-gray-800/40 border border-transparent"
                     }`}
                   >
-                    <input
-                      ref={inputRef}
-                      type="file"
-                      accept=".csv,.xlsx,.xls"
-                      className="hidden"
-                      onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-                    />
-                    {file ? (
-                      <>
-                        <CheckCircle size={32} className="text-emerald-400 mx-auto mb-2" />
-                        <p className="text-emerald-400 font-medium text-sm">{file.name}</p>
-                        <p className="text-gray-500 text-xs mt-1">{(file.size / 1024).toFixed(1)} KB</p>
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={32} className="text-gray-500 mx-auto mb-2" />
-                        <p className="text-gray-300 text-sm">Click para subir Excel o CSV</p>
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          {/* ── REVIEW STEP ────────────────────────────────────────────────── */}
-          {step === "review" && preview && (
-            <>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-emerald-400">{preview.matchedCount}</p>
-                  <p className="text-xs text-emerald-300 mt-0.5">Productos encontrados</p>
-                </div>
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-amber-400">{preview.unmatchedCount}</p>
-                  <p className="text-xs text-amber-300 mt-0.5">No encontrados</p>
-                </div>
-                <div className="bg-gray-800 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-gray-100">{totals.addedUnits}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Unidades a sumar</p>
-                </div>
-              </div>
-
-              {/* Mode + reference */}
-              <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-4 space-y-3">
-                <div>
-                  <p className="text-xs text-gray-400 mb-2">Modo de actualización</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setUpdateMode("ADD")}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                        updateMode === "ADD"
-                          ? "bg-emerald-600 text-white"
-                          : "bg-gray-800 text-gray-400 hover:text-gray-200"
-                      }`}
-                    >
-                      ➕ Sumar al stock actual (carga)
-                    </button>
-                    <button
-                      onClick={() => setUpdateMode("SET")}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                        updateMode === "SET"
-                          ? "bg-sky-600 text-white"
-                          : "bg-gray-800 text-gray-400 hover:text-gray-200"
-                      }`}
-                    >
-                      ✏️ Reemplazar (inventario físico)
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-1.5">
-                    {updateMode === "ADD"
-                      ? "Sumamos las cantidades al stock actual. Ideal para cargar un pedido del proveedor."
-                      : "Reemplazamos el stock con el valor exacto. Ideal después de un conteo físico."}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Referencia (opcional)</label>
-                  <input
-                    type="text"
-                    value={reference}
-                    onChange={(e) => setReference(e.target.value)}
-                    placeholder="Ej: Pedido Coca-Cola 12/04/2026"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-accent"
-                  />
-                </div>
-
-                {preview.matched.some((m) => m.costPriceUpdate) && (
-                  <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={updateCost}
-                      onChange={(e) => setUpdateCost(e.target.checked)}
-                      className="w-4 h-4 rounded accent-accent"
-                    />
-                    También actualizar el costo de los productos
-                  </label>
-                )}
-              </div>
-
-              {/* Matched table */}
-              {preview.matched.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-400 mb-2">Productos a actualizar</p>
-                  <div className="overflow-x-auto border border-gray-800 rounded-xl max-h-72 overflow-y-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-800/60 text-gray-400 sticky top-0">
-                        <tr>
-                          <th className="px-2 py-1.5 text-left font-medium">Producto</th>
-                          <th className="px-2 py-1.5 text-left font-medium">Código</th>
-                          <th className="px-2 py-1.5 text-right font-medium">Stock actual</th>
-                          <th className="px-2 py-1.5 text-right font-medium">Cantidad</th>
-                          <th className="px-2 py-1.5 text-right font-medium">Stock final</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-800">
-                        {preview.matched.map((m) => {
-                          const finalStock = updateMode === "ADD" ? m.currentStock + m.quantity : m.quantity
-                          return (
-                            <tr key={m.line}>
-                              <td className="px-2 py-1.5 text-gray-100">{m.productName}</td>
-                              <td className="px-2 py-1.5 text-gray-500 font-mono text-[10px]">{m.barcode || m.sku || "—"}</td>
-                              <td className="px-2 py-1.5 text-right text-gray-400">{m.currentStock}</td>
-                              <td className="px-2 py-1.5 text-right text-emerald-300 font-medium">
-                                {updateMode === "ADD" ? `+${m.quantity}` : m.quantity}
-                              </td>
-                              <td className="px-2 py-1.5 text-right text-white font-semibold">{finalStock}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Unmatched */}
-              {preview.unmatched.length > 0 && (
-                <div className="bg-amber-500/5 border border-amber-500/30 rounded-xl p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle size={14} className="text-amber-400" />
-                    <p className="text-amber-300 text-sm font-medium">
-                      {preview.unmatched.length} no encontrados — se van a saltear
-                    </p>
-                  </div>
-                  <div className="space-y-1 max-h-32 overflow-y-auto text-xs">
-                    {preview.unmatched.slice(0, 20).map((u) => (
-                      <p key={u.line} className="text-amber-200/80">
-                        Línea {u.line}: <code className="bg-gray-800 px-1 rounded">{u.identifier}</code> ({u.quantity} u.)
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-100 truncate">{p.name}</p>
+                      <p className="text-[11px] text-gray-500 truncate font-mono">
+                        {p.barcode || p.sku || "Sin código"}{" "}
+                        {p.category?.name && <span className="text-gray-600">· {p.category.name}</span>}{" "}
+                        <span className="text-gray-600">· {formatCurrency(p.salePrice)}</span>
                       </p>
-                    ))}
-                    {preview.unmatched.length > 20 && (
-                      <p className="text-amber-300/60 italic">…y {preview.unmatched.length - 20} más</p>
-                    )}
+                    </div>
+
+                    {/* Current stock indicator */}
+                    <div className="hidden sm:flex flex-col items-end text-right">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wide">Actual</span>
+                      <span className={`text-sm font-mono ${p.stock <= 0 ? "text-red-400" : "text-gray-300"}`}>{p.stock}</span>
+                    </div>
+
+                    {/* Editor */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => editMode === "ABSOLUTE" ? setStockAbsolute(p.id, newStock - 1) : adjustDelta(p.id, -1)}
+                        className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition"
+                        aria-label="Restar 1"
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <input
+                        type="number"
+                        value={editMode === "ABSOLUTE" ? newStock : (deltas[p.id] ?? 0)}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value || "0", 10)
+                          if (isNaN(v)) return
+                          editMode === "ABSOLUTE" ? setStockAbsolute(p.id, v) : setDelta(p.id, v)
+                        }}
+                        className={`w-16 text-center bg-gray-800 border rounded-lg px-1 py-1.5 text-sm font-mono focus:outline-none transition ${
+                          isEdited ? "border-emerald-600 text-emerald-300" : "border-gray-700 text-gray-200 focus:border-accent"
+                        }`}
+                      />
+                      <button
+                        onClick={() => editMode === "ABSOLUTE" ? setStockAbsolute(p.id, newStock + 1) : adjustDelta(p.id, 1)}
+                        className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition"
+                        aria-label="Sumar 1"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
+
+                    {/* Diff badge */}
+                    <div className="w-12 text-right text-xs font-mono flex-shrink-0">
+                      {isEdited ? (
+                        <span className={delta > 0 ? "text-emerald-400" : "text-amber-400"}>
+                          {delta > 0 ? "+" : ""}{delta}
+                        </span>
+                      ) : (
+                        <span className="text-gray-700">—</span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-[10px] text-amber-200/60 mt-2">
-                    Estos códigos no están cargados como productos. Importalos primero desde "Importar".
-                  </p>
-                </div>
-              )}
-
-              {totals.valueAdded > 0 && updateMode === "ADD" && (
-                <div className="text-xs text-gray-500 text-right">
-                  Valor de la carga al costo: <strong className="text-gray-300">{formatCurrency(totals.valueAdded)}</strong>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ── RESULT ─────────────────────────────────────────────────────── */}
-          {step === "result" && result && (
-            <div className="space-y-3 py-4">
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 rounded-full bg-emerald-900/40 flex items-center justify-center mx-auto">
-                  <CheckCircle size={32} className="text-emerald-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white">¡Stock actualizado!</h3>
-                <p className="text-gray-400 text-sm">
-                  {result.updated} producto{result.updated === 1 ? "" : "s"} actualizado
-                  {result.updated === 1 ? "" : "s"}
-                  {result.stockMovements > 0 && ` · ${result.stockMovements} movimientos de stock registrados`}
-                </p>
-              </div>
+                )
+              })}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-2 p-5 border-t border-gray-800">
-          {step === "input" && (
-            <>
-              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium">
-                Cancelar
-              </button>
+        {/* Footer with summary + save */}
+        <div className="border-t border-gray-800 p-4 space-y-3">
+          {editedCount > 0 && (
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="Etiqueta para esta carga (opcional, ej: 'Conteo 20/04')"
+                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-100 placeholder-gray-600 focus:outline-none focus:border-accent"
+              />
               <button
-                onClick={handlePreview}
-                disabled={previewing || (inputType === "paste" ? parseLines().length === 0 : !file)}
-                className="flex-1 py-2.5 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-sm font-semibold flex items-center justify-center gap-2"
+                onClick={reset}
+                className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1 rounded transition flex items-center gap-1"
+                title="Descartar cambios"
               >
-                {previewing ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
-                {previewing ? "Procesando..." : "Previsualizar"}
+                <RotateCcw size={12} /> Descartar
               </button>
-            </>
+            </div>
           )}
-          {step === "review" && (
-            <>
-              <button
-                onClick={() => setStep("input")}
-                className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium flex items-center gap-1.5"
-              >
-                <ArrowLeft size={14} /> Volver
-              </button>
-              <button
-                onClick={handleCommit}
-                disabled={committing || preview!.matched.length === 0}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold flex items-center justify-center gap-2"
-              >
-                {committing ? <Loader2 size={15} className="animate-spin" /> : <PackagePlus size={15} />}
-                {committing ? "Aplicando..." : `Aplicar a ${preview!.matched.length} productos`}
-              </button>
-            </>
-          )}
-          {step === "result" && (
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 text-sm">
+              {editedCount > 0 ? (
+                <span className="text-emerald-300 flex items-center gap-1.5">
+                  <CheckCircle size={14} />
+                  <strong>{editedCount}</strong> producto{editedCount === 1 ? "" : "s"} con cambios
+                </span>
+              ) : (
+                <span className="text-gray-500">Editá la cantidad de los productos arriba</span>
+              )}
+            </div>
             <button
-              onClick={onDone}
-              className="w-full py-2.5 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-semibold"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition"
             >
-              Listo
+              Cancelar
             </button>
-          )}
+            <button
+              onClick={handleSave}
+              disabled={saving || editedCount === 0}
+              className="px-5 py-2.5 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-semibold transition flex items-center gap-2"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {saving ? "Guardando..." : `Guardar ${editedCount > 0 ? editedCount : ""} cambios`}
+            </button>
+          </div>
         </div>
       </div>
     </div>
