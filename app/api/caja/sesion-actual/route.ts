@@ -49,6 +49,7 @@ export async function GET() {
       salesTotal: salesTotal._sum.total ?? 0,
       multiCash,
       openSessions,
+      ownedByCurrentUser: cashSession.userId === session.user.id,
     })
   } catch (err) {
     console.error("[GET /api/caja/sesion-actual]", err)

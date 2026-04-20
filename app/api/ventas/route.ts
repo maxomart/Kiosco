@@ -82,12 +82,55 @@ export async function POST(req: NextRequest) {
   } else if (data.paymentMethod === "CUENTA_CORRIENTE") {
     return NextResponse.json({ error: "Para cuenta corriente debés seleccionar un cliente" }, { status: 400 })
   }
-  if (data.cashSessionId) {
-    const cs = await db.cashSession.findUnique({ where: { id: data.cashSessionId }, select: { tenantId: true } })
+  // ──────────────────────────────────────────────────────────────────────
+  //   Toda venta requiere una caja ABIERTA (regla de negocio del usuario).
+  //   Si no se mandó cashSessionId, intentamos resolver la caja abierta
+  //   del cajero actual (multi-cash) o cualquier abierta del tenant
+  //   (single-cash). Si no hay ninguna abierta → error 409.
+  // ──────────────────────────────────────────────────────────────────────
+  let resolvedSessionId: string | null = data.cashSessionId ?? null
+
+  if (resolvedSessionId) {
+    const cs = await db.cashSession.findUnique({
+      where: { id: resolvedSessionId },
+      select: { tenantId: true, status: true, userId: true },
+    })
     if (!cs || cs.tenantId !== tenantId) {
       return NextResponse.json({ error: "Sesión de caja inválida" }, { status: 400 })
     }
+    if (cs.status !== "OPEN") {
+      // The session the client knew about was closed (race condition with another cashier).
+      // Try to find a fallback open session; if none, block the sale.
+      resolvedSessionId = null
+    }
   }
+
+  if (!resolvedSessionId) {
+    // Look up any OPEN session for this tenant — prefer the cashier's own.
+    const own = await db.cashSession.findFirst({
+      where: { tenantId: tenantId!, status: "OPEN", userId: userId! },
+      select: { id: true },
+    })
+    if (own) {
+      resolvedSessionId = own.id
+    } else {
+      const any = await db.cashSession.findFirst({
+        where: { tenantId: tenantId!, status: "OPEN" },
+        select: { id: true },
+      })
+      if (any) resolvedSessionId = any.id
+    }
+  }
+
+  if (!resolvedSessionId) {
+    return NextResponse.json({
+      error: "No hay caja abierta. Abrí la caja antes de hacer ventas.",
+      code: "CASH_SESSION_REQUIRED",
+    }, { status: 409 })
+  }
+
+  // From here on, treat the resolved session as authoritative
+  data.cashSessionId = resolvedSessionId
 
   try {
     const sale = await db.$transaction(async (tx) => {

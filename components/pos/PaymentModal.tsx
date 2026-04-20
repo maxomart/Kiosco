@@ -180,6 +180,11 @@ export function PaymentModal({ onClose }: Props) {
             await queueOffline(payload)
             return
           }
+          // Cash session required (409 from /api/ventas)
+          if (data?.code === "CASH_SESSION_REQUIRED") {
+            toast.error("No hay caja abierta. Cerrá este modal y abrila desde Caja.", { duration: 5000 })
+            return
+          }
           const detail = data?.details?.fieldErrors
             ? Object.entries(data.details.fieldErrors).map(([k, v]) => `${k}: ${(v as string[]).join(", ")}`).join(" | ")
             : data?.error ?? "Error al procesar la venta"

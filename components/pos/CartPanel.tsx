@@ -5,9 +5,15 @@ import { usePOSStore } from "@/store/posStore"
 import { formatCurrency, cn } from "@/lib/utils"
 import { useState } from "react"
 
-interface Props { onPay: () => void }
+interface Props {
+  onPay: () => void
+  /** When true, the Cobrar button is disabled (e.g., no open cash session) */
+  payDisabled?: boolean
+  /** Tooltip / explanation when disabled */
+  payDisabledReason?: string
+}
 
-export function CartPanel({ onPay }: Props) {
+export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Props) {
   const { cart, removeFromCart, updateQuantity, updateDiscount, setGlobalDiscount,
     discount, subtotal, discountAmount, total } = usePOSStore()
   const [editingDiscount, setEditingDiscount] = useState<string | null>(null)
@@ -113,10 +119,11 @@ export function CartPanel({ onPay }: Props) {
         </div>
         <button
           onClick={onPay}
-          disabled={cart.length === 0}
-          className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all active:scale-95 text-sm mt-2"
+          disabled={cart.length === 0 || payDisabled}
+          title={payDisabledReason}
+          className="w-full bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-accent-foreground font-semibold py-3 rounded-xl transition-all active:scale-95 text-sm mt-2"
         >
-          Cobrar {cart.length > 0 && formatCurrency(total())}
+          {payDisabled ? (payDisabledReason ?? "No disponible") : <>Cobrar {cart.length > 0 && formatCurrency(total())}</>}
         </button>
       </div>
     </div>

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Search, Barcode, ShoppingCart } from "lucide-react"
+import Link from "next/link"
+import { Search, Barcode, ShoppingCart, DollarSign, AlertTriangle, ArrowRight } from "lucide-react"
 import toast from "react-hot-toast"
 import { usePOSStore } from "@/store/posStore"
 import { CartPanel } from "@/components/pos/CartPanel"
@@ -28,7 +29,50 @@ export default function POSPage() {
   const [lastKeyTime, setLastKeyTime] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
   const debouncedQuery = useDebounce(query, 280)
-  const { addToCart, cart } = usePOSStore()
+  const { addToCart, cart, setCashSession } = usePOSStore()
+
+  // ── Caja abierta? ─────────────────────────────────────────────────────
+  // El POS sólo permite vender si hay una caja ABIERTA (regla del usuario).
+  // Polleamos al cargar y cada 60s por si otro cajero la cierra desde otro
+  // dispositivo. El backend igual valida en /api/ventas POST como segunda red.
+  const [cashOpen, setCashOpen] = useState<{
+    id: string
+    openingBalance: number
+    openedByMe: boolean
+    sinceMinutes: number
+  } | null>(null)
+  const [cashLoading, setCashLoading] = useState(true)
+
+  const checkCash = useCallback(async () => {
+    try {
+      const res = await fetch("/api/caja/sesion-actual", { cache: "no-store" })
+      if (res.ok) {
+        const d = await res.json()
+        const s = d.session
+        if (s) {
+          const since = Math.floor((Date.now() - new Date(s.createdAt).getTime()) / 60000)
+          setCashOpen({
+            id: s.id,
+            openingBalance: Number(s.openingBalance ?? 0),
+            openedByMe: !!d.ownedByCurrentUser,
+            sinceMinutes: since,
+          })
+          setCashSession(s.id)
+        } else {
+          setCashOpen(null)
+          setCashSession(null)
+        }
+      }
+    } finally {
+      setCashLoading(false)
+    }
+  }, [setCashSession])
+
+  useEffect(() => {
+    checkCash()
+    const t = setInterval(checkCash, 60000)
+    return () => clearInterval(t)
+  }, [checkCash])
 
   // Cache full product catalog on mount so search/scanner work offline.
   // Best-effort — if we're offline at first load the SW serves the
@@ -112,6 +156,38 @@ export default function POSPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
       <OfflineBanner />
+
+      {/* Banner de caja — bloquea visualmente la venta cuando no hay caja abierta */}
+      {!cashLoading && !cashOpen && (
+        <div className="m-3 rounded-xl border border-amber-500/40 bg-amber-900/20 px-4 py-3 flex items-center gap-3 animate-in slide-in-from-top-2 duration-200">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-200">No hay caja abierta</p>
+            <p className="text-xs text-amber-300/80 mt-0.5">
+              Antes de vender tenés que abrir la caja con el monto inicial. Cada venta queda asociada a una caja.
+            </p>
+          </div>
+          <Link
+            href="/caja"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-amber-950 text-sm font-semibold px-4 py-2 rounded-lg transition"
+          >
+            <DollarSign className="w-4 h-4" /> Abrir caja
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
+
+      {!cashLoading && cashOpen && (
+        <div className="mx-3 mt-3 flex items-center gap-2 text-xs text-emerald-300/80">
+          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+          Caja abierta hace {cashOpen.sinceMinutes < 60 ? `${cashOpen.sinceMinutes}min` : `${Math.floor(cashOpen.sinceMinutes / 60)}h`} ·
+          inicio {formatCurrency(cashOpen.openingBalance)}
+          {!cashOpen.openedByMe && <span className="text-amber-400">· abierta por otro cajero</span>}
+        </div>
+      )}
+
       <div className="flex flex-1 gap-4 overflow-hidden">
       {/* LEFT: Search + Products */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -187,10 +263,20 @@ export default function POSPage() {
 
       {/* RIGHT: Cart */}
       <div className="w-80 xl:w-96 flex-shrink-0 flex flex-col">
-        <CartPanel onPay={() => setShowPayment(true)} />
+        <CartPanel
+          onPay={() => {
+            if (!cashOpen) {
+              toast.error("Abrí la caja antes de cobrar")
+              return
+            }
+            setShowPayment(true)
+          }}
+          payDisabled={!cashOpen}
+          payDisabledReason={!cashOpen ? "Abrí la caja primero" : undefined}
+        />
       </div>
 
-      {showPayment && <PaymentModal onClose={() => setShowPayment(false)} />}
+      {showPayment && cashOpen && <PaymentModal onClose={() => setShowPayment(false)} />}
       </div>
     </div>
   )
