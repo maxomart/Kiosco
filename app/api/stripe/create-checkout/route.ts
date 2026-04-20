@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionTenant } from "@/lib/tenant"
-import Stripe from "stripe"
+import { getStripe } from "@/lib/stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
-
-const PRICE_IDS: Record<string, string> = {
-  STARTER: process.env.STRIPE_PRICE_STARTER!,
-  PROFESSIONAL: process.env.STRIPE_PRICE_PROFESSIONAL!,
-  BUSINESS: process.env.STRIPE_PRICE_BUSINESS!,
-}
+export const dynamic = "force-dynamic"
 
 export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
+  const PRICE_IDS: Record<string, string> = {
+    STARTER: process.env.STRIPE_PRICE_STARTER ?? "",
+    PROFESSIONAL: process.env.STRIPE_PRICE_PROFESSIONAL ?? "",
+    BUSINESS: process.env.STRIPE_PRICE_BUSINESS ?? "",
+  }
+
   const body = await req.json()
   const { plan } = body
   if (!PRICE_IDS[plan]) return NextResponse.json({ error: "Plan inválido" }, { status: 400 })
 
+  const stripe = getStripe()
   const { db } = await import("@/lib/db")
   const tenant = await db.tenant.findUnique({
     where: { id: tenantId! },

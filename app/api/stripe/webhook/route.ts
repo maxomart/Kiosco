@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
-import Stripe from "stripe"
+import type Stripe from "stripe"
 import { db } from "@/lib/db"
+import { getStripe } from "@/lib/stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" })
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
-
-
-const PLAN_FROM_PRICE: Record<string, string> = {
-  [process.env.STRIPE_PRICE_STARTER ?? ""]: "STARTER",
-  [process.env.STRIPE_PRICE_PROFESSIONAL ?? ""]: "PROFESSIONAL",
-  [process.env.STRIPE_PRICE_BUSINESS ?? ""]: "BUSINESS",
-}
+export const dynamic = "force-dynamic"
 
 export async function POST(req: NextRequest) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  if (!webhookSecret) return NextResponse.json({ error: "Webhook no configurado" }, { status: 500 })
+
+  const PLAN_FROM_PRICE: Record<string, string> = {
+    [process.env.STRIPE_PRICE_STARTER ?? ""]: "STARTER",
+    [process.env.STRIPE_PRICE_PROFESSIONAL ?? ""]: "PROFESSIONAL",
+    [process.env.STRIPE_PRICE_BUSINESS ?? ""]: "BUSINESS",
+  }
+
+  const stripe = getStripe()
   const body = await req.text()
   const sig = req.headers.get("stripe-signature")
   if (!sig) return NextResponse.json({ error: "Missing signature" }, { status: 400 })
@@ -55,8 +58,8 @@ export async function POST(req: NextRequest) {
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice
         const customerId = invoice.customer as string
-        const sub = invoice.subscription
-          ? await stripe.subscriptions.retrieve(invoice.subscription as string)
+        const sub = (invoice as any).subscription
+          ? await stripe.subscriptions.retrieve((invoice as any).subscription as string)
           : null
         if (!sub) break
         const tenantId = sub.metadata?.tenantId
@@ -69,32 +72,31 @@ export async function POST(req: NextRequest) {
             stripeCustomerId: customerId,
             stripeSubscriptionId: sub.id,
             status: "ACTIVE",
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
           },
           update: {
             plan, status: "ACTIVE",
-            currentPeriodEnd: new Date(sub.current_period_end * 1000),
+            currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
           },
         })
-        // Create invoice record
         await db.invoice.create({
           data: {
             tenantId,
-            stripeInvoiceId: invoice.id,
+            stripeInvoiceId: invoice.id!,
             amount: invoice.amount_paid / 100,
             currency: invoice.currency.toUpperCase(),
             status: "PAID",
             paidAt: new Date(invoice.status_transitions.paid_at! * 1000),
             invoiceUrl: invoice.hosted_invoice_url,
           },
-        }).catch(() => {}) // ignore duplicates
+        }).catch(() => {})
         break
       }
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice
-        if (!invoice.subscription) break
-        const sub = await stripe.subscriptions.retrieve(invoice.subscription as string)
+        if (!(invoice as any).subscription) break
+        const sub = await stripe.subscriptions.retrieve((invoice as any).subscription as string)
         const tenantId = sub.metadata?.tenantId
         if (!tenantId) break
         await db.subscription.updateMany({ where: { tenantId }, data: { status: "PAST_DUE" } })
@@ -123,7 +125,7 @@ export async function POST(req: NextRequest) {
           : "CANCELLED"
         await db.subscription.updateMany({
           where: { tenantId },
-          data: { plan, status, currentPeriodEnd: new Date(sub.current_period_end * 1000) },
+          data: { plan, status, currentPeriodEnd: new Date((sub as any).current_period_end * 1000) },
         })
         break
       }
