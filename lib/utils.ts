@@ -109,12 +109,34 @@ export const PLAN_LIMITS = {
 
 export type Plan = keyof typeof PLAN_LIMITS
 
+// Native ARS pricing — primary source of truth.
+// Update these as inflation moves. Backend MercadoPago Suscripciones uses ARS;
+// Stripe legacy paths still consume the USD column (kept for international fallback).
+export const PLAN_PRICES_ARS: Record<Plan, number> = {
+  FREE: 0,
+  STARTER: 9999,        // Básico — anchor at "10 lucas"
+  PROFESSIONAL: 24900,  // Pro
+  BUSINESS: 59900,      // Negocio
+  ENTERPRISE: 0,        // Custom — talk to sales
+}
+
+// USD column kept for Stripe + international display ("≈ USD X").
+// Recompute periodically: priceARS / blue-chip-rate.
 export const PLAN_PRICES_USD: Record<Plan, number> = {
   FREE: 0,
-  STARTER: 25,
-  PROFESSIONAL: 60,
-  BUSINESS: 150,
+  STARTER: 10,
+  PROFESSIONAL: 25,
+  BUSINESS: 60,
   ENTERPRISE: 0, // custom
+}
+
+// Spanish-natural plan labels for the UI.
+export const PLAN_LABELS_AR: Record<Plan, string> = {
+  FREE: "Gratis",
+  STARTER: "Básico",
+  PROFESSIONAL: "Profesional",
+  BUSINESS: "Negocio",
+  ENTERPRISE: "Empresa",
 }
 
 export const PLAN_LABELS: Record<Plan, string> = {

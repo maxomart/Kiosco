@@ -359,6 +359,11 @@ model Subscription {
   billingCycle         String    @default("MONTHLY")
   stripeCustomerId     String?
   stripeSubscriptionId String?
+  // ─── MercadoPago Suscripciones (billing en ARS) ─────────────────────
+  mpPreapprovalId      String?    // Preapproval ID returned by MP
+  mpStatus             String?    // pending | authorized | paused | cancelled
+  paymentProvider      String?    // "stripe" | "mercadopago"
+  // ────────────────────────────────────────────────────────────────────
   currentPeriodStart   DateTime?
   currentPeriodEnd     DateTime?
   cancelledAt          DateTime?

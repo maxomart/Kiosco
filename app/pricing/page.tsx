@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { Check, X, Sparkles, ShoppingBag, ArrowRight, Zap, Crown, Building2 } from "lucide-react"
 
-// Approximate ARS conversion shown next to USD price for local context.
-// We don't auto-fetch FX rates — just give shoppers a ballpark. Edit anytime.
-const USD_TO_ARS_DISPLAY = 1100
+// Native ARS pricing — primary source of truth. USD shown as secondary reference.
+// Edit lib/utils.ts → PLAN_PRICES_ARS for the canonical numbers.
+import { PLAN_PRICES_ARS, PLAN_PRICES_USD } from "@/lib/utils"
 
 const PLANS = [
   {
@@ -43,8 +43,8 @@ const PLANS = [
     id: "STARTER",
     name: "Starter",
     tagline: "Para tu primer kiosco / almacén",
-    priceUSD: 25,
-    priceARS: Math.round(25 * USD_TO_ARS_DISPLAY),
+    priceUSD: PLAN_PRICES_USD.STARTER,
+    priceARS: PLAN_PRICES_ARS.STARTER,
     cta: "Empezar prueba",
     href: "/signup",
     icon: Zap,
@@ -75,8 +75,8 @@ const PLANS = [
     id: "PROFESSIONAL",
     name: "Professional",
     tagline: "Para crecer y profesionalizarte",
-    priceUSD: 60,
-    priceARS: Math.round(60 * USD_TO_ARS_DISPLAY),
+    priceUSD: PLAN_PRICES_USD.PROFESSIONAL,
+    priceARS: PLAN_PRICES_ARS.PROFESSIONAL,
     cta: "Empezar prueba",
     href: "/signup",
     icon: Crown,
@@ -104,8 +104,8 @@ const PLANS = [
     id: "BUSINESS",
     name: "Business",
     tagline: "Para cadenas y operaciones grandes",
-    priceUSD: 150,
-    priceARS: Math.round(150 * USD_TO_ARS_DISPLAY),
+    priceUSD: PLAN_PRICES_USD.BUSINESS,
+    priceARS: PLAN_PRICES_ARS.BUSINESS,
     cta: "Empezar prueba",
     href: "/signup",
     icon: Building2,
@@ -185,7 +185,7 @@ const FAQ = [
   },
   {
     q: "¿El precio es en pesos o en dólares?",
-    a: "El precio base es en USD para protegerte de la inflación. Te cobramos en tu tarjeta el equivalente en pesos al tipo de cambio del día.",
+    a: "Los precios son en pesos argentinos. Cobramos por MercadoPago (cualquier tarjeta + dinero en cuenta MP) o por Stripe (tarjeta internacional). Sin cargos ocultos. Revisamos los precios cada 6 meses según inflación.",
   },
 ]
 
@@ -226,7 +226,7 @@ export default function PricingPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/15 via-transparent to-pink-900/10 pointer-events-none" />
         <div className="relative max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs mb-5">
-            <Sparkles size={12} /> Precios en USD para protegerte de la inflación
+            <Sparkles size={12} /> Precios en pesos · Pagás con MercadoPago o tarjeta
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-5">
             Planes para cada etapa <br className="hidden md:block" />
@@ -262,16 +262,16 @@ export default function PricingPage() {
                 <p className="text-sm text-gray-500 mb-5 min-h-[2.5rem]">{plan.tagline}</p>
 
                 <div className="mb-5">
-                  {plan.priceUSD === 0 ? (
+                  {plan.priceARS === 0 ? (
                     <p className="text-3xl font-bold">Gratis</p>
                   ) : (
                     <>
                       <p className="text-3xl font-bold">
-                        USD {plan.priceUSD}
-                        <span className="text-sm font-normal text-gray-500">/mes</span>
+                        ${formatARS(plan.priceARS)}
+                        <span className="text-sm font-normal text-gray-500"> ARS/mes</span>
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        ≈ ${formatARS(plan.priceARS)} ARS al cambio actual
+                        ≈ USD {plan.priceUSD} · Sin IVA · Cancelás cuando quieras
                       </p>
                     </>
                   )}
