@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth"
 import Sidebar from "@/components/shared/Sidebar"
 import Header from "@/components/shared/Header"
 import { ThemeProvider } from "@/components/theme/ThemeProvider"
+import { SurfaceThemeProvider } from "@/components/theme/SurfaceThemeProvider"
+import { SurfaceCustomizer } from "@/components/theme/SurfaceCustomizer"
 import { AssistantWidget } from "@/components/ai/AssistantWidget"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
@@ -62,16 +64,19 @@ export default async function DashboardLayout({
 
   return (
     <ThemeProvider initialAccent={initialAccent} initialMode={initialMode}>
-      <div className="flex h-screen bg-gray-950 overflow-hidden">
-        <Sidebar user={session.user} plan={plan as any} logoUrl={logoUrl} brandName={brandName} />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <Header user={session.user} plan={plan as any} />
-          <main className="flex-1 overflow-auto p-4 lg:p-6">
-            {children}
-          </main>
+      <SurfaceThemeProvider>
+        <div className="flex h-screen app-surface overflow-hidden">
+          <Sidebar user={session.user} plan={plan as any} logoUrl={logoUrl} brandName={brandName} />
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-10">
+            <Header user={session.user} plan={plan as any} />
+            <main className="flex-1 overflow-auto p-4 lg:p-6">
+              {children}
+            </main>
+          </div>
+          {aiEnabled && <AssistantWidget plan={plan as any} />}
+          <SurfaceCustomizer />
         </div>
-        {aiEnabled && <AssistantWidget plan={plan as any} />}
-      </div>
+      </SurfaceThemeProvider>
     </ThemeProvider>
   )
 }

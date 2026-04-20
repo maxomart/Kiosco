@@ -36,6 +36,15 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Surface gradient stops — editables por el tenant via SurfaceThemeProvider */
+  --surface-app-from: #050510;
+  --surface-app-via: #0a0a18;
+  --surface-app-to: #07071a;
+  --surface-sidebar-from: #0b0b14;
+  --surface-sidebar-via: #0f0f1a;
+  --surface-sidebar-to: #070711;
+  --surface-glow-intensity: 1;
 }
 
 /* Map tokens into Tailwind v4's @theme so utilities like bg-accent work */
@@ -208,9 +217,9 @@
 
 .app-surface {
   background:
-    radial-gradient(1200px 600px at 90% -10%, color-mix(in oklab, var(--color-accent) 18%, transparent), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, color-mix(in oklab, var(--color-accent) 10%, transparent), transparent 55%),
-    linear-gradient(160deg, #050510 0%, #0a0a18 50%, #07071a 100%);
+    radial-gradient(1200px 600px at 90% -10%, color-mix(in oklab, var(--color-accent) calc(18% * var(--surface-glow-intensity, 1)), transparent), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, color-mix(in oklab, var(--color-accent) calc(10% * var(--surface-glow-intensity, 1)), transparent), transparent 55%),
+    linear-gradient(160deg, var(--surface-app-from) 0%, var(--surface-app-via) 50%, var(--surface-app-to) 100%);
   position: relative;
 }
 .app-surface::before {
@@ -221,6 +230,19 @@
   background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
   background-size: 24px 24px;
   mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+}
+
+.sidebar-surface {
+  background: linear-gradient(180deg, var(--surface-sidebar-from) 0%, var(--surface-sidebar-via) 55%, var(--surface-sidebar-to) 100%);
+  position: relative;
+}
+.sidebar-surface::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--color-accent) 20%, transparent) 30%, color-mix(in oklab, var(--color-accent) 20%, transparent) 70%, transparent);
 }
 
 .card-glow {

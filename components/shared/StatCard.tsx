@@ -65,7 +65,7 @@ export default function StatCard({
   return (
     <div
       className={cn(
-        "bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors",
+        "card-glow rounded-xl p-5 transition-colors",
         className
       )}
     >
