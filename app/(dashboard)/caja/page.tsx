@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { DollarSign, Lock, Unlock, AlertCircle, CheckCircle, History, TrendingUp } from "lucide-react"
+import { DollarSign, Lock, Unlock, AlertCircle, CheckCircle, History, TrendingUp, Users } from "lucide-react"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 
 interface CashSession {
@@ -21,6 +21,8 @@ export default function CajaPage() {
   const [current, setCurrent] = useState<CashSession | null>(null)
   const [salesTotal, setSalesTotal] = useState(0)
   const [sessions, setSessions] = useState<CashSession[]>([])
+  const [openSessions, setOpenSessions] = useState<CashSession[]>([])
+  const [multiCash, setMultiCash] = useState(false)
   const [loading, setLoading] = useState(true)
   const [openAmount, setOpenAmount] = useState("")
   const [closeAmount, setCloseAmount] = useState("")
@@ -38,6 +40,8 @@ export default function CajaPage() {
       const d = await curRes.json()
       setCurrent(d.session)
       setSalesTotal(Number(d.salesTotal ?? 0))
+      setMultiCash(!!d.multiCash)
+      setOpenSessions(d.openSessions ?? [])
     }
     if (listRes.ok) {
       const d = await listRes.json()
@@ -117,6 +121,36 @@ export default function CajaPage() {
 
       {view === "current" ? (
         <div className="max-w-2xl space-y-6">
+          {multiCash && openSessions.length > 0 && (
+            <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Users size={16} className="text-purple-400" />
+                <h3 className="text-white font-medium text-sm">
+                  Cajas abiertas ahora ({openSessions.length})
+                </h3>
+                <span className="ml-auto text-xs text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-full">
+                  Multi-caja
+                </span>
+              </div>
+              <ul className="space-y-1.5">
+                {openSessions.map(s => (
+                  <li key={s.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                      <span className="text-gray-200">{s.user?.name || "—"}</span>
+                      {current && s.id === current.id && (
+                        <span className="text-xs text-purple-300">(la tuya)</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span>Apertura {formatCurrency(s.openingBalance)}</span>
+                      <span>· {formatDateTime(s.createdAt)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {!current ? (
             /* Open cash session */
             <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">

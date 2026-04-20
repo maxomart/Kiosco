@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
+import { getTenantPlan } from "@/lib/plan-guard"
+import { hasFeature } from "@/lib/permissions"
 
 const openSchema = z.object({ openingBalance: z.number().min(0) })
 
@@ -38,8 +40,21 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Monto inicial requerido" }, { status: 400 })
 
   try {
-    const open = await db.cashSession.findFirst({ where: { tenantId: tenantId!, status: "OPEN" } })
-    if (open) return NextResponse.json({ error: "Ya hay una caja abierta", session: open }, { status: 409 })
+    const plan = await getTenantPlan(tenantId!)
+    const multiCash = hasFeature(plan, "feature:multi_cash")
+
+    if (!multiCash) {
+      // Single-cash plans: only one OPEN session allowed at a time.
+      const open = await db.cashSession.findFirst({ where: { tenantId: tenantId!, status: "OPEN" } })
+      if (open) return NextResponse.json({ error: "Ya hay una caja abierta", session: open }, { status: 409 })
+    } else {
+      // PRO+ multi-cash: only block if THIS user already has one open
+      // (a single user can't open two simultaneously, but other users can).
+      const ownOpen = await db.cashSession.findFirst({
+        where: { tenantId: tenantId!, status: "OPEN", userId: session.user.id! },
+      })
+      if (ownOpen) return NextResponse.json({ error: "Ya tenés una caja abierta", session: ownOpen }, { status: 409 })
+    }
 
     const cashSession = await db.cashSession.create({ data: { openingBalance: parsed.data.openingBalance, tenantId: tenantId!, userId: session.user.id! } })
     return NextResponse.json({ session: cashSession }, { status: 201 })

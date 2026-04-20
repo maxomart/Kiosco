@@ -103,3 +103,55 @@ export async function sendLowStockAlert(
   const body = `🔔 *${tenantName}* — alerta de stock bajo:\n\n${lines.join("\n")}${more}\n\nReponé pronto para no perder ventas.`
   return sendWhatsApp(toRaw, body)
 }
+
+/**
+ * Sends a friendly end-of-day summary in Spanish (Argentina) using the same
+ * BusinessContext the AI assistant consumes. Designed to be invoked from the
+ * `/api/cron/daily-summary` job once per day (~22:00 local).
+ */
+import type { BusinessContext } from "@/lib/ai-context"
+
+export async function sendDailySummary(
+  toRaw: string,
+  ctx: BusinessContext,
+): Promise<SendResult> {
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 0,
+    }).format(n)
+
+  const diff = ctx.today.revenue - ctx.yesterday.revenue
+  const diffPct = ctx.yesterday.revenue > 0
+    ? Math.round((diff / ctx.yesterday.revenue) * 100)
+    : null
+  const arrow = diff >= 0 ? "📈" : "📉"
+  const diffLine = diffPct !== null
+    ? `${arrow} ${diff >= 0 ? "+" : ""}${fmt(diff)} (${diff >= 0 ? "+" : ""}${diffPct}%) vs ayer`
+    : `${arrow} ${fmt(diff)} vs ayer`
+
+  const top = ctx.topSellers7d[0]
+  const topLine = top
+    ? `🏆 *Más vendido (7d):* ${top.name} — ${top.quantitySold} u.`
+    : `🏆 *Más vendido:* sin datos suficientes`
+
+  const lowStockCount = ctx.inventory.lowStock.length + ctx.inventory.outOfStock.length
+  const stockLine = lowStockCount > 0
+    ? `⚠️ *Stock bajo:* ${lowStockCount} producto${lowStockCount === 1 ? "" : "s"} requieren atención`
+    : `✅ *Stock:* todo OK`
+
+  const body =
+`📊 *${ctx.tenantName}* — resumen del día
+
+💰 *Ventas hoy:* ${ctx.today.sales} · ${fmt(ctx.today.revenue)}
+🎟️ *Ticket promedio:* ${fmt(ctx.today.avgTicket)}
+${diffLine}
+
+${topLine}
+${stockLine}
+
+¡Buen cierre! 🚀`
+
+  return sendWhatsApp(toRaw, body)
+}

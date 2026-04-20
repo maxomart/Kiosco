@@ -27,9 +27,31 @@ model Tenant {
   categories  Category[]
   config      TenantConfig?
   subscription Subscription?
+  apiKeys     ApiKey[]
 
   @@index([active])
   @@index([createdAt])
+}
+
+// ============= API KEYS (BUSINESS plan) =============
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String                                   // human-friendly label
+  prefix      String                                   // first 8 chars for display
+  hashedKey   String    @unique                        // sha256 of the full key
+  scopes      String    @default("read")               // comma-separated: read,write
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?                                // optional rotation
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User   @relation("ApiKeyCreatedBy", fields: [createdById], references: [id])
+
+  @@index([tenantId])
+  @@index([prefix])
 }
 
 // ============= AUTH & USERS =============
@@ -51,6 +73,7 @@ model User {
   stockMovements StockMovement[]
   auditLogs      AuditLog[]
   cashSessions   CashSession[]
+  apiKeysCreated ApiKey[]        @relation("ApiKeyCreatedBy")
 
   @@index([email])
   @@index([tenantId])
@@ -365,6 +388,11 @@ model TenantConfig {
   whatsappPhone           String?  // E.164 like "+5491112345678"
   whatsappLowStockAlerts  Boolean  @default(false)
   whatsappDailySummary    Boolean  @default(false)
+
+  // Loyalty program settings (PROFESSIONAL+ feature)
+  loyaltyEnabled          Boolean  @default(false)
+  loyaltyPointsPerPeso    Decimal  @default(1)    @db.Decimal(8, 4)  // 1 = 1 point per ARS spent
+  loyaltyPointValue       Decimal  @default(1)    @db.Decimal(8, 4)  // 1 = each point worth $1 ARS
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
