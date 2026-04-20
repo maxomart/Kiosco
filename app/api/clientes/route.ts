@@ -9,8 +9,32 @@ export async function GET() {
   const { error, tenantId } = await getSessionTenant()
   if (error) return error
   try {
-    const clients = await db.client.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" } })
-    return NextResponse.json({ clients })
+    const clients = await db.client.findMany({
+      where: { active: true, ...(tenantId ? { tenantId } : {}) },
+      orderBy: { name: "asc" },
+      include: { _count: { select: { sales: true } } },
+    })
+
+    // Aggregate totalPurchases per client (sum of sale.total)
+    const ids = clients.map((c: { id: string }) => c.id)
+    const sums = ids.length
+      ? await db.sale.groupBy({
+          by: ["clientId"],
+          where: { tenantId: tenantId!, clientId: { in: ids }, status: "COMPLETED" },
+          _sum: { total: true },
+        })
+      : []
+    const sumByClient = new Map<string, number>()
+    for (const s of sums) {
+      if (s.clientId) sumByClient.set(s.clientId, Number(s._sum.total ?? 0))
+    }
+
+    return NextResponse.json({
+      clients: clients.map((c: any) => ({
+        ...c,
+        totalPurchases: sumByClient.get(c.id) ?? 0,
+      })),
+    })
   } catch (err) {
     console.error("[GET /api/clientes]", err)
     return NextResponse.json({ error: "Error al obtener clientes" }, { status: 500 })

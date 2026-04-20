@@ -9,7 +9,15 @@ export async function GET() {
   const { error, tenantId } = await getSessionTenant()
   if (error) return error
   try {
-    const sessions = await db.cashSession.findMany({ where: { ...(tenantId ? { tenantId } : {}) }, orderBy: { createdAt: "desc" }, take: 20, include: { user: { select: { name: true } } } })
+    const sessions = await db.cashSession.findMany({
+      where: { ...(tenantId ? { tenantId } : {}) },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: {
+        user: { select: { name: true } },
+        _count: { select: { sales: true } },
+      },
+    })
     return NextResponse.json({ sessions })
   } catch (err) {
     console.error("[GET /api/caja]", err)
