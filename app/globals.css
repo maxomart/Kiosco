@@ -1,23 +1,71 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   DESIGN TOKENS — RetailAR Design System
+   ----------------------------------------------------------------------------
+   Source of truth for colors, easing, animations. Tenants can override
+   --color-accent (and friends) at runtime via the ThemeProvider.
+   ========================================================================== */
+
+:root {
+  /* Surfaces (dark, default) */
+  --color-bg-base: #030712;
+  --color-bg-surface: #0b1220;
+  --color-bg-elevated: #111827;
+  --color-border-subtle: #1f2937;
+  --color-border-strong: #374151;
+
+  /* Text */
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #d1d5db;
+  --color-text-muted: #9ca3af;
+
+  /* Accent — overridable per tenant. Default purple-600. */
+  --color-accent: #8b5cf6;
+  --color-accent-hover: #7c3aed;
+  --color-accent-foreground: #ffffff;
+  --color-accent-soft: rgba(139, 92, 246, 0.14);
+  --color-accent-ring: rgba(139, 92, 246, 0.45);
+
+  /* Semantic */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Easing curves */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Map tokens into Tailwind v4's @theme so utilities like bg-accent work */
 @theme {
   --color-gray-950: oklch(13% 0.01 261);
+
+  --color-bg-base: var(--color-bg-base);
+  --color-bg-surface: var(--color-bg-surface);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-strong);
+
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-accent-soft: var(--color-accent-soft);
+
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
 }
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --border: 214.3 31.8% 91.4%;
-  }
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-  }
   body {
-    background-color: #030712;
-    color: rgb(243 244 246);
+    background-color: var(--color-bg-base);
+    color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     font-family: var(--font-inter, system-ui, sans-serif);
   }
@@ -25,6 +73,13 @@
   ::-webkit-scrollbar-track { background: #111827; }
   ::-webkit-scrollbar-thumb { background: #374151; border-radius: 9999px; }
   ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+
+  /* Smooth focus rings using accent color */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
 @layer utilities {
@@ -33,6 +88,123 @@
   .bg-gray-950 { background-color: #030712; }
   .text-gray-950 { color: #030712; }
   .border-gray-950 { border-color: #030712; }
+
+  /* Accent color utilities (work alongside Tailwind's auto-generated ones) */
+  .bg-accent { background-color: var(--color-accent); }
+  .bg-accent-hover { background-color: var(--color-accent-hover); }
+  .bg-accent-soft { background-color: var(--color-accent-soft); }
+  .text-accent { color: var(--color-accent); }
+  .text-accent-foreground { color: var(--color-accent-foreground); }
+  .border-accent { border-color: var(--color-accent); }
+  .ring-accent { --tw-ring-color: var(--color-accent); }
+  .hover\:bg-accent:hover { background-color: var(--color-accent); }
+  .hover\:bg-accent-hover:hover { background-color: var(--color-accent-hover); }
+  .hover\:text-accent:hover { color: var(--color-accent); }
+  .hover\:border-accent:hover { border-color: var(--color-accent); }
+  .focus\:border-accent:focus { border-color: var(--color-accent); }
+  .focus\:ring-accent:focus { --tw-ring-color: var(--color-accent); }
+  .shadow-accent\/30 { box-shadow: 0 10px 25px -10px var(--color-accent-soft); }
+
+  /* tailwindcss-animate compatibility (matches what NotificationsBell uses) */
+  .animate-in {
+    animation-duration: var(--tw-animate-duration, 200ms);
+    animation-timing-function: var(--ease-out-expo);
+    animation-fill-mode: both;
+  }
+  .animate-out {
+    animation-duration: var(--tw-animate-duration, 150ms);
+    animation-timing-function: var(--ease-in-out-soft);
+    animation-fill-mode: both;
+  }
+  .fade-in { animation-name: fade-in; }
+  .fade-out { animation-name: fade-out; }
+  .zoom-in-75 { animation-name: zoom-in-75; }
+  .zoom-in-95 { animation-name: zoom-in-95; }
+  .zoom-out-95 { animation-name: zoom-out-95; }
+  .slide-in-from-top-2 { animation-name: slide-in-from-top-2; }
+  .slide-in-from-bottom-2 { animation-name: slide-in-from-bottom-2; }
+  .slide-in-from-left-2 { animation-name: slide-in-from-left-2; }
+  .slide-in-from-right-2 { animation-name: slide-in-from-right-2; }
+  .duration-150 { --tw-animate-duration: 150ms; animation-duration: 150ms; }
+  .duration-200 { --tw-animate-duration: 200ms; animation-duration: 200ms; }
+  .duration-300 { --tw-animate-duration: 300ms; animation-duration: 300ms; }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-bg-elevated) 0%,
+      var(--color-border-subtle) 50%,
+      var(--color-bg-elevated) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite linear;
+  }
+  .animate-pulse-soft { animation: pulse-soft 2.4s ease-in-out infinite; }
+
+  /* Subtle hover lift used by Card */
+  .hover-lift {
+    transition: transform 200ms var(--ease-out-expo),
+                box-shadow 200ms var(--ease-out-expo),
+                border-color 200ms var(--ease-out-expo);
+  }
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* ----- Keyframes ----- */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes zoom-in-75 {
+  from { opacity: 0; transform: scale(0.75); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes zoom-in-95 {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes zoom-out-95 {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+@keyframes slide-in-from-top-2 {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-from-bottom-2 {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-from-left-2 {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-from-right-2 {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media print {

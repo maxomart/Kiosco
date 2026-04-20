@@ -3,6 +3,8 @@ import { z } from "zod"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 
+const HEX = /^#[0-9a-fA-F]{6}$/
+
 const putSchema = z.object({
   name: z.string().min(1).optional(),
   businessType: z.string().optional().nullable(),
@@ -12,6 +14,8 @@ const putSchema = z.object({
   email: z.string().email().optional().nullable().or(z.literal("")),
   currency: z.string().optional(),
   timezone: z.string().optional(),
+  themeColor: z.string().regex(HEX, "Color inválido").optional().nullable(),
+  themeMode: z.enum(["dark", "light", "auto"]).optional().nullable(),
 })
 
 export async function GET() {
@@ -24,6 +28,10 @@ export async function GET() {
       db.tenantConfig.findUnique({ where: { tenantId: tenantId! } }),
     ])
 
+    const cfg = tenantConfig as
+      | (typeof tenantConfig & { themeColor?: string | null; themeMode?: string | null })
+      | null
+
     return NextResponse.json({
       config: {
         name: tenant?.name ?? "",
@@ -34,6 +42,8 @@ export async function GET() {
         email: tenantConfig?.email ?? null,
         currency: tenantConfig?.currency ?? "ARS",
         timezone: tenantConfig?.timezone ?? "America/Argentina/Buenos_Aires",
+        themeColor: cfg?.themeColor ?? null,
+        themeMode: cfg?.themeMode ?? "dark",
       },
     })
   } catch (err) {
@@ -59,6 +69,12 @@ export async function PUT(req: NextRequest) {
   const data = parsed.data
   const email = data.email ? data.email : null
 
+  // Build the theme partial conditionally so DBs missing the columns
+  // still accept writes for the legacy fields.
+  const themeData: Record<string, unknown> = {}
+  if (data.themeColor !== undefined) themeData.themeColor = data.themeColor || null
+  if (data.themeMode !== undefined) themeData.themeMode = data.themeMode || null
+
   try {
     await db.$transaction([
       db.tenant.update({
@@ -79,6 +95,7 @@ export async function PUT(req: NextRequest) {
           email,
           currency: data.currency ?? "ARS",
           timezone: data.timezone ?? "America/Argentina/Buenos_Aires",
+          ...themeData,
         },
         update: {
           businessName: data.name?.trim() || undefined,
@@ -89,6 +106,7 @@ export async function PUT(req: NextRequest) {
           email,
           currency: data.currency ?? "ARS",
           timezone: data.timezone ?? "America/Argentina/Buenos_Aires",
+          ...themeData,
         },
       }),
     ])

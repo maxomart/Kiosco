@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Menu, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -34,7 +35,7 @@ const PAGE_TITLES: Record<string, string> = {
 const PLAN_COLORS: Record<Plan, string> = {
   FREE: "bg-gray-700 text-gray-300",
   STARTER: "bg-blue-900/60 text-blue-300 border border-blue-700/50",
-  PROFESSIONAL: "bg-purple-900/60 text-purple-300 border border-purple-700/50",
+  PROFESSIONAL: "bg-accent-soft text-accent border border-accent/40",
   BUSINESS: "bg-amber-900/60 text-amber-300 border border-amber-700/50",
   ENTERPRISE: "bg-emerald-900/60 text-emerald-300 border border-emerald-700/50",
 }
@@ -57,6 +58,15 @@ function openMobileSidebar() {
 export default function Header({ user }: HeaderProps) {
   const pathname = usePathname()
   const title = getPageTitle(pathname)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const main = document.querySelector("main")
+    if (!main) return
+    const onScroll = () => setScrolled(main.scrollTop > 4)
+    main.addEventListener("scroll", onScroll, { passive: true })
+    return () => main.removeEventListener("scroll", onScroll)
+  }, [])
 
   // Plan is stored in session user — for now we read from the role/name
   // In a real scenario this would come from a context or be passed as a prop.
@@ -71,7 +81,15 @@ export default function Header({ user }: HeaderProps) {
     .slice(0, 2)
 
   return (
-    <header className="bg-gray-900 border-b border-gray-800 h-14 flex items-center px-4 gap-3 flex-shrink-0">
+    <header
+      className={cn(
+        "h-14 flex items-center px-4 gap-3 flex-shrink-0 sticky top-0 z-30",
+        "bg-gray-900/85 backdrop-blur-md border-b transition-all duration-200",
+        scrolled
+          ? "border-gray-700/80 shadow-lg shadow-black/30"
+          : "border-gray-800"
+      )}
+    >
       {/* Mobile hamburger */}
       <button
         onClick={openMobileSidebar}
@@ -103,7 +121,7 @@ export default function Header({ user }: HeaderProps) {
 
         {/* User avatar */}
         <div className="flex items-center gap-1.5 pl-1">
-          <div className="w-7 h-7 rounded-full bg-purple-700 flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center flex-shrink-0 transition-colors duration-200">
             {user.image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -112,7 +130,7 @@ export default function Header({ user }: HeaderProps) {
                 className="w-7 h-7 rounded-full object-cover"
               />
             ) : (
-              <span className="text-xs font-semibold text-white">{initials}</span>
+              <span className="text-xs font-semibold text-accent-foreground">{initials}</span>
             )}
           </div>
           <span className="hidden md:block text-sm text-gray-300 font-medium max-w-[120px] truncate">

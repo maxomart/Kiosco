@@ -122,7 +122,7 @@ export default function NotificationsBell() {
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 bg-purple-600 rounded-full text-[10px] font-bold text-white flex items-center justify-center animate-in zoom-in-75 duration-200">
+          <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 bg-accent rounded-full text-[10px] font-bold text-accent-foreground flex items-center justify-center animate-in zoom-in-75 duration-200">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -135,7 +135,7 @@ export default function NotificationsBell() {
             {visible.length > 0 && (
               <button
                 onClick={dismissAll}
-                className="text-xs text-gray-500 hover:text-purple-300 transition"
+                className="text-xs text-gray-500 hover:text-accent transition"
               >
                 Marcar todas como leídas
               </button>

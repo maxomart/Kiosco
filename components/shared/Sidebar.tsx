@@ -85,8 +85,8 @@ export default function Sidebar({ user }: SidebarProps) {
           collapsed && "justify-center px-2"
         )}
       >
-        <div className="flex-shrink-0 w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-          <ShoppingBag className="w-4 h-4 text-white" />
+        <div className="flex-shrink-0 w-8 h-8 bg-accent rounded-lg flex items-center justify-center transition-colors duration-200">
+          <ShoppingBag className="w-4 h-4 text-accent-foreground" />
         </div>
         {!collapsed && (
           <span className="text-white font-bold text-lg tracking-tight">
@@ -113,21 +113,31 @@ export default function Sidebar({ user }: SidebarProps) {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group",
+                "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
                 isActive
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-900/30"
-                  : "text-gray-400 hover:text-gray-100 hover:bg-gray-800",
+                  ? "bg-accent-soft text-accent-foreground"
+                  : "text-gray-400 hover:text-gray-100 hover:bg-gray-800/70",
                 collapsed && "justify-center px-2"
               )}
               title={collapsed ? label : undefined}
             >
+              {/* Active indicator bar */}
+              <span
+                className={cn(
+                  "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full bg-accent transition-all duration-200 ease-out",
+                  isActive ? "h-6 opacity-100" : "h-0 opacity-0"
+                )}
+                aria-hidden
+              />
               <Icon
                 className={cn(
-                  "w-4 h-4 flex-shrink-0 transition-colors",
-                  isActive ? "text-white" : "text-gray-400 group-hover:text-gray-200"
+                  "w-4 h-4 flex-shrink-0 transition-colors duration-150",
+                  isActive ? "text-accent" : "text-gray-400 group-hover:text-gray-200"
                 )}
               />
-              {!collapsed && <span>{label}</span>}
+              {!collapsed && (
+                <span className={cn(isActive && "text-gray-100")}>{label}</span>
+              )}
             </Link>
           )
         })}
@@ -137,8 +147,8 @@ export default function Sidebar({ user }: SidebarProps) {
       <div className="border-t border-gray-800 p-3 space-y-2">
         {!collapsed && (
           <div className="flex items-center gap-3 px-2 py-2">
-            <div className="w-8 h-8 rounded-full bg-purple-700 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-semibold text-white uppercase">
+            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0 transition-colors duration-200">
+              <span className="text-xs font-semibold text-accent-foreground uppercase">
                 {user.name?.charAt(0) ?? user.email.charAt(0)}
               </span>
             </div>
@@ -147,7 +157,7 @@ export default function Sidebar({ user }: SidebarProps) {
                 {user.name}
               </p>
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
-              <p className="text-xs text-purple-400 font-medium">
+              <p className="text-xs text-accent font-medium">
                 {ROLE_LABELS[user.role] ?? user.role}
               </p>
             </div>

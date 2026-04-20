@@ -2,6 +2,8 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import Sidebar from "@/components/shared/Sidebar"
 import Header from "@/components/shared/Header"
+import { ThemeProvider } from "@/components/theme/ThemeProvider"
+import { db } from "@/lib/db"
 
 export default async function DashboardLayout({
   children,
@@ -18,15 +20,34 @@ export default async function DashboardLayout({
     redirect("/admin")
   }
 
+  // Read tenant theme on the server so the first paint already has the
+  // correct accent — avoids the flash-of-default-color.
+  let initialAccent: string | null = null
+  let initialMode: "dark" | "light" | "auto" = "dark"
+  if (session.user.tenantId) {
+    try {
+      const cfg = (await db.tenantConfig.findUnique({
+        where: { tenantId: session.user.tenantId },
+      })) as { themeColor?: string | null; themeMode?: string | null } | null
+      initialAccent = cfg?.themeColor ?? null
+      const m = cfg?.themeMode
+      if (m === "light" || m === "dark" || m === "auto") initialMode = m
+    } catch {
+      // Schema may not yet have the columns deployed; fall back gracefully.
+    }
+  }
+
   return (
-    <div className="flex h-screen bg-gray-950 overflow-hidden">
-      <Sidebar user={session.user} />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Header user={session.user} />
-        <main className="flex-1 overflow-auto p-4 lg:p-6">
-          {children}
-        </main>
+    <ThemeProvider initialAccent={initialAccent} initialMode={initialMode}>
+      <div className="flex h-screen bg-gray-950 overflow-hidden">
+        <Sidebar user={session.user} />
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <Header user={session.user} />
+          <main className="flex-1 overflow-auto p-4 lg:p-6">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   )
 }

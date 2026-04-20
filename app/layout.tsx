@@ -34,9 +34,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           position="top-right"
           toastOptions={{
             duration: 3500,
-            style: { background: "#1f2937", color: "#f9fafb", border: "1px solid #374151" },
-            success: { iconTheme: { primary: "#22c55e", secondary: "#f9fafb" } },
-            error: { iconTheme: { primary: "#ef4444", secondary: "#f9fafb" } },
+            className: "animate-in slide-in-from-top-2 fade-in duration-200",
+            style: {
+              background: "var(--color-bg-elevated, #1f2937)",
+              color: "var(--color-text-primary, #f9fafb)",
+              border: "1px solid var(--color-border-strong, #374151)",
+              borderRadius: "10px",
+              fontSize: "0.875rem",
+              padding: "10px 14px",
+              boxShadow: "0 10px 30px -10px rgba(0,0,0,0.5)",
+            },
+            success: { iconTheme: { primary: "var(--color-accent, #22c55e)", secondary: "#f9fafb" } },
+            error: { iconTheme: { primary: "var(--color-danger, #ef4444)", secondary: "#f9fafb" } },
           }}
         />
       </body>
