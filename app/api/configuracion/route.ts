@@ -16,6 +16,9 @@ const putSchema = z.object({
   timezone: z.string().optional(),
   themeColor: z.string().regex(HEX, "Color inválido").optional().nullable(),
   themeMode: z.enum(["dark", "light", "auto"]).optional().nullable(),
+  whatsappPhone: z.string().optional().nullable(),
+  whatsappLowStockAlerts: z.boolean().optional(),
+  whatsappDailySummary: z.boolean().optional(),
 })
 
 export async function GET() {
@@ -29,7 +32,13 @@ export async function GET() {
     ])
 
     const cfg = tenantConfig as
-      | (typeof tenantConfig & { themeColor?: string | null; themeMode?: string | null })
+      | (typeof tenantConfig & {
+          themeColor?: string | null
+          themeMode?: string | null
+          whatsappPhone?: string | null
+          whatsappLowStockAlerts?: boolean | null
+          whatsappDailySummary?: boolean | null
+        })
       | null
 
     return NextResponse.json({
@@ -44,6 +53,9 @@ export async function GET() {
         timezone: tenantConfig?.timezone ?? "America/Argentina/Buenos_Aires",
         themeColor: cfg?.themeColor ?? null,
         themeMode: cfg?.themeMode ?? "dark",
+        whatsappPhone: cfg?.whatsappPhone ?? null,
+        whatsappLowStockAlerts: cfg?.whatsappLowStockAlerts ?? false,
+        whatsappDailySummary: cfg?.whatsappDailySummary ?? false,
       },
     })
   } catch (err) {
@@ -69,11 +81,14 @@ export async function PUT(req: NextRequest) {
   const data = parsed.data
   const email = data.email ? data.email : null
 
-  // Build the theme partial conditionally so DBs missing the columns
-  // still accept writes for the legacy fields.
-  const themeData: Record<string, unknown> = {}
-  if (data.themeColor !== undefined) themeData.themeColor = data.themeColor || null
-  if (data.themeMode !== undefined) themeData.themeMode = data.themeMode || null
+  // Build the theme + WhatsApp partial conditionally so DBs missing
+  // the columns still accept writes for the legacy fields.
+  const extraData: Record<string, unknown> = {}
+  if (data.themeColor !== undefined) extraData.themeColor = data.themeColor || null
+  if (data.themeMode !== undefined) extraData.themeMode = data.themeMode || null
+  if (data.whatsappPhone !== undefined) extraData.whatsappPhone = data.whatsappPhone || null
+  if (data.whatsappLowStockAlerts !== undefined) extraData.whatsappLowStockAlerts = data.whatsappLowStockAlerts
+  if (data.whatsappDailySummary !== undefined) extraData.whatsappDailySummary = data.whatsappDailySummary
 
   try {
     await db.$transaction([
@@ -95,7 +110,7 @@ export async function PUT(req: NextRequest) {
           email,
           currency: data.currency ?? "ARS",
           timezone: data.timezone ?? "America/Argentina/Buenos_Aires",
-          ...themeData,
+          ...extraData,
         },
         update: {
           businessName: data.name?.trim() || undefined,
@@ -106,7 +121,7 @@ export async function PUT(req: NextRequest) {
           email,
           currency: data.currency ?? "ARS",
           timezone: data.timezone ?? "America/Argentina/Buenos_Aires",
-          ...themeData,
+          ...extraData,
         },
       }),
     ])

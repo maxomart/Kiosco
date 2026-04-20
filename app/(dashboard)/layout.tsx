@@ -3,7 +3,9 @@ import { auth } from "@/lib/auth"
 import Sidebar from "@/components/shared/Sidebar"
 import Header from "@/components/shared/Header"
 import { ThemeProvider } from "@/components/theme/ThemeProvider"
+import { AssistantWidget } from "@/components/ai/AssistantWidget"
 import { db } from "@/lib/db"
+import { hasFeature } from "@/lib/permissions"
 
 export default async function DashboardLayout({
   children,
@@ -43,6 +45,8 @@ export default async function DashboardLayout({
     }
   }
 
+  const aiEnabled = hasFeature(plan as any, "feature:ai_assistant")
+
   return (
     <ThemeProvider initialAccent={initialAccent} initialMode={initialMode}>
       <div className="flex h-screen bg-gray-950 overflow-hidden">
@@ -53,6 +57,7 @@ export default async function DashboardLayout({
             {children}
           </main>
         </div>
+        {aiEnabled && <AssistantWidget plan={plan as any} />}
       </div>
     </ThemeProvider>
   )

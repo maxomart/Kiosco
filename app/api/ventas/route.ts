@@ -208,6 +208,36 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Fire WhatsApp low-stock alert (best-effort, non-blocking).
+    // We check products that JUST crossed below minStock as a result of
+    // this sale, so we don't spam on every sale.
+    void (async () => {
+      try {
+        const cfg = (await db.tenantConfig.findUnique({
+          where: { tenantId: tenantId! },
+        })) as any
+        if (!cfg?.whatsappPhone || !cfg?.whatsappLowStockAlerts) return
+        const productIds = data.items.map((i) => i.productId)
+        const updated = await db.product.findMany({
+          where: { id: { in: productIds } },
+          select: { name: true, stock: true, minStock: true },
+        })
+        const justCrossed = updated.filter(
+          (p: { stock: number; minStock: number }) =>
+            p.stock <= p.minStock && p.stock >= 0
+        )
+        if (justCrossed.length === 0) return
+        const tenant = await db.tenant.findUnique({
+          where: { id: tenantId! },
+          select: { name: true },
+        })
+        const { sendLowStockAlert } = await import("@/lib/whatsapp")
+        await sendLowStockAlert(cfg.whatsappPhone, justCrossed, tenant?.name ?? "Tu negocio")
+      } catch (e) {
+        console.error("[ventas] WhatsApp alert failed", e)
+      }
+    })()
+
     return NextResponse.json({ sale: fullSale }, { status: 201 })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error interno"

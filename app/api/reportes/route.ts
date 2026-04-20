@@ -13,15 +13,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Sin permisos para ver reportes" }, { status: 403 })
   }
 
-  // Plan gate
+  // Plan: FREE gets reports_basic (today only), paid gets reports_full.
   const sub = await db.subscription.findUnique({
     where: { tenantId: tenantId! },
     select: { plan: true },
   })
   const plan = (sub?.plan as Plan) ?? "FREE"
-  if (!hasFeature(plan, "feature:reports")) {
-    return NextResponse.json({ error: "Reportes no incluido en tu plan" }, { status: 402 })
-  }
+  const hasFull = hasFeature(plan, "feature:reports_full")
 
   const { searchParams } = new URL(req.url)
   const from = searchParams.get("from") ? new Date(searchParams.get("from")!) : startOfDay(new Date())
@@ -73,15 +71,18 @@ export async function GET(req: NextRequest) {
   }
   const dailySales = Object.entries(dailyMap).map(([date, v]) => ({ date, ...v }))
 
+  // FREE plan: only KPIs (no charts/breakdowns/topproducts) — encourages upgrade.
   return NextResponse.json({
+    plan,
+    isLimited: !hasFull,
     totalSales: salesAgg._count,
     totalRevenue,
-    totalCost,
-    totalProfit,
-    profitMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+    totalCost: hasFull ? totalCost : 0,
+    totalProfit: hasFull ? totalProfit : 0,
+    profitMargin: hasFull && totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
     avgTicket: Number(salesAgg._avg.total ?? 0),
-    topProducts,
-    salesByMethod,
-    dailySales,
+    topProducts: hasFull ? topProducts : [],
+    salesByMethod: hasFull ? salesByMethod : [],
+    dailySales: hasFull ? dailySales : [],
   })
 }

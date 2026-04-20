@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock } from "lucide-react"
 import { BUSINESS_TYPES } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -23,13 +23,39 @@ interface TenantConfig {
   timezone: string
   themeColor: string | null
   themeMode: "dark" | "light" | "auto" | null
+  whatsappPhone: string | null
+  whatsappLowStockAlerts: boolean
+  whatsappDailySummary: boolean
 }
 
 export default function ConfiguracionPage() {
   const [config, setConfig] = useState<TenantConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [testingWa, setTestingWa] = useState(false)
+  const [plan, setPlan] = useState<string>("FREE")
   const { accent, mode } = useTheme()
+
+  useEffect(() => {
+    fetch("/api/configuracion/suscripcion")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.subscription?.plan) setPlan(d.subscription.plan) })
+      .catch(() => {})
+  }, [])
+
+  const waUnlocked = plan !== "FREE"
+
+  const testWhatsapp = async () => {
+    setTestingWa(true)
+    try {
+      const res = await fetch("/api/whatsapp/test", { method: "POST" })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) toast.success("Mensaje de prueba enviado. Chequeá tu WhatsApp.")
+      else toast.error(data?.error ?? "No se pudo enviar")
+    } finally {
+      setTestingWa(false)
+    }
+  }
 
   useEffect(() => {
     fetch("/api/configuracion")
@@ -145,6 +171,98 @@ export default function ConfiguracionPage() {
               {saving ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* WhatsApp notifications */}
+      {config && (
+        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle size={18} className="text-green-400" />
+              <h2 className="text-white font-semibold">Notificaciones por WhatsApp</h2>
+              {!waUnlocked && (
+                <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-medium">
+                  <Lock size={10} /> STARTER+
+                </span>
+              )}
+            </div>
+          </div>
+
+          {!waUnlocked ? (
+            <div className="bg-gray-800/50 border border-gray-800 rounded-xl p-4 text-center">
+              <p className="text-sm text-gray-300 mb-1">Recibí alertas en tu WhatsApp</p>
+              <p className="text-xs text-gray-500 mb-4">Stock bajo, ventas raras, resumen diario. Disponible desde el plan Starter.</p>
+              <Link href="/configuracion/suscripcion"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium transition">
+                Ver planes
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div>
+                <Input
+                  label="Tu número de WhatsApp"
+                  type="tel"
+                  value={config.whatsappPhone || ""}
+                  onChange={e => set("whatsappPhone", e.target.value)}
+                  placeholder="+5491112345678"
+                  hint="Formato internacional con + y código de país. Ej: +54 9 11 1234-5678 → +5491112345678"
+                />
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-800/40 hover:bg-gray-800/60 transition cursor-pointer">
+                  <div>
+                    <p className="text-sm font-medium text-gray-100">Alertas de stock bajo</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Cuando un producto baja del mínimo después de una venta.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={config.whatsappLowStockAlerts}
+                    onChange={e => set("whatsappLowStockAlerts", e.target.checked)}
+                    className="w-5 h-5 rounded accent-accent flex-shrink-0"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-800/40 hover:bg-gray-800/60 transition cursor-pointer">
+                  <div>
+                    <p className="text-sm font-medium text-gray-100">Resumen diario de ventas</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Cada noche te llega un resumen del día (próximamente).</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={config.whatsappDailySummary}
+                    onChange={e => set("whatsappDailySummary", e.target.checked)}
+                    disabled
+                    className="w-5 h-5 rounded accent-accent flex-shrink-0 opacity-50"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-gray-800">
+                <Button onClick={handleSave} loading={saving} size="md">
+                  {saving ? "Guardando..." : "Guardar cambios"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={testWhatsapp}
+                  loading={testingWa}
+                  leftIcon={<Send size={14} />}
+                  disabled={!config.whatsappPhone}
+                >
+                  Enviar mensaje de prueba
+                </Button>
+              </div>
+
+              <p className="text-[11px] text-gray-600 leading-relaxed">
+                Para recibir mensajes la primera vez, tenés que enviar el código join al WhatsApp del bot de Twilio (te lo damos en la consola de Twilio).
+                Si los mensajes no llegan, fijate de haber configurado <code className="bg-gray-800 px-1 rounded">TWILIO_ACCOUNT_SID</code>,{" "}
+                <code className="bg-gray-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> y{" "}
+                <code className="bg-gray-800 px-1 rounded">TWILIO_WHATSAPP_FROM</code> en Railway.
+              </p>
+            </>
+          )}
         </div>
       )}
     </div>

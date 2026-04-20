@@ -360,6 +360,12 @@ model TenantConfig {
   lowStockAlert Boolean @default(true)
   themeColor   String?  // hex like "#8b5cf6" — overrides default brand accent
   themeMode    String?  // "dark" | "light" | "auto" (light/auto coming soon)
+
+  // WhatsApp notification settings
+  whatsappPhone           String?  // E.164 like "+5491112345678"
+  whatsappLowStockAlerts  Boolean  @default(false)
+  whatsappDailySummary    Boolean  @default(false)
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

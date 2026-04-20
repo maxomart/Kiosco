@@ -1,11 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { TrendingUp, DollarSign, ShoppingBag, BarChart2, Download, Calendar } from "lucide-react"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import Link from "next/link"
+import { TrendingUp, DollarSign, ShoppingBag, BarChart2, Download, Calendar, Lock, Sparkles, ArrowRight } from "lucide-react"
+import { formatCurrency, formatDate, type Plan } from "@/lib/utils"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts"
 
 interface ReportData {
+  plan?: Plan
+  isLimited?: boolean
   totalSales: number
   totalRevenue: number
   totalCost: number
@@ -15,6 +18,32 @@ interface ReportData {
   topProducts: { productName: string; quantity: number; revenue: number }[]
   salesByMethod: { method: string; count: number; total: number }[]
   dailySales: { date: string; total: number; count: number }[]
+}
+
+function LockedChart({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-transparent pointer-events-none" />
+      <div className="relative flex flex-col items-center justify-center text-center min-h-[220px] gap-3">
+        <div className="w-12 h-12 rounded-xl bg-accent-soft flex items-center justify-center">
+          <Lock className="w-5 h-5 text-accent" />
+        </div>
+        <div>
+          <h3 className="text-white font-semibold text-sm mb-1 flex items-center justify-center gap-1.5">
+            {title}
+            <Sparkles className="w-3 h-3 text-amber-400" />
+          </h3>
+          <p className="text-xs text-gray-400 max-w-xs">{description}</p>
+        </div>
+        <Link
+          href="/configuracion/suscripcion"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover transition"
+        >
+          Suscribirme <ArrowRight className="w-3 h-3" />
+        </Link>
+      </div>
+    </div>
+  )
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -35,7 +64,8 @@ function StatBox({ label, value, sub, color = "purple" }: { label: string; value
   )
 }
 
-export default function ReportesPage() {
+export default function ReportesPage({ plan = "FREE" }: { plan?: Plan }) {
+  const isLimited = plan === "FREE"
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [from, setFrom] = useState(() => {
@@ -150,42 +180,66 @@ export default function ReportesPage() {
             <StatBox label="Ticket promedio" value={formatCurrency(data.avgTicket)} color="purple" />
           </div>
 
+          {/* FREE plan banner */}
+          {isLimited && (
+            <div className="flex items-center gap-3 bg-accent-soft border border-accent/30 rounded-xl px-4 py-3">
+              <Sparkles className="w-5 h-5 text-accent flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-100">Estás viendo reportes básicos</p>
+                <p className="text-xs text-gray-400">Suscribite para desbloquear gráficos, top productos, evolución diaria y desglose por método de pago.</p>
+              </div>
+              <Link href="/configuracion/suscripcion"
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium transition">
+                Mejorar plan
+              </Link>
+            </div>
+          )}
+
           {/* Charts row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Daily sales line */}
-            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
-              <h3 className="text-white font-semibold mb-4">Ventas diarias</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={data.dailySales} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                  <XAxis dataKey="date" tick={{ fill: "#6b7280", fontSize: 11 }}
-                    tickFormatter={v => v.slice(5)} />
-                  <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: "8px" }}
-                    labelStyle={{ color: "#9ca3af" }} formatter={(v: number) => [formatCurrency(v), "Ingresos"]} />
-                  <Line type="monotone" dataKey="total" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {isLimited ? (
+              <LockedChart title="Ventas diarias" description="Visualizá la evolución de tus ingresos día a día con un gráfico interactivo." />
+            ) : (
+              <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+                <h3 className="text-white font-semibold mb-4">Ventas diarias</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={data.dailySales} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                    <XAxis dataKey="date" tick={{ fill: "#6b7280", fontSize: 11 }}
+                      tickFormatter={v => v.slice(5)} />
+                    <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: "8px" }}
+                      labelStyle={{ color: "#9ca3af" }} formatter={(v: number) => [formatCurrency(v), "Ingresos"]} />
+                    <Line type="monotone" dataKey="total" stroke="var(--color-accent)" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
             {/* Top products bar */}
-            <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
-              <h3 className="text-white font-semibold mb-4">Top 10 productos por ingresos</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={data.topProducts} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 10 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="productName" tick={{ fill: "#9ca3af", fontSize: 11 }}
-                    tickFormatter={v => v.length > 14 ? v.slice(0, 14) + "…" : v} width={60} />
-                  <Tooltip contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: "8px" }}
-                    formatter={(v: number) => [formatCurrency(v), "Ingresos"]} />
-                  <Bar dataKey="revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {isLimited ? (
+              <LockedChart title="Top productos por ingresos" description="Identificá rápidamente qué productos te dan más ganancia." />
+            ) : (
+              <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+                <h3 className="text-white font-semibold mb-4">Top 10 productos por ingresos</h3>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={data.topProducts} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
+                    <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 10 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                    <YAxis type="category" dataKey="productName" tick={{ fill: "#9ca3af", fontSize: 11 }}
+                      tickFormatter={v => v.length > 14 ? v.slice(0, 14) + "…" : v} width={60} />
+                    <Tooltip contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: "8px" }}
+                      formatter={(v: number) => [formatCurrency(v), "Ingresos"]} />
+                    <Bar dataKey="revenue" fill="var(--color-accent)" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
 
           {/* Charts row 2 */}
+          {!isLimited && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Payment methods pie */}
             <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
@@ -237,8 +291,10 @@ export default function ReportesPage() {
               </div>
             </div>
           </div>
+          )}
 
-          {/* Daily sales table */}
+          {/* Daily sales table — paid only */}
+          {!isLimited && (
           <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
             <h3 className="text-white font-semibold mb-4">Detalle diario</h3>
             <div className="overflow-x-auto">
@@ -264,6 +320,7 @@ export default function ReportesPage() {
               </table>
             </div>
           </div>
+          )}
         </>
       ) : (
         <div className="flex items-center justify-center h-64 text-gray-500">Error al cargar reportes</div>

@@ -104,7 +104,8 @@ export function canAny(role: string | undefined | null, perms: Permission[]): bo
 // =============================================================================
 
 export type PlanFeature =
-  | "feature:reports"        // Detailed analytics & charts
+  | "feature:reports_basic"   // Today's KPIs only (FREE+)
+  | "feature:reports_full"    // Charts, top products, payment breakdown, ranges
   | "feature:expenses"        // Expense tracking
   | "feature:recharges"       // Supplier recharges
   | "feature:multiple_users"  // Multi-user (any user beyond the owner)
@@ -114,21 +115,37 @@ export type PlanFeature =
   | "feature:loyalty"         // Loyalty points
   | "feature:theme_picker"    // Custom brand color
   | "feature:advanced_pos"    // POS discounts, multiple payment methods, etc.
+  | "feature:ai_assistant"    // AI bot — basic for FREE, full for paid
+  | "feature:ai_assistant_full" // Unlimited AI usage + proactive insights
+  | "feature:whatsapp"        // WhatsApp notifications
 
 type PlanGate = Record<PlanFeature, Plan[]>
 
 // Which plans UNLOCK each feature. If a plan is in the list, it has access.
 const PLAN_FEATURES: PlanGate = {
-  "feature:reports":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:expenses":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:recharges":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:multiple_users":  ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:api":             ["BUSINESS", "ENTERPRISE"],
-  "feature:csv_import":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:csv_export":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:loyalty":         ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:theme_picker":    ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:advanced_pos":    ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:reports_basic":     ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:reports_full":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:expenses":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:recharges":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:multiple_users":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:api":               ["BUSINESS", "ENTERPRISE"],
+  "feature:csv_import":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:csv_export":        ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:theme_picker":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:advanced_pos":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:ai_assistant":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:ai_assistant_full": ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:whatsapp":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+}
+
+/** Per-day AI message quota by plan (soft cap). */
+export const AI_DAILY_QUOTA: Record<Plan, number> = {
+  FREE: 10,
+  STARTER: 100,
+  PROFESSIONAL: 500,
+  BUSINESS: 2000,
+  ENTERPRISE: 10000,
 }
 
 /** True if the plan unlocks the feature. */
