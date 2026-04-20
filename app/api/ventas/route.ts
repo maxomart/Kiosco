@@ -175,23 +175,30 @@ export async function POST(req: NextRequest) {
         })
       }
 
-      // ---- 5. Loyalty points (1 point per peso, rounded) ----
+      // ---- 5. Loyalty points (configurable rate, only if loyalty enabled) ----
       if (data.clientId) {
-        const pointsEarned = Math.floor(data.total)
-        if (pointsEarned > 0) {
-          await tx.client.update({
-            where: { id: data.clientId },
-            data: { loyaltyPoints: { increment: pointsEarned } },
-          })
+        const cfg = (await tx.tenantConfig.findUnique({
+          where: { tenantId: tenantId! },
+        })) as any
+        const loyaltyEnabled = cfg?.loyaltyEnabled ?? false
+        const rate = cfg?.loyaltyPointsPerPeso != null ? Number(cfg.loyaltyPointsPerPeso) : 1
+        if (loyaltyEnabled && rate > 0) {
+          const pointsEarned = Math.floor(data.total * rate)
+          if (pointsEarned > 0) {
+            await tx.client.update({
+              where: { id: data.clientId },
+              data: { loyaltyPoints: { increment: pointsEarned } },
+            })
 
-          await tx.loyaltyTransaction.create({
-            data: {
-              points: pointsEarned,
-              description: `Venta #${nextNumber}`,
-              clientId: data.clientId,
-              saleId: createdSale.id,
-            },
-          })
+            await tx.loyaltyTransaction.create({
+              data: {
+                points: pointsEarned,
+                description: `Venta #${nextNumber}`,
+                clientId: data.clientId,
+                saleId: createdSale.id,
+              },
+            })
+          }
         }
       }
 

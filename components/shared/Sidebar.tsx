@@ -36,6 +36,8 @@ interface SidebarProps {
     image?: string | null
   }
   plan?: Plan
+  logoUrl?: string | null
+  brandName?: string | null
 }
 
 // Sidebar items declare BOTH role-based permission checks (any of) AND
@@ -68,7 +70,7 @@ const ROLE_LABELS: Record<string, string> = {
   CASHIER: "Cajero/a",
 }
 
-export default function Sidebar({ user, plan = "FREE" }: SidebarProps) {
+export default function Sidebar({ user, plan = "FREE", logoUrl, brandName }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -107,12 +109,21 @@ export default function Sidebar({ user, plan = "FREE" }: SidebarProps) {
           collapsed && "justify-center px-2"
         )}
       >
-        <div className="flex-shrink-0 w-8 h-8 bg-accent rounded-lg flex items-center justify-center transition-colors duration-200">
-          <ShoppingBag className="w-4 h-4 text-accent-foreground" />
-        </div>
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={brandName ?? "Logo"}
+            className="flex-shrink-0 w-8 h-8 rounded-lg object-cover bg-gray-800"
+          />
+        ) : (
+          <div className="flex-shrink-0 w-8 h-8 bg-accent rounded-lg flex items-center justify-center transition-colors duration-200">
+            <ShoppingBag className="w-4 h-4 text-accent-foreground" />
+          </div>
+        )}
         {!collapsed && (
-          <span className="text-white font-bold text-lg tracking-tight">
-            RetailAR
+          <span className="text-white font-bold text-lg tracking-tight truncate">
+            {brandName?.trim() || "RetailAR"}
           </span>
         )}
         {/* Mobile close button */}

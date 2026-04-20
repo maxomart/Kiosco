@@ -27,19 +27,27 @@ export default async function DashboardLayout({
   let initialAccent: string | null = null
   let initialMode: "dark" | "light" | "auto" = "dark"
   let plan: string = "FREE"
+  let logoUrl: string | null = null
+  let brandName: string | null = null
   if (session.user.tenantId) {
     try {
-      const [cfg, sub] = await Promise.all([
+      const [cfg, sub, tenant] = await Promise.all([
         db.tenantConfig.findUnique({ where: { tenantId: session.user.tenantId } }) as any,
         db.subscription.findUnique({
           where: { tenantId: session.user.tenantId },
           select: { plan: true },
+        }),
+        db.tenant.findUnique({
+          where: { id: session.user.tenantId },
+          select: { name: true },
         }),
       ])
       initialAccent = cfg?.themeColor ?? null
       const m = cfg?.themeMode
       if (m === "light" || m === "dark" || m === "auto") initialMode = m
       plan = sub?.plan ?? "FREE"
+      logoUrl = cfg?.logoUrl ?? null
+      brandName = tenant?.name ?? null
     } catch {
       // Schema may not yet have the columns deployed; fall back gracefully.
     }
@@ -50,7 +58,7 @@ export default async function DashboardLayout({
   return (
     <ThemeProvider initialAccent={initialAccent} initialMode={initialMode}>
       <div className="flex h-screen bg-gray-950 overflow-hidden">
-        <Sidebar user={session.user} plan={plan as any} />
+        <Sidebar user={session.user} plan={plan as any} logoUrl={logoUrl} brandName={brandName} />
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <Header user={session.user} plan={plan as any} />
           <main className="flex-1 overflow-auto p-4 lg:p-6">

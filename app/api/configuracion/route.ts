@@ -19,6 +19,12 @@ const putSchema = z.object({
   whatsappPhone: z.string().optional().nullable(),
   whatsappLowStockAlerts: z.boolean().optional(),
   whatsappDailySummary: z.boolean().optional(),
+  // Logo (URL string for now — direct upload coming soon)
+  logoUrl: z.string().url("URL inválida").optional().nullable().or(z.literal("")),
+  // Loyalty config
+  loyaltyEnabled: z.boolean().optional(),
+  loyaltyPointsPerPeso: z.number().nonnegative().optional(),
+  loyaltyPointValue: z.number().nonnegative().optional(),
 })
 
 export async function GET() {
@@ -38,6 +44,10 @@ export async function GET() {
           whatsappPhone?: string | null
           whatsappLowStockAlerts?: boolean | null
           whatsappDailySummary?: boolean | null
+          logoUrl?: string | null
+          loyaltyEnabled?: boolean | null
+          loyaltyPointsPerPeso?: any
+          loyaltyPointValue?: any
         })
       | null
 
@@ -56,6 +66,10 @@ export async function GET() {
         whatsappPhone: cfg?.whatsappPhone ?? null,
         whatsappLowStockAlerts: cfg?.whatsappLowStockAlerts ?? false,
         whatsappDailySummary: cfg?.whatsappDailySummary ?? false,
+        logoUrl: cfg?.logoUrl ?? null,
+        loyaltyEnabled: cfg?.loyaltyEnabled ?? false,
+        loyaltyPointsPerPeso: cfg?.loyaltyPointsPerPeso != null ? Number(cfg.loyaltyPointsPerPeso) : 1,
+        loyaltyPointValue: cfg?.loyaltyPointValue != null ? Number(cfg.loyaltyPointValue) : 1,
       },
     })
   } catch (err) {
@@ -81,7 +95,7 @@ export async function PUT(req: NextRequest) {
   const data = parsed.data
   const email = data.email ? data.email : null
 
-  // Build the theme + WhatsApp partial conditionally so DBs missing
+  // Build the theme + WhatsApp + logo + loyalty partial conditionally so DBs missing
   // the columns still accept writes for the legacy fields.
   const extraData: Record<string, unknown> = {}
   if (data.themeColor !== undefined) extraData.themeColor = data.themeColor || null
@@ -89,6 +103,10 @@ export async function PUT(req: NextRequest) {
   if (data.whatsappPhone !== undefined) extraData.whatsappPhone = data.whatsappPhone || null
   if (data.whatsappLowStockAlerts !== undefined) extraData.whatsappLowStockAlerts = data.whatsappLowStockAlerts
   if (data.whatsappDailySummary !== undefined) extraData.whatsappDailySummary = data.whatsappDailySummary
+  if (data.logoUrl !== undefined) extraData.logoUrl = data.logoUrl ? data.logoUrl : null
+  if (data.loyaltyEnabled !== undefined) extraData.loyaltyEnabled = data.loyaltyEnabled
+  if (data.loyaltyPointsPerPeso !== undefined) extraData.loyaltyPointsPerPeso = data.loyaltyPointsPerPeso
+  if (data.loyaltyPointValue !== undefined) extraData.loyaltyPointValue = data.loyaltyPointValue
 
   try {
     await db.$transaction([

@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock } from "lucide-react"
-import { BUSINESS_TYPES } from "@/lib/utils"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star } from "lucide-react"
+import { BUSINESS_TYPES, type Plan } from "@/lib/utils"
+import { hasFeature } from "@/lib/permissions"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
@@ -26,6 +27,10 @@ interface TenantConfig {
   whatsappPhone: string | null
   whatsappLowStockAlerts: boolean
   whatsappDailySummary: boolean
+  logoUrl: string | null
+  loyaltyEnabled: boolean
+  loyaltyPointsPerPeso: number
+  loyaltyPointValue: number
 }
 
 export default function ConfiguracionPage() {
@@ -44,6 +49,8 @@ export default function ConfiguracionPage() {
   }, [])
 
   const waUnlocked = plan !== "FREE"
+  const logoUnlocked = hasFeature(plan as Plan, "feature:custom_logo")
+  const loyaltyUnlocked = hasFeature(plan as Plan, "feature:loyalty")
 
   const testWhatsapp = async () => {
     setTestingWa(true)
@@ -261,6 +268,141 @@ export default function ConfiguracionPage() {
                 <code className="bg-gray-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> y{" "}
                 <code className="bg-gray-800 px-1 rounded">TWILIO_WHATSAPP_FROM</code> en Railway.
               </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Logo del negocio */}
+      {config && (
+        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ImageIcon size={18} className="text-accent" />
+              <h2 className="text-white font-semibold">Logo del negocio</h2>
+              {!logoUnlocked && (
+                <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-medium">
+                  <Lock size={10} /> STARTER+
+                </span>
+              )}
+            </div>
+          </div>
+
+          {!logoUnlocked ? (
+            <div className="bg-gray-800/50 border border-gray-800 rounded-xl p-4 text-center">
+              <p className="text-sm text-gray-300 mb-1">Personalizá tu marca</p>
+              <p className="text-xs text-gray-500 mb-4">Mostrá tu logo en el sidebar y en los tickets. Disponible desde el plan Starter.</p>
+              <Link href="/configuracion/suscripcion"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium transition">
+                Ver planes
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-4">
+                {config.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={config.logoUrl} alt="Logo" className="w-14 h-14 rounded-lg object-cover bg-gray-800 border border-gray-700" />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600">
+                    <ImageIcon size={20} />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <Input
+                    label="URL del logo"
+                    type="url"
+                    value={config.logoUrl || ""}
+                    onChange={e => set("logoUrl", e.target.value)}
+                    placeholder="https://i.imgur.com/tu-logo.png"
+                    hint="Subí tu logo a un host (Cloudinary, imgur) y pegá el link acá. Pronto soportamos upload directo."
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-800">
+                <Button onClick={handleSave} loading={saving} size="md">
+                  {saving ? "Guardando..." : "Guardar logo"}
+                </Button>
+                {config.logoUrl && (
+                  <Button variant="secondary" onClick={() => set("logoUrl", "")}>
+                    Sacar logo
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Programa de fidelidad */}
+      {config && (
+        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Star size={18} className="text-yellow-400" />
+              <h2 className="text-white font-semibold">Programa de fidelidad</h2>
+              {!loyaltyUnlocked && (
+                <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-medium">
+                  <Lock size={10} /> PROFESSIONAL+
+                </span>
+              )}
+            </div>
+            {loyaltyUnlocked && (
+              <Link href="/clientes/fidelidad" className="text-xs text-accent hover:underline">Gestionar puntos →</Link>
+            )}
+          </div>
+
+          {!loyaltyUnlocked ? (
+            <div className="bg-gray-800/50 border border-gray-800 rounded-xl p-4 text-center">
+              <p className="text-sm text-gray-300 mb-1">Fidelizá a tus clientes con puntos</p>
+              <p className="text-xs text-gray-500 mb-4">Acumulan puntos en cada compra y los canjean por descuentos. Disponible desde el plan Professional.</p>
+              <Link href="/configuracion/suscripcion"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium transition">
+                Ver planes
+              </Link>
+            </div>
+          ) : (
+            <>
+              <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-800/40 hover:bg-gray-800/60 transition cursor-pointer">
+                <div>
+                  <p className="text-sm font-medium text-gray-100">Activar programa de fidelidad</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Las ventas con cliente asignado acumulan puntos automáticamente.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.loyaltyEnabled}
+                  onChange={e => set("loyaltyEnabled", e.target.checked)}
+                  className="w-5 h-5 rounded accent-accent flex-shrink-0"
+                />
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Puntos por peso gastado"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={config.loyaltyPointsPerPeso}
+                  onChange={e => set("loyaltyPointsPerPeso", Number(e.target.value))}
+                  hint="Tu cliente acumula X puntos por cada $1 de compra."
+                />
+                <Input
+                  label="Valor de cada punto en pesos"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={config.loyaltyPointValue}
+                  onChange={e => set("loyaltyPointValue", Number(e.target.value))}
+                  hint="Para canjear, cada punto vale $X."
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2 border-t border-gray-800">
+                <Button onClick={handleSave} loading={saving} size="md">
+                  {saving ? "Guardando..." : "Guardar fidelidad"}
+                </Button>
+              </div>
             </>
           )}
         </div>

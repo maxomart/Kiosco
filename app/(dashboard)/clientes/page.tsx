@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Search, Edit2, Trash2, Users, Star, Phone, Mail, X } from "lucide-react"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import Link from "next/link"
+import { Plus, Search, Edit2, Trash2, Users, Star, Phone, Mail, X, Lock } from "lucide-react"
+import { formatCurrency, formatDate, type Plan } from "@/lib/utils"
+import { hasFeature } from "@/lib/permissions"
 
 interface Client {
   id: string
@@ -37,7 +39,22 @@ export default function ClientesPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [plan, setPlan] = useState<Plan>("FREE")
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(false)
   const PER_PAGE = 20
+
+  useEffect(() => {
+    fetch("/api/configuracion/suscripcion")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.subscription?.plan) setPlan(d.subscription.plan as Plan) })
+      .catch(() => {})
+    fetch("/api/configuracion")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.config?.loyaltyEnabled) setLoyaltyEnabled(true) })
+      .catch(() => {})
+  }, [])
+
+  const loyaltyUnlocked = hasFeature(plan, "feature:loyalty")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -114,9 +131,22 @@ export default function ClientesPage() {
           <h1 className="text-2xl font-bold text-white">Clientes</h1>
           <p className="text-gray-400 text-sm mt-1">{total} clientes registrados · programa de fidelidad</p>
         </div>
-        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors">
-          <Plus size={16} /> Nuevo cliente
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={loyaltyUnlocked ? "/clientes/fidelidad" : "/configuracion/suscripcion"}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              loyaltyUnlocked
+                ? "bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+                : "bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700"
+            }`}
+            title={loyaltyUnlocked ? "Programa de fidelidad" : "Disponible en plan Professional+"}
+          >
+            {loyaltyUnlocked ? <Star size={14} /> : <Lock size={14} />} Fidelidad
+          </Link>
+          <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors">
+            <Plus size={16} /> Nuevo cliente
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -136,7 +166,7 @@ export default function ClientesPage() {
               <th className="p-4 text-left text-gray-400 font-medium">Contacto</th>
               <th className="p-4 text-right text-gray-400 font-medium">Compras</th>
               <th className="p-4 text-right text-gray-400 font-medium">Total gastado</th>
-              <th className="p-4 text-right text-gray-400 font-medium">Puntos</th>
+              {loyaltyEnabled && <th className="p-4 text-right text-gray-400 font-medium">Puntos</th>}
               <th className="p-4 text-left text-gray-400 font-medium">Cliente desde</th>
               <th className="p-4 text-center text-gray-400 font-medium">Estado</th>
               <th className="p-4"></th>
@@ -145,11 +175,11 @@ export default function ClientesPage() {
           <tbody className="divide-y divide-gray-800">
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i}><td colSpan={8} className="p-4"><div className="h-4 bg-gray-800 rounded animate-pulse" /></td></tr>
+                <tr key={i}><td colSpan={loyaltyEnabled ? 8 : 7} className="p-4"><div className="h-4 bg-gray-800 rounded animate-pulse" /></td></tr>
               ))
             ) : clients.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-12 text-center text-gray-500">
+                <td colSpan={loyaltyEnabled ? 8 : 7} className="p-12 text-center text-gray-500">
                   <Users size={40} className="mx-auto mb-3 opacity-30" />
                   <p>No hay clientes</p>
                   {!search && (
@@ -181,13 +211,15 @@ export default function ClientesPage() {
                 </td>
                 <td className="p-4 text-right text-gray-300">{c._count?.sales ?? 0}</td>
                 <td className="p-4 text-right text-gray-300">{formatCurrency(c.totalPurchases ?? 0)}</td>
-                <td className="p-4 text-right">
-                  {c.loyaltyPoints > 0 ? (
-                    <span className="flex items-center justify-end gap-1 text-yellow-400">
-                      <Star size={12} fill="currentColor" /> {c.loyaltyPoints}
-                    </span>
-                  ) : <span className="text-gray-600">0</span>}
-                </td>
+                {loyaltyEnabled && (
+                  <td className="p-4 text-right">
+                    {c.loyaltyPoints > 0 ? (
+                      <span className="flex items-center justify-end gap-1 text-yellow-400">
+                        <Star size={12} fill="currentColor" /> {c.loyaltyPoints}
+                      </span>
+                    ) : <span className="text-gray-600">0</span>}
+                  </td>
+                )}
                 <td className="p-4 text-gray-400">{formatDate(c.createdAt)}</td>
                 <td className="p-4 text-center">
                   <span className={`px-2 py-0.5 rounded-full text-xs ${c.active ? "bg-green-500/10 text-green-400" : "bg-gray-700 text-gray-500"}`}>
