@@ -11,10 +11,10 @@ interface Client {
   phone: string | null
   address: string | null
   loyaltyPoints: number
-  totalPurchases: number
+  totalPurchases?: number
   active: boolean
   createdAt: string
-  _count: { sales: number }
+  _count?: { sales: number }
 }
 
 interface ClientForm {
@@ -41,9 +41,21 @@ export default function ClientesPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const params = new URLSearchParams({ page: String(page), limit: String(PER_PAGE), ...(search && { search }) })
-    const res = await fetch(`/api/clientes?${params}`)
-    if (res.ok) { const d = await res.json(); setClients(d.clients || []); setTotal(d.total || 0) }
+    // Backend GET /api/clientes currently returns { clients } without paging
+    // or search; we paginate / filter client-side until that endpoint grows.
+    const res = await fetch(`/api/clientes`)
+    if (res.ok) {
+      const d = await res.json()
+      const all: Client[] = d.clients || []
+      const filtered = search
+        ? all.filter(c =>
+            [c.name, c.email ?? "", c.phone ?? ""]
+              .some(v => v.toLowerCase().includes(search.toLowerCase()))
+          )
+        : all
+      setTotal(filtered.length)
+      setClients(filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE))
+    }
     setLoading(false)
   }, [page, search])
 
@@ -168,7 +180,7 @@ export default function ClientesPage() {
                   </div>
                 </td>
                 <td className="p-4 text-right text-gray-300">{c._count?.sales ?? 0}</td>
-                <td className="p-4 text-right text-gray-300">{formatCurrency(c.totalPurchases)}</td>
+                <td className="p-4 text-right text-gray-300">{formatCurrency(c.totalPurchases ?? 0)}</td>
                 <td className="p-4 text-right">
                   {c.loyaltyPoints > 0 ? (
                     <span className="flex items-center justify-end gap-1 text-yellow-400">

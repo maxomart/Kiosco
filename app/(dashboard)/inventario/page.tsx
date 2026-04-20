@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, Filter, X } from "lucide-react"
-import { formatCurrency } from "@/lib/utils"
+import { useSearchParams } from "next/navigation"
+import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X } from "lucide-react"
+import { formatCurrency, PLAN_LIMITS, type Plan } from "@/lib/utils"
 import ProductModal from "@/components/inventario/ProductModal"
 import ImportModal from "@/components/inventario/ImportModal"
 
@@ -11,11 +12,11 @@ interface Product {
   name: string
   barcode: string | null
   sku: string | null
-  price: number
+  salePrice: number
   costPrice: number
   stock: number
   minStock: number
-  unit: string
+  soldByWeight: boolean
   active: boolean
   category: { id: string; name: string } | null
   supplier: { id: string; name: string } | null
@@ -25,13 +26,17 @@ interface Category { id: string; name: string }
 interface Supplier { id: string; name: string }
 
 export default function InventarioPage() {
+  const searchParams = useSearchParams()
+  const initialFilter = searchParams.get("filter")
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("")
-  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all")
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">(
+    initialFilter === "lowstock" ? "low" : initialFilter === "outstock" ? "out" : "all"
+  )
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [selected, setSelected] = useState<string[]>([])
@@ -39,23 +44,25 @@ export default function InventarioPage() {
   const [showModal, setShowModal] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [plan, setPlan] = useState<Plan>("FREE")
   const PER_PAGE = 20
 
   const load = useCallback(async () => {
     setLoading(true)
+    // API only supports `q` and `lowStock` server-side; for "out" we filter client-side
     const params = new URLSearchParams({
       page: String(page),
       limit: String(PER_PAGE),
-      ...(search && { search }),
+      ...(search && { q: search }),
       ...(categoryFilter && { categoryId: categoryFilter }),
       ...(stockFilter === "low" && { lowStock: "true" }),
-      ...(stockFilter === "out" && { outOfStock: "true" }),
     })
     const res = await fetch(`/api/productos?${params}`)
     if (res.ok) {
       const data = await res.json()
-      setProducts(data.products)
-      setTotal(data.total)
+      const list: Product[] = data.products ?? []
+      setProducts(stockFilter === "out" ? list.filter((p) => p.stock === 0) : list)
+      setTotal(data.total ?? list.length)
     }
     setLoading(false)
   }, [page, search, categoryFilter, stockFilter])
@@ -65,6 +72,10 @@ export default function InventarioPage() {
   useEffect(() => {
     fetch("/api/categorias").then(r => r.json()).then(d => setCategories(d.categories || []))
     fetch("/api/proveedores").then(r => r.json()).then(d => setSuppliers(d.suppliers || []))
+    fetch("/api/configuracion/suscripcion")
+      .then(r => r.json())
+      .then(d => { if (d.subscription?.plan) setPlan(d.subscription.plan as Plan) })
+      .catch(() => {})
   }, [])
 
   const handleDelete = async (id: string) => {
@@ -87,12 +98,29 @@ export default function InventarioPage() {
   }
 
   const handleExport = async () => {
-    const res = await fetch("/api/productos?export=csv")
+    // Export current filtered list to CSV client-side (backend has no export endpoint)
+    const res = await fetch(`/api/productos?limit=200`)
     if (!res.ok) return
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a"); a.href = url; a.download = "productos.csv"; a.click()
-    URL.revokeObjectURL(url)
+    const data = await res.json()
+    const rows = [
+      ["nombre", "codigo_barras", "sku", "costo", "precio_venta", "stock", "stock_minimo", "categoria", "proveedor"],
+      ...(data.products as Product[]).map(p => [
+        p.name,
+        p.barcode ?? "",
+        p.sku ?? "",
+        String(p.costPrice),
+        String(p.salePrice),
+        String(p.stock),
+        String(p.minStock),
+        p.category?.name ?? "",
+        p.supplier?.name ?? "",
+      ]),
+    ]
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")
+    const a = document.createElement("a")
+    a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`
+    a.download = "productos.csv"
+    a.click()
   }
 
   const toggleSelect = (id: string) =>
@@ -120,9 +148,20 @@ export default function InventarioPage() {
           <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
             <Upload size={16} /> Importar
           </button>
-          <button onClick={() => { setEditProduct(null); setShowModal(true) }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors">
-            <Plus size={16} /> Nuevo Producto
-          </button>
+          {(() => {
+            const productLimit = PLAN_LIMITS[plan].products
+            const atLimit = total >= productLimit
+            return (
+              <button
+                onClick={() => { setEditProduct(null); setShowModal(true) }}
+                disabled={atLimit}
+                title={atLimit ? `Plan ${plan}: máximo ${productLimit} productos` : undefined}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+              >
+                <Plus size={16} /> {atLimit ? "Límite alcanzado" : "Nuevo Producto"}
+              </button>
+            )
+          })()}
         </div>
       </div>
 
@@ -225,7 +264,7 @@ export default function InventarioPage() {
                   </td>
                 </tr>
               ) : products.map(p => {
-                const margin = p.costPrice > 0 ? ((p.price - p.costPrice) / p.costPrice * 100) : 0
+                const margin = p.costPrice > 0 ? ((p.salePrice - p.costPrice) / p.costPrice * 100) : 0
                 const stockStatus = p.stock === 0 ? "out" : p.stock <= p.minStock ? "low" : "ok"
                 return (
                   <tr key={p.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition-colors">
@@ -244,7 +283,7 @@ export default function InventarioPage() {
                       ) : <span className="text-gray-600">—</span>}
                     </td>
                     <td className="p-4 text-right text-gray-300">{formatCurrency(p.costPrice)}</td>
-                    <td className="p-4 text-right font-medium text-white">{formatCurrency(p.price)}</td>
+                    <td className="p-4 text-right font-medium text-white">{formatCurrency(p.salePrice)}</td>
                     <td className="p-4 text-right">
                       <span className={margin >= 20 ? "text-green-400" : margin >= 10 ? "text-yellow-400" : "text-red-400"}>
                         {margin.toFixed(1)}%
@@ -252,7 +291,7 @@ export default function InventarioPage() {
                     </td>
                     <td className="p-4 text-right">
                       <span className={stockStatus === "out" ? "text-red-400 font-bold" : stockStatus === "low" ? "text-yellow-400 font-medium" : "text-green-400"}>
-                        {p.stock} {p.unit}
+                        {p.stock}{p.soldByWeight ? " kg" : ""}
                       </span>
                     </td>
                     <td className="p-4 text-center">

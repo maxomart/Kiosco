@@ -8,15 +8,15 @@ interface Product {
   name: string
   barcode: string | null
   sku: string | null
-  description: string | null
-  price: number
+  description?: string | null
+  salePrice: number
   costPrice: number
   stock: number
   minStock: number
-  unit: string
+  soldByWeight: boolean
   active: boolean
-  categoryId: string | null
-  supplierId: string | null
+  categoryId?: string | null
+  supplierId?: string | null
   category: { id: string; name: string } | null
   supplier: { id: string; name: string } | null
 }
@@ -29,12 +29,10 @@ interface Props {
   onSaved: () => void
 }
 
-const UNITS = ["un", "kg", "g", "lt", "ml", "caja", "docena", "bolsa", "paq"]
-
 export default function ProductModal({ product, categories, suppliers, onClose, onSaved }: Props) {
   const [form, setForm] = useState({
-    name: "", barcode: "", sku: "", description: "", price: "", costPrice: "",
-    stock: "", minStock: "5", unit: "un", active: true, categoryId: "", supplierId: "",
+    name: "", barcode: "", sku: "", description: "", salePrice: "", costPrice: "",
+    stock: "", minStock: "5", soldByWeight: false, active: true, categoryId: "", supplierId: "",
   })
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -46,14 +44,14 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
         barcode: product.barcode || "",
         sku: product.sku || "",
         description: product.description || "",
-        price: String(product.price),
+        salePrice: String(product.salePrice),
         costPrice: String(product.costPrice),
         stock: String(product.stock),
         minStock: String(product.minStock),
-        unit: product.unit,
+        soldByWeight: product.soldByWeight ?? false,
         active: product.active,
-        categoryId: product.categoryId || "",
-        supplierId: product.supplierId || "",
+        categoryId: product.category?.id || product.categoryId || "",
+        supplierId: product.supplier?.id || product.supplierId || "",
       })
     }
   }, [product])
@@ -64,7 +62,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
   const validate = () => {
     const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = "Nombre requerido"
-    if (!form.price || isNaN(parseFloat(form.price)) || parseFloat(form.price) < 0) e.price = "Precio inválido"
+    if (!form.salePrice || isNaN(parseFloat(form.salePrice)) || parseFloat(form.salePrice) < 0) e.salePrice = "Precio inválido"
     if (form.costPrice && isNaN(parseFloat(form.costPrice))) e.costPrice = "Costo inválido"
     if (form.stock && isNaN(parseInt(form.stock))) e.stock = "Stock inválido"
     setErrors(e)
@@ -79,11 +77,11 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
       barcode: form.barcode.trim() || null,
       sku: form.sku.trim() || null,
       description: form.description.trim() || null,
-      price: parseFloat(form.price),
+      salePrice: parseFloat(form.salePrice),
       costPrice: parseFloat(form.costPrice || "0"),
       stock: parseInt(form.stock || "0"),
       minStock: parseInt(form.minStock || "5"),
-      unit: form.unit,
+      soldByWeight: form.soldByWeight,
       active: form.active,
       categoryId: form.categoryId || null,
       supplierId: form.supplierId || null,
@@ -95,14 +93,14 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
     })
     if (res.ok) { onSaved() }
     else {
-      const d = await res.json()
+      const d = await res.json().catch(() => ({}))
       if (d.error) setErrors({ _global: d.error })
     }
     setSaving(false)
   }
 
-  const margin = form.price && form.costPrice && parseFloat(form.costPrice) > 0
-    ? ((parseFloat(form.price) - parseFloat(form.costPrice)) / parseFloat(form.costPrice) * 100).toFixed(1)
+  const margin = form.salePrice && form.costPrice && parseFloat(form.costPrice) > 0
+    ? ((parseFloat(form.salePrice) - parseFloat(form.costPrice)) / parseFloat(form.costPrice) * 100).toFixed(1)
     : null
 
   return (
@@ -149,11 +147,11 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
               <label className="block text-sm text-gray-400 mb-1.5">Precio de venta *</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                <input type="number" value={form.price} onChange={e => set("price", e.target.value)}
+                <input type="number" value={form.salePrice} onChange={e => set("salePrice", e.target.value)}
                   min="0" step="0.01" placeholder="0.00"
-                  className={`w-full pl-7 pr-3 py-2.5 bg-gray-800 border rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 ${errors.price ? "border-red-500" : "border-gray-700"}`} />
+                  className={`w-full pl-7 pr-3 py-2.5 bg-gray-800 border rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 ${errors.salePrice ? "border-red-500" : "border-gray-700"}`} />
               </div>
-              {errors.price && <p className="text-red-400 text-xs mt-1">{errors.price}</p>}
+              {errors.salePrice && <p className="text-red-400 text-xs mt-1">{errors.salePrice}</p>}
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1.5">
@@ -169,7 +167,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
             </div>
           </div>
 
-          {/* Stock + MinStock + Unit */}
+          {/* Stock + MinStock + soldByWeight */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm text-gray-400 mb-1.5">Stock</label>
@@ -184,11 +182,14 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
                 className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Unidad</label>
-              <select value={form.unit} onChange={e => set("unit", e.target.value)}
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500">
-                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
+              <label className="block text-sm text-gray-400 mb-1.5">Por peso</label>
+              <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                <div onClick={() => set("soldByWeight", !form.soldByWeight)}
+                  className={`w-9 h-5 rounded-full transition-colors relative ${form.soldByWeight ? "bg-purple-600" : "bg-gray-700"}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.soldByWeight ? "left-4" : "left-0.5"}`} />
+                </div>
+                <span className="text-xs text-gray-400">{form.soldByWeight ? "Sí (kg)" : "No (un.)"}</span>
+              </label>
             </div>
           </div>
 

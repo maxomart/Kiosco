@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 
 interface Product {
   id: string; name: string; barcode: string | null; sku: string | null
-  salePrice: number; costPrice: number; stock: number
+  salePrice: number; costPrice: number; stock: number; minStock: number
   soldByWeight: boolean; taxRate?: string
   category?: { name: string } | null
 }
@@ -113,7 +113,7 @@ export default function POSPage() {
                     "bg-gray-800 hover:bg-gray-700 border rounded-xl p-3 text-left transition-all active:scale-95",
                     p.stock <= 0 && !p.soldByWeight
                       ? "border-red-900/50 opacity-60 cursor-not-allowed"
-                      : p.stock <= p.stock && p.stock < 5
+                      : p.stock <= p.minStock
                       ? "border-yellow-700/50 hover:border-yellow-600"
                       : "border-gray-700 hover:border-purple-600"
                   )}
@@ -125,7 +125,7 @@ export default function POSPage() {
                     <span className="text-purple-400 font-bold text-sm">{formatCurrency(p.salePrice)}</span>
                     <span className={cn("text-xs px-1.5 py-0.5 rounded-md",
                       p.stock <= 0 ? "bg-red-900/40 text-red-400" :
-                      p.stock < 5 ? "bg-yellow-900/40 text-yellow-400" :
+                      p.stock <= p.minStock ? "bg-yellow-900/40 text-yellow-400" :
                       "bg-gray-700 text-gray-400"
                     )}>
                       {p.soldByWeight ? "x kg" : `x${p.stock}`}

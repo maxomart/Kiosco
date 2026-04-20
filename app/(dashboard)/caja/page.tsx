@@ -11,10 +11,10 @@ interface CashSession {
   closingBalance: number | null
   difference: number | null
   notes: string | null
-  openedAt: string
+  createdAt: string
   closedAt: string | null
   user: { name: string | null }
-  _count: { sales: number }
+  _count?: { sales: number }
 }
 
 export default function CajaPage() {
@@ -159,7 +159,7 @@ export default function CajaPage() {
                     </div>
                     <div>
                       <h2 className="text-white font-semibold">Caja abierta</h2>
-                      <p className="text-gray-500 text-sm">Por {current.user?.name || "usuario"} · {formatDateTime(current.openedAt)}</p>
+                      <p className="text-gray-500 text-sm">Por {current.user?.name || "usuario"} · {formatDateTime(current.createdAt)}</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-xs font-medium border border-green-500/20">ABIERTA</span>
@@ -180,7 +180,7 @@ export default function CajaPage() {
                   </div>
                   <div className="bg-gray-800/50 rounded-lg p-4">
                     <p className="text-gray-500 text-xs mb-1">Ventas totales</p>
-                    <p className="text-white text-xl font-bold">{current._count.sales}</p>
+                    <p className="text-white text-xl font-bold">{current._count?.sales ?? 0}</p>
                   </div>
                 </div>
               </div>
@@ -258,7 +258,7 @@ export default function CajaPage() {
                   </tr>
                 ) : sessions.map(s => (
                   <tr key={s.id} className="hover:bg-gray-800/30 transition-colors">
-                    <td className="p-4 text-gray-300">{formatDateTime(s.openedAt)}</td>
+                    <td className="p-4 text-gray-300">{formatDateTime(s.createdAt)}</td>
                     <td className="p-4 text-gray-300">{s.closedAt ? formatDateTime(s.closedAt) : "—"}</td>
                     <td className="p-4 text-gray-300">{s.user?.name || "—"}</td>
                     <td className="p-4 text-right text-gray-300">{formatCurrency(s.openingBalance)}</td>
@@ -270,7 +270,7 @@ export default function CajaPage() {
                         </span>
                       ) : "—"}
                     </td>
-                    <td className="p-4 text-right text-gray-300">{s._count.sales}</td>
+                    <td className="p-4 text-right text-gray-300">{s._count?.sales ?? 0}</td>
                     <td className="p-4 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs ${s.status === "OPEN" ? "bg-green-500/10 text-green-400" : "bg-gray-700 text-gray-400"}`}>
                         {s.status === "OPEN" ? "Abierta" : "Cerrada"}

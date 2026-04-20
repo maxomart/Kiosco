@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Settings, CreditCard, Users, Store, Bell, Shield, ChevronRight, Loader2 } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, Loader2 } from "lucide-react"
 import { BUSINESS_TYPES } from "@/lib/utils"
 
 interface TenantConfig {
@@ -11,11 +11,9 @@ interface TenantConfig {
   phone: string | null
   address: string | null
   taxId: string | null
+  email: string | null
   currency: string
   timezone: string
-  loyaltyEnabled: boolean
-  loyaltyPointsPerPeso: number
-  loyaltyPointValue: number
 }
 
 export default function ConfiguracionPage() {
@@ -119,38 +117,7 @@ export default function ConfiguracionPage() {
             </div>
           </div>
 
-          {/* Loyalty */}
-          <div className="border-t border-gray-800 pt-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Shield size={16} className="text-yellow-400" />
-              <h3 className="text-white font-medium text-sm">Programa de fidelidad</h3>
-            </div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <div onClick={() => set("loyaltyEnabled", !config.loyaltyEnabled)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${config.loyaltyEnabled ? "bg-purple-600" : "bg-gray-700"}`}>
-                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${config.loyaltyEnabled ? "left-5" : "left-0.5"}`} />
-              </div>
-              <span className="text-sm text-gray-300">Habilitar puntos de fidelidad</span>
-            </label>
-            {config.loyaltyEnabled && (
-              <div className="grid grid-cols-2 gap-3 pl-13">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1.5">Puntos por $1 gastado</label>
-                  <input type="number" value={config.loyaltyPointsPerPeso} onChange={e => set("loyaltyPointsPerPeso", parseFloat(e.target.value))}
-                    min="0" step="0.1"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1.5">Valor de 1 punto ($)</label>
-                  <input type="number" value={config.loyaltyPointValue} onChange={e => set("loyaltyPointValue", parseFloat(e.target.value))}
-                    min="0" step="0.01"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-2 border-t border-gray-800">
             <button onClick={handleSave} disabled={saving}
               className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-semibold transition-colors">
               {saving && <Loader2 size={15} className="animate-spin" />}
