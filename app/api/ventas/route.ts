@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
 
   const parsed = CreateSaleSchema.safeParse(body)
   if (!parsed.success) {
+    console.error("[POST /api/ventas] validation failed", JSON.stringify(parsed.error.flatten(), null, 2))
+    console.error("[POST /api/ventas] body received", JSON.stringify(body, null, 2))
     return NextResponse.json(
       { error: "Datos inválidos", details: parsed.error.flatten() },
       { status: 422 }

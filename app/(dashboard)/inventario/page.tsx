@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X } from "lucide-react"
+import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag } from "lucide-react"
 import { formatCurrency, PLAN_LIMITS, type Plan } from "@/lib/utils"
 import ProductModal from "@/components/inventario/ProductModal"
 import ImportModal from "@/components/inventario/ImportModal"
+import { CategoryManagerModal } from "@/components/inventario/CategoryManagerModal"
 
 interface Product {
   id: string
@@ -43,6 +44,7 @@ export default function InventarioPage() {
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [showCategories, setShowCategories] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [plan, setPlan] = useState<Plan>("FREE")
   const PER_PAGE = 20
@@ -147,6 +149,9 @@ export default function InventarioPage() {
           </button>
           <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
             <Upload size={16} /> Importar
+          </button>
+          <button onClick={() => setShowCategories(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
+            <Tag size={16} /> Categorías
           </button>
           {(() => {
             const productLimit = PLAN_LIMITS[plan].products
@@ -359,6 +364,12 @@ export default function InventarioPage() {
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onDone={() => { setShowImport(false); load() }} />
       )}
+
+      <CategoryManagerModal
+        open={showCategories}
+        onClose={() => setShowCategories(false)}
+        onChanged={() => load()}
+      />
     </div>
   )
 }

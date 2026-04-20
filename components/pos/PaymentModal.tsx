@@ -33,27 +33,31 @@ export function PaymentModal({ onClose }: Props) {
   const handlePay = async () => {
     setLoading(true)
     try {
+      // Coerce every numeric field with Number(...) — Prisma Decimal values
+      // can serialize as strings through the products API and would silently
+      // fail Zod validation otherwise.
       const payload = {
         items: cart.map(i => ({
           productId: i.productId,
           productName: i.productName,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          costPrice: i.costPrice,
-          discount: i.discount,
-          subtotal: i.subtotal,
-          taxRate: i.taxRate,
+          quantity: Math.max(1, Math.floor(Number(i.quantity) || 1)),
+          unitPrice: Number(i.unitPrice) || 0,
+          costPrice: Number(i.costPrice) || 0,
+          discount: Number(i.discount) || 0,
+          subtotal: Number(i.subtotal) || 0,
+          taxRate: (i.taxRate as string) || "STANDARD",
+          soldByWeight: !!i.soldByWeight,
         })),
-        subtotal: subtotal(),
-        discountAmount: discountAmount(),
-        discountPercent: discount,
+        subtotal: Number(subtotal()) || 0,
+        discountAmount: Number(discountAmount()) || 0,
+        discountPercent: Number(discount) || 0,
         taxAmount: 0,
-        total: totalAmount,
+        total: Number(totalAmount) || 0,
         paymentMethod: method,
-        cashReceived: method === "CASH" && cashReceived ? Number(cashReceived) : undefined,
-        change: method === "CASH" && cashReceived ? change : undefined,
-        clientId: selectedClientId ?? undefined,
-        cashSessionId: cashSessionId ?? undefined,
+        cashReceived: method === "CASH" && cashReceived ? Number(cashReceived) : null,
+        change: method === "CASH" && cashReceived ? Number(change) : null,
+        clientId: selectedClientId ?? null,
+        cashSessionId: cashSessionId ?? null,
       }
 
       const res = await fetch("/api/ventas", {
@@ -62,11 +66,22 @@ export function PaymentModal({ onClose }: Props) {
         body: JSON.stringify(payload),
       })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? "Error al procesar la venta"); return }
+      if (!res.ok) {
+        // Surface the actual validation error so the user knows what failed.
+        const detail = data?.details?.fieldErrors
+          ? Object.entries(data.details.fieldErrors)
+              .map(([k, v]) => `${k}: ${(v as string[]).join(", ")}`)
+              .join(" | ")
+          : data?.error ?? "Error al procesar la venta"
+        console.error("[PaymentModal] sale failed", { payload, data })
+        toast.error(detail)
+        return
+      }
 
       setSuccess({ number: data.sale.number })
       clearCart()
-    } catch {
+    } catch (e) {
+      console.error("[PaymentModal] network error", e)
       toast.error("Error de conexión")
     } finally {
       setLoading(false)

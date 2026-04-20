@@ -1,10 +1,11 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { Menu, Bell, ChevronDown } from "lucide-react"
+import { Menu, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLAN_LABELS } from "@/lib/utils"
 import type { Plan } from "@/lib/utils"
+import NotificationsBell from "@/components/shared/NotificationsBell"
 
 interface HeaderProps {
   user: {
@@ -97,16 +98,8 @@ export default function Header({ user }: HeaderProps) {
           {PLAN_LABELS[plan]}
         </span>
 
-        {/* Notification bell (placeholder) */}
-        <button
-          className="relative p-1.5 rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
-          aria-label="Notificaciones"
-          title="Notificaciones"
-        >
-          <Bell className="w-4 h-4" />
-          {/* Unread dot – placeholder */}
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-purple-500 rounded-full" />
-        </button>
+        {/* Notification bell — fully functional */}
+        <NotificationsBell />
 
         {/* User avatar */}
         <div className="flex items-center gap-1.5 pl-1">
