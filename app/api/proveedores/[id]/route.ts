@@ -16,10 +16,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const check = await own(params.id, tenantId, isSuperAdmin)
   if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
   if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-  const parsed = schema.safeParse(await req.json())
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
-  const supplier = await db.supplier.update({ where: { id: params.id }, data: { ...parsed.data, email: parsed.data.email || null }, include: { _count: { select: { products: true } } } })
-  return NextResponse.json({ supplier })
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
+  }
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+  try {
+    const supplier = await db.supplier.update({ where: { id: params.id }, data: { ...parsed.data, email: parsed.data.email || null }, include: { _count: { select: { products: true } } } })
+    return NextResponse.json({ supplier })
+  } catch (err) {
+    console.error("[PUT /api/proveedores/[id]]", err)
+    return NextResponse.json({ error: "Error al actualizar" }, { status: 500 })
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -28,6 +39,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const check = await own(params.id, tenantId, isSuperAdmin)
   if (check === "not_found") return NextResponse.json({ error: "No encontrado" }, { status: 404 })
   if (check === "forbidden") return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-  await db.supplier.update({ where: { id: params.id }, data: { active: false } })
-  return NextResponse.json({ ok: true })
+  try {
+    await db.supplier.update({ where: { id: params.id }, data: { active: false } })
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error("[DELETE /api/proveedores/[id]]", err)
+    return NextResponse.json({ error: "Error al eliminar" }, { status: 500 })
+  }
 }

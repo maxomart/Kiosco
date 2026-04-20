@@ -36,15 +36,26 @@ export async function POST(req: NextRequest) {
   const { error, tenantId } = await getSessionTenant()
   if (error) return error
 
-  const formData = await req.formData()
+  let formData: FormData
+  try {
+    formData = await req.formData()
+  } catch {
+    return NextResponse.json({ error: "Form data inválido" }, { status: 400 })
+  }
   const file = formData.get("file") as File | null
   if (!file) return NextResponse.json({ error: "Archivo requerido" }, { status: 400 })
 
-  // Check plan limit
-  const [currentCount, sub] = await Promise.all([
-    db.product.count({ where: { tenantId: tenantId!, active: true } }),
-    db.subscription.findUnique({ where: { tenantId: tenantId! }, select: { plan: true } }),
-  ])
+  let currentCount = 0
+  let sub: { plan: string } | null = null
+  try {
+    ;[currentCount, sub] = await Promise.all([
+      db.product.count({ where: { tenantId: tenantId!, active: true } }),
+      db.subscription.findUnique({ where: { tenantId: tenantId! }, select: { plan: true } }),
+    ])
+  } catch (err) {
+    console.error("[POST /api/productos/importar] plan check", err)
+    return NextResponse.json({ error: "Error al verificar plan" }, { status: 500 })
+  }
   const plan = (sub?.plan ?? "FREE") as keyof typeof PLAN_LIMITS
   const limit = PLAN_LIMITS[plan].products
 
@@ -79,13 +90,12 @@ export async function POST(req: NextRequest) {
 
     const data = {
       name: name.trim(),
-      price: parseFloat(priceRaw),
+      salePrice: parseFloat(priceRaw),
       costPrice: parseFloat(row.costo || row.costPrice || "0") || 0,
       stock: parseInt(row.stock || "0") || 0,
       minStock: parseInt(row.stock_minimo || row.minStock || "5") || 5,
       barcode: barcode || null,
       sku: sku || null,
-      unit: row.unidad || row.unit || "un",
       active: true,
     }
 

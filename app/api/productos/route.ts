@@ -37,13 +37,18 @@ export async function GET(req: NextRequest) {
   ]
   if (categoryId) where.categoryId = categoryId
 
-  const [products, total] = await Promise.all([
-    db.product.findMany({ where, include: { category: { select: { id: true, name: true } }, supplier: { select: { id: true, name: true } } }, orderBy: { name: "asc" }, take: limit, skip: (page - 1) * limit }),
-    db.product.count({ where }),
-  ])
+  try {
+    const [products, total] = await Promise.all([
+      db.product.findMany({ where, include: { category: { select: { id: true, name: true } }, supplier: { select: { id: true, name: true } } }, orderBy: { name: "asc" }, take: limit, skip: (page - 1) * limit }),
+      db.product.count({ where }),
+    ])
 
-  const result = lowStock ? products.filter(p => p.stock <= p.minStock) : products
-  return NextResponse.json({ products: result, total, page, totalPages: Math.ceil(total / limit) })
+    const result = lowStock ? products.filter(p => p.stock <= p.minStock) : products
+    return NextResponse.json({ products: result, total, page, totalPages: Math.ceil(total / limit) })
+  } catch (err) {
+    console.error("[GET /api/productos]", err)
+    return NextResponse.json({ error: "Error al obtener productos" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -54,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const parsed = schema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
 
   const d = parsed.data
   const tid = tenantId!

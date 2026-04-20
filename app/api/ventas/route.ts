@@ -58,6 +58,20 @@ export async function POST(req: NextRequest) {
   const data = parsed.data
   const userId = session!.user.id
 
+  // Validate clientId / cashSessionId belong to tenant (prevents cross-tenant writes)
+  if (data.clientId) {
+    const client = await db.client.findUnique({ where: { id: data.clientId }, select: { tenantId: true } })
+    if (!client || client.tenantId !== tenantId) {
+      return NextResponse.json({ error: "Cliente inválido" }, { status: 400 })
+    }
+  }
+  if (data.cashSessionId) {
+    const cs = await db.cashSession.findUnique({ where: { id: data.cashSessionId }, select: { tenantId: true } })
+    if (!cs || cs.tenantId !== tenantId) {
+      return NextResponse.json({ error: "Sesión de caja inválida" }, { status: 400 })
+    }
+  }
+
   try {
     const sale = await db.$transaction(async (tx) => {
       // ---- 1. Stock check (inside transaction to prevent race conditions) ----
@@ -241,33 +255,38 @@ export async function GET(req: NextRequest) {
     ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
   }
 
-  const [sales, total] = await Promise.all([
-    db.sale.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: { select: { name: true } },
-        client: { select: { name: true } },
-        items: {
-          select: {
-            id: true,
-            productName: true,
-            quantity: true,
-            unitPrice: true,
-            subtotal: true,
+  try {
+    const [sales, total] = await Promise.all([
+      db.sale.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: { select: { name: true } },
+          client: { select: { name: true } },
+          items: {
+            select: {
+              id: true,
+              productName: true,
+              quantity: true,
+              unitPrice: true,
+              subtotal: true,
+            },
           },
         },
-      },
-    }),
-    db.sale.count({ where }),
-  ])
+      }),
+      db.sale.count({ where }),
+    ])
 
-  return NextResponse.json({
-    sales,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  })
+    return NextResponse.json({
+      sales,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    })
+  } catch (err) {
+    console.error("[GET /api/ventas]", err)
+    return NextResponse.json({ error: "Error al obtener ventas" }, { status: 500 })
+  }
 }

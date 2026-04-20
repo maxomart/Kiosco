@@ -12,17 +12,38 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get("from"); const to = searchParams.get("to")
   const where: any = { ...(tenantId ? { tenantId } : {}) }
   if (from || to) { where.createdAt = {}; if (from) where.createdAt.gte = new Date(from); if (to) where.createdAt.lte = new Date(to) }
-  const recharges = await db.recharge.findMany({ where, include: { supplier: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 })
-  return NextResponse.json({ recharges })
+  try {
+    const recharges = await db.recharge.findMany({ where, include: { supplier: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 200 })
+    return NextResponse.json({ recharges })
+  } catch (err) {
+    console.error("[GET /api/cargas]", err)
+    return NextResponse.json({ error: "Error al obtener cargas" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  const parsed = schema.safeParse(await req.json())
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
-  const { cost, amount, ...rest } = parsed.data
-  const last = await db.recharge.findFirst({ where: { tenantId: tenantId! }, orderBy: { number: "desc" }, select: { number: true } })
-  const recharge = await db.recharge.create({ data: { ...rest, cost, amount, profit: amount - cost, number: (last?.number ?? 0) + 1, tenantId: tenantId! } })
-  return NextResponse.json({ recharge }, { status: 201 })
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
+  }
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+  try {
+    const { cost, amount, supplierId, ...rest } = parsed.data
+    // Verify supplier belongs to tenant
+    const supplier = await db.supplier.findUnique({ where: { id: supplierId }, select: { tenantId: true } })
+    if (!supplier || supplier.tenantId !== tenantId) {
+      return NextResponse.json({ error: "Proveedor inválido" }, { status: 400 })
+    }
+    const last = await db.recharge.findFirst({ where: { tenantId: tenantId! }, orderBy: { number: "desc" }, select: { number: true } })
+    const recharge = await db.recharge.create({ data: { ...rest, supplierId, cost, amount, profit: amount - cost, number: (last?.number ?? 0) + 1, tenantId: tenantId! } })
+    return NextResponse.json({ recharge }, { status: 201 })
+  } catch (err) {
+    console.error("[POST /api/cargas]", err)
+    return NextResponse.json({ error: "Error al crear carga" }, { status: 500 })
+  }
 }

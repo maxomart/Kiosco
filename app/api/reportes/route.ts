@@ -14,12 +14,18 @@ export async function GET(req: NextRequest) {
 
   const where = { ...tenantFilter, status: "COMPLETED", createdAt: { gte: from, lte: to } }
 
-  const [salesAgg, itemsRaw, paymentMethods, sales] = await Promise.all([
-    db.sale.aggregate({ where, _sum: { total: true, discountAmount: true, taxAmount: true }, _count: true, _avg: { total: true } }),
-    db.saleItem.findMany({ where: { sale: { ...where } }, select: { productName: true, quantity: true, subtotal: true, costPrice: true } }),
-    db.sale.groupBy({ by: ["paymentMethod"], where, _sum: { total: true }, _count: true }),
-    db.sale.findMany({ where, select: { createdAt: true, total: true }, orderBy: { createdAt: "asc" } }),
-  ])
+  let salesAgg, itemsRaw, paymentMethods, sales
+  try {
+    ;[salesAgg, itemsRaw, paymentMethods, sales] = await Promise.all([
+      db.sale.aggregate({ where, _sum: { total: true, discountAmount: true, taxAmount: true }, _count: true, _avg: { total: true } }),
+      db.saleItem.findMany({ where: { sale: { ...where } }, select: { productName: true, quantity: true, subtotal: true, costPrice: true } }),
+      db.sale.groupBy({ by: ["paymentMethod"], where, _sum: { total: true }, _count: true }),
+      db.sale.findMany({ where, select: { createdAt: true, total: true }, orderBy: { createdAt: "asc" } }),
+    ])
+  } catch (err) {
+    console.error("[GET /api/reportes]", err)
+    return NextResponse.json({ error: "Error al generar reporte" }, { status: 500 })
+  }
 
   // Total cost from items
   const totalCost = itemsRaw.reduce((acc, i) => acc + Number(i.costPrice) * i.quantity, 0)

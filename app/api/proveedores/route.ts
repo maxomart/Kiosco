@@ -16,8 +16,13 @@ const schema = z.object({
 export async function GET() {
   const { error, tenantId } = await getSessionTenant()
   if (error) return error
-  const suppliers = await db.supplier.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" }, include: { _count: { select: { products: true } } } })
-  return NextResponse.json({ suppliers })
+  try {
+    const suppliers = await db.supplier.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" }, include: { _count: { select: { products: true } } } })
+    return NextResponse.json({ suppliers })
+  } catch (err) {
+    console.error("[GET /api/proveedores]", err)
+    return NextResponse.json({ error: "Error al obtener proveedores" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -25,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
   const body = await req.json()
   const parsed = schema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   try {
     const supplier = await db.supplier.create({ data: { ...parsed.data, email: parsed.data.email || null, tenantId: tenantId! }, include: { _count: { select: { products: true } } } })
     return NextResponse.json({ supplier }, { status: 201 })

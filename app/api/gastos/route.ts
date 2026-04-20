@@ -12,15 +12,31 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get("from"); const to = searchParams.get("to")
   const where: any = { ...(tenantId ? { tenantId } : {}) }
   if (from || to) { where.createdAt = {}; if (from) where.createdAt.gte = new Date(from); if (to) where.createdAt.lte = new Date(to) }
-  const expenses = await db.expense.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 })
-  return NextResponse.json({ expenses })
+  try {
+    const expenses = await db.expense.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 })
+    return NextResponse.json({ expenses })
+  } catch (err) {
+    console.error("[GET /api/gastos]", err)
+    return NextResponse.json({ error: "Error al obtener gastos" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  const parsed = schema.safeParse(await req.json())
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
-  const expense = await db.expense.create({ data: { ...parsed.data, tenantId: tenantId! } })
-  return NextResponse.json({ expense }, { status: 201 })
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
+  }
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+  try {
+    const expense = await db.expense.create({ data: { ...parsed.data, tenantId: tenantId! } })
+    return NextResponse.json({ expense }, { status: 201 })
+  } catch (err) {
+    console.error("[POST /api/gastos]", err)
+    return NextResponse.json({ error: "Error al crear gasto" }, { status: 500 })
+  }
 }

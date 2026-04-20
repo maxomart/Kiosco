@@ -8,12 +8,17 @@ import { generatePassword, PLAN_LIMITS, type Plan } from "@/lib/utils"
 export async function GET() {
   const { error, tenantId } = await getSessionTenant()
   if (error) return error
-  const users = await db.user.findMany({
-    where: { tenantId: tenantId! },
-    orderBy: [{ role: "asc" }, { createdAt: "asc" }],
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true, lastLoginAt: true },
-  })
-  return NextResponse.json({ users })
+  try {
+    const users = await db.user.findMany({
+      where: { tenantId: tenantId! },
+      orderBy: [{ role: "asc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+    })
+    return NextResponse.json({ users })
+  } catch (err) {
+    console.error("[GET /api/configuracion/usuarios]", err)
+    return NextResponse.json({ error: "Error al obtener usuarios" }, { status: 500 })
+  }
 }
 
 const createSchema = z.object({
@@ -49,16 +54,22 @@ export async function POST(req: NextRequest) {
 
   const password = generatePassword(12)
   const hashed = await bcrypt.hash(password, 10)
-  await db.user.create({
-    data: {
-      name: parsed.data.name.trim(),
-      email: parsed.data.email.toLowerCase().trim(),
-      password: hashed,
-      role: parsed.data.role,
-      tenantId: tenantId!,
-      active: true,
-    },
-  })
+  try {
+    await db.user.create({
+      data: {
+        name: parsed.data.name.trim(),
+        email: parsed.data.email.toLowerCase().trim(),
+        password: hashed,
+        role: parsed.data.role,
+        tenantId: tenantId!,
+        active: true,
+      },
+    })
+  } catch (err: any) {
+    if (err?.code === "P2002") return NextResponse.json({ error: "Email ya registrado" }, { status: 409 })
+    console.error("[POST /api/configuracion/usuarios]", err)
+    return NextResponse.json({ error: "Error al crear usuario" }, { status: 500 })
+  }
 
   return NextResponse.json({ email: parsed.data.email, password }, { status: 201 })
 }

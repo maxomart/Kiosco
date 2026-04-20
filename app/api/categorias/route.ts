@@ -5,8 +5,13 @@ import { getSessionTenant } from "@/lib/tenant"
 export async function GET() {
   const { error, tenantId } = await getSessionTenant()
   if (error) return error
-  const categories = await db.category.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" } })
-  return NextResponse.json({ categories })
+  try {
+    const categories = await db.category.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" } })
+    return NextResponse.json({ categories })
+  } catch (err) {
+    console.error("[GET /api/categorias]", err)
+    return NextResponse.json({ error: "Error al obtener categorías" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {

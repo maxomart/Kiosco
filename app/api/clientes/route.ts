@@ -8,15 +8,26 @@ const schema = z.object({ name: z.string().min(1), phone: z.string().optional().
 export async function GET() {
   const { error, tenantId } = await getSessionTenant()
   if (error) return error
-  const clients = await db.client.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" } })
-  return NextResponse.json({ clients })
+  try {
+    const clients = await db.client.findMany({ where: { active: true, ...(tenantId ? { tenantId } : {}) }, orderBy: { name: "asc" } })
+    return NextResponse.json({ clients })
+  } catch (err) {
+    console.error("[GET /api/clientes]", err)
+    return NextResponse.json({ error: "Error al obtener clientes" }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  const parsed = schema.safeParse(await req.json())
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
+  }
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   try {
     const client = await db.client.create({ data: { ...parsed.data, email: parsed.data.email || null, tenantId: tenantId! } })
     return NextResponse.json({ client }, { status: 201 })

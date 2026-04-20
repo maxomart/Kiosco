@@ -22,27 +22,32 @@ export async function GET(req: NextRequest) {
     }),
   }
 
-  const products = await db.product.findMany({
-    where,
-    take: limit,
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      name: true,
-      barcode: true,
-      sku: true,
-      salePrice: true,
-      costPrice: true,
-      stock: true,
-      minStock: true,
-      soldByWeight: true,
-      image: true,
-      active: true,
-      category: {
-        select: { id: true, name: true },
+  try {
+    const products = await db.product.findMany({
+      where,
+      take: limit,
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        barcode: true,
+        sku: true,
+        salePrice: true,
+        costPrice: true,
+        stock: true,
+        minStock: true,
+        soldByWeight: true,
+        image: true,
+        active: true,
+        category: {
+          select: { id: true, name: true },
+        },
       },
-    },
-  })
+    })
 
-  return NextResponse.json({ products })
+    return NextResponse.json({ products })
+  } catch (err) {
+    console.error("[GET /api/productos/buscar]", err)
+    return NextResponse.json({ error: "Error al buscar productos" }, { status: 500 })
+  }
 }
