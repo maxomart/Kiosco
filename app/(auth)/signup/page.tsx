@@ -2,10 +2,14 @@
 
 import { useId, useState } from "react"
 import { signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import toast from "react-hot-toast"
 import { Eye, EyeOff, Loader2, Sparkles, UserPlus } from "lucide-react"
-import { BUSINESS_TYPES } from "@/lib/utils"
+import { BUSINESS_TYPES, PLAN_LABELS_AR } from "@/lib/utils"
+
+const VALID_PLAN_PARAMS = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
+type PlanParam = typeof VALID_PLAN_PARAMS[number]
 
 interface FormState {
   businessName: string
@@ -35,6 +39,13 @@ const INITIAL: FormState = {
 }
 
 export default function SignupPage() {
+  const searchParams = useSearchParams()
+  const planParamRaw = searchParams.get("plan")?.toUpperCase() ?? ""
+  const selectedPlan: PlanParam = (VALID_PLAN_PARAMS as readonly string[]).includes(planParamRaw)
+    ? (planParamRaw as PlanParam)
+    : "FREE"
+  const isPaid = selectedPlan !== "FREE"
+
   const idBusinessName = useId()
   const idBusinessType = useId()
   const idOwnerName = useId()
@@ -89,6 +100,7 @@ export default function SignupPage() {
           ownerName: form.ownerName.trim(),
           email,
           password: form.password,
+          plan: selectedPlan,
         }),
       })
       const data = await res.json()
@@ -136,8 +148,18 @@ export default function SignupPage() {
       <div className="mb-4 flex items-center gap-2.5 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5">
         <Sparkles className="w-4 h-4 text-white shrink-0" />
         <p className="text-xs text-gray-300">
-          <span className="font-semibold text-white">14 días gratis</span> — sin tarjeta de
-          crédito. Cancelá cuando quieras.
+          {isPaid ? (
+            <>
+              Plan <span className="font-semibold text-white">{PLAN_LABELS_AR[selectedPlan]}</span> ·
+              <span className="font-semibold text-white"> 14 días gratis</span> sin tarjeta.
+              Después elegís si seguís o cancelás.
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-white">Plan Gratis</span> — sin costo, sin tarjeta.
+              Podés mejorar cuando quieras.
+            </>
+          )}
         </p>
       </div>
 

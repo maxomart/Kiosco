@@ -184,10 +184,17 @@ export default function SuscripcionPage() {
       })
       if (res.ok) {
         const { initPoint } = await res.json()
+        if (!initPoint) {
+          toast.error("Mercado Pago no devolvió un link de pago. Intentá de nuevo.")
+          setUpgrading(null)
+          return
+        }
         window.location.href = initPoint
       } else {
         const d = await res.json().catch(() => ({}))
-        toast.error(d.error || "Error al iniciar pago con Mercado Pago")
+        const msg = d.error || "Error al iniciar pago con Mercado Pago"
+        toast.error(msg, { duration: 6000 })
+        if (d.detail) console.error("[MP detail]", d.detail)
         setUpgrading(null)
       }
     } catch {
@@ -556,7 +563,7 @@ export default function SuscripcionPage() {
                     </div>
                   ) : isCurrent ? (
                     <div className="w-full py-2.5 rounded-lg bg-accent-soft border border-accent/40 text-center text-accent text-sm font-medium">
-                      ✓ Estás en este plan
+                      {plan === "FREE" ? "✓ Gratis para siempre" : "✓ Estás en este plan"}
                     </div>
                   ) : plan === "FREE" && currentIdx === 0 ? (
                     <div className="w-full py-2.5 rounded-lg border border-gray-800 text-center text-gray-600 text-sm">

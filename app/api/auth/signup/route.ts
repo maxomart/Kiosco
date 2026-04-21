@@ -12,6 +12,8 @@ const VALID_BUSINESS_TYPES = [
   "OTRO",
 ] as const
 
+const VALID_PLANS = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
+
 const signupSchema = z.object({
   businessName: z
     .string()
@@ -32,6 +34,7 @@ const signupSchema = z.object({
     .string()
     .min(8, "La contraseña debe tener al menos 8 caracteres.")
     .max(128, "La contraseña es demasiado larga."),
+  plan: z.enum(VALID_PLANS).optional().default("FREE"),
 })
 
 function randomSuffix(len = 4): string {
@@ -63,7 +66,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ errors }, { status: 422 })
     }
 
-    const { businessName, businessType, ownerName, email, password } = parsed.data
+    const { businessName, businessType, ownerName, email, password, plan } = parsed.data
 
     // Check if email already exists
     const existing = await db.user.findUnique({
@@ -94,10 +97,12 @@ export async function POST(req: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Trial period: 14 days from now
     const now = new Date()
-    const trialEnd = new Date(now)
-    trialEnd.setDate(trialEnd.getDate() + 14)
+    const isPaidPlan = plan !== "FREE"
+    // Paid plans get a 14-day trial; FREE is permanent (ACTIVE, no period end).
+    const trialEnd = isPaidPlan
+      ? new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+      : null
 
     // Create everything in a transaction
     await db.$transaction(async (tx) => {
@@ -120,11 +125,11 @@ export async function POST(req: Request) {
         },
       })
 
-      // 3. Create Subscription (FREE plan, trial period)
+      // 3. Create Subscription
       await tx.subscription.create({
         data: {
-          plan: "FREE",
-          status: "TRIALING",
+          plan,
+          status: isPaidPlan ? "TRIALING" : "ACTIVE",
           tenantId: tenant.id,
           currentPeriodStart: now,
           currentPeriodEnd: trialEnd,
