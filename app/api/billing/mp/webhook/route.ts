@@ -74,9 +74,13 @@ async function handleEvent({
   // Unknown event — ignore quietly
 }
 
+const ANNUAL_DISCOUNT = 0.2
+
 function planFromAmount(amount: number): Plan | null {
   for (const [k, v] of Object.entries(PLAN_PRICES_ARS)) {
-    if (v === amount && v > 0) return k as Plan
+    if (v <= 0) continue
+    if (v === amount) return k as Plan
+    if (Math.round(v * 12 * (1 - ANNUAL_DISCOUNT)) === amount) return k as Plan
   }
   return null
 }

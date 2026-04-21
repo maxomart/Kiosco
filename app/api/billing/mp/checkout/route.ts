@@ -22,16 +22,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  let body: { plan?: string; period?: string; payerEmail?: string }
+  let body: { plan?: string; period?: string }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
-  }
-
-  const payerEmail = body.payerEmail?.trim() || session.user.email!
-  if (!payerEmail || !payerEmail.includes("@")) {
-    return NextResponse.json({ error: "Email de Mercado Pago inválido" }, { status: 400 })
   }
 
   const plan = body.plan as Plan | undefined
@@ -68,7 +63,7 @@ export async function POST(req: NextRequest) {
   let preapproval
   try {
     preapproval = await createPreapproval({
-      payerEmail,
+      payerEmail: session.user.email!,
       backUrl,
       reason: `RetailAR ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
       externalReference: tenantId!,
