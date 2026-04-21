@@ -9,7 +9,7 @@ const updatesSchema = z.object({
   /** "SET" (default, replaces value) or "ADD" (sums to current — for stock arrivals). */
   mode: z.enum(["SET", "ADD"]).optional().default("SET"),
   /** Optional reference label saved on each StockMovement (e.g. "Carga 12/04/2026") */
-  reference: z.string().optional(),
+  reference: z.string().nullable().optional(),
   updates: z
     .array(
       z.object({
@@ -19,7 +19,7 @@ const updatesSchema = z.object({
         stock: z.number().int().optional(),       // signed in ADD mode (can be negative for adjustments)
       }),
     )
-    .min(1),
+    .min(1, "Sin cambios para guardar"),
 })
 
 const deleteSchema = z.object({ ids: z.array(z.string().min(1)).min(1) })
@@ -40,7 +40,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 })
   }
   const parsed = updatesSchema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: "Sin cambios" }, { status: 400 })
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0]
+    const msg = firstIssue?.message ?? "Datos inválidos"
+    console.error("[bulk] validation failed:", JSON.stringify(parsed.error.issues))
+    return NextResponse.json({ error: msg, detail: parsed.error.issues }, { status: 400 })
+  }
   const { mode, updates, reference } = parsed.data
 
   try {

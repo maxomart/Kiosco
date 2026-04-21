@@ -149,13 +149,17 @@ export function StockBulkModal({ onClose, onDone }: Props) {
         return
       }
 
+      const payload: Record<string, unknown> = { mode, updates }
+      const ref = reference.trim()
+      if (ref) payload.reference = ref
       const res = await fetch("/api/productos/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, updates, reference: reference || null }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) {
+        if (data.detail) console.error("[bulk stock]", data.detail)
         toast.error(data.error ?? "Error al guardar")
         return
       }
@@ -217,11 +221,11 @@ export function StockBulkModal({ onClose, onDone }: Props) {
           </div>
 
           {/* Mode toggle */}
-          <div className="flex gap-2 items-center text-xs">
-            <span className="text-gray-500">Modo:</span>
+          <div className="flex flex-wrap gap-2 items-center text-xs">
+            <span className="text-gray-500 hidden sm:inline">Modo:</span>
             <button
               onClick={() => setEditMode("ABSOLUTE")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-medium transition ${
                 editMode === "ABSOLUTE" ? "bg-sky-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"
               }`}
               title="Tipear el stock total nuevo (ej: 'tengo 24')"
@@ -230,14 +234,14 @@ export function StockBulkModal({ onClose, onDone }: Props) {
             </button>
             <button
               onClick={() => setEditMode("DELTA")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-medium transition ${
                 editMode === "DELTA" ? "bg-emerald-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"
               }`}
               title="Sumar/restar al stock actual (ej: '+12 que llegaron')"
             >
               ➕ Sumar/restar
             </button>
-            <span className="ml-auto text-gray-500">{filtered.length} productos</span>
+            <span className="ml-auto text-gray-500 text-[11px] sm:text-xs">{filtered.length} productos</span>
           </div>
         </div>
 
@@ -265,30 +269,31 @@ export function StockBulkModal({ onClose, onDone }: Props) {
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center gap-3 p-2 rounded-xl transition ${
+                    className={`flex items-center gap-2 sm:gap-3 p-2 rounded-xl transition ${
                       isEdited ? "bg-emerald-900/15 border border-emerald-700/30" : "hover:bg-gray-800/40 border border-transparent"
                     }`}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-100 truncate">{p.name}</p>
-                      <p className="text-[11px] text-gray-500 truncate font-mono">
-                        {p.barcode || p.sku || "Sin código"}{" "}
-                        {p.category?.name && <span className="text-gray-600">· {p.category.name}</span>}{" "}
-                        <span className="text-gray-600">· {formatCurrency(p.salePrice)}</span>
+                      <p className="text-[10px] sm:text-[11px] text-gray-500 truncate font-mono">
+                        <span className="sm:hidden">Stock: <span className={p.stock <= 0 ? "text-red-400" : "text-gray-400"}>{p.stock}</span> · </span>
+                        {p.barcode || p.sku || "Sin código"}
+                        {p.category?.name && <span className="text-gray-600 hidden sm:inline"> · {p.category.name}</span>}
+                        <span className="text-gray-600 hidden sm:inline"> · {formatCurrency(p.salePrice)}</span>
                       </p>
                     </div>
 
-                    {/* Current stock indicator */}
+                    {/* Current stock indicator (desktop only) */}
                     <div className="hidden sm:flex flex-col items-end text-right">
                       <span className="text-[10px] text-gray-500 uppercase tracking-wide">Actual</span>
                       <span className={`text-sm font-mono ${p.stock <= 0 ? "text-red-400" : "text-gray-300"}`}>{p.stock}</span>
                     </div>
 
                     {/* Editor */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                       <button
                         onClick={() => editMode === "ABSOLUTE" ? setStockAbsolute(p.id, newStock - 1) : adjustDelta(p.id, -1)}
-                        className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition"
                         aria-label="Restar 1"
                       >
                         <Minus size={13} />
@@ -301,13 +306,13 @@ export function StockBulkModal({ onClose, onDone }: Props) {
                           if (isNaN(v)) return
                           editMode === "ABSOLUTE" ? setStockAbsolute(p.id, v) : setDelta(p.id, v)
                         }}
-                        className={`w-16 text-center bg-gray-800 border rounded-lg px-1 py-1.5 text-sm font-mono focus:outline-none transition ${
+                        className={`w-12 sm:w-16 text-center bg-gray-800 border rounded-lg px-1 py-1.5 text-sm font-mono focus:outline-none transition ${
                           isEdited ? "border-emerald-600 text-emerald-300" : "border-gray-700 text-gray-200 focus:border-accent"
                         }`}
                       />
                       <button
                         onClick={() => editMode === "ABSOLUTE" ? setStockAbsolute(p.id, newStock + 1) : adjustDelta(p.id, 1)}
-                        className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 flex items-center justify-center transition"
                         aria-label="Sumar 1"
                       >
                         <Plus size={13} />
@@ -315,7 +320,7 @@ export function StockBulkModal({ onClose, onDone }: Props) {
                     </div>
 
                     {/* Diff badge */}
-                    <div className="w-12 text-right text-xs font-mono flex-shrink-0">
+                    <div className="w-8 sm:w-12 text-right text-xs font-mono flex-shrink-0">
                       {isEdited ? (
                         <span className={delta > 0 ? "text-emerald-400" : "text-amber-400"}>
                           {delta > 0 ? "+" : ""}{delta}
@@ -332,50 +337,50 @@ export function StockBulkModal({ onClose, onDone }: Props) {
         </div>
 
         {/* Footer with summary + save */}
-        <div className="border-t border-gray-800 p-4 space-y-3">
+        <div className="border-t border-gray-800 p-3 sm:p-4 space-y-3">
           {editedCount > 0 && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <input
                 type="text"
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
-                placeholder="Etiqueta para esta carga (opcional, ej: 'Conteo 20/04')"
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-100 placeholder-gray-600 focus:outline-none focus:border-accent"
+                placeholder="Etiqueta (opcional, ej: 'Conteo 20/04')"
+                className="flex-1 min-w-0 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-100 placeholder-gray-600 focus:outline-none focus:border-accent"
               />
               <button
                 onClick={reset}
-                className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1 rounded transition flex items-center gap-1"
+                className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1 rounded transition flex items-center gap-1 flex-shrink-0"
                 title="Descartar cambios"
               >
-                <RotateCcw size={12} /> Descartar
+                <RotateCcw size={12} /> <span className="hidden sm:inline">Descartar</span>
               </button>
             </div>
           )}
 
-          <div className="flex items-center gap-3">
-            <div className="flex-1 text-sm">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex-1 text-xs sm:text-sm min-w-0">
               {editedCount > 0 ? (
-                <span className="text-emerald-300 flex items-center gap-1.5">
-                  <CheckCircle size={14} />
-                  <strong>{editedCount}</strong> producto{editedCount === 1 ? "" : "s"} con cambios
+                <span className="text-emerald-300 flex items-center gap-1.5 truncate">
+                  <CheckCircle size={14} className="flex-shrink-0" />
+                  <span className="truncate"><strong>{editedCount}</strong> con cambios</span>
                 </span>
               ) : (
-                <span className="text-gray-500">Editá la cantidad de los productos arriba</span>
+                <span className="text-gray-500 truncate">Editá la cantidad arriba</span>
               )}
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs sm:text-sm font-medium transition flex-shrink-0"
             >
               Cancelar
             </button>
             <button
               onClick={handleSave}
               disabled={saving || editedCount === 0}
-              className="px-5 py-2.5 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-semibold transition flex items-center gap-2"
+              className="px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-xs sm:text-sm font-semibold transition flex items-center gap-2 flex-shrink-0"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              {saving ? "Guardando..." : `Guardar ${editedCount > 0 ? editedCount : ""} cambios`}
+              <span>{saving ? "Guardando..." : `Guardar${editedCount > 0 ? ` (${editedCount})` : ""}`}</span>
             </button>
           </div>
         </div>
