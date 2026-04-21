@@ -570,24 +570,17 @@ export default function SuscripcionPage() {
                     /* isUpgrade */
                     <div className="space-y-2">
                       <button
-                        onClick={() => handleUpgradeMobbex(plan)}
+                        onClick={() => handleUpgradeMP(plan)}
                         disabled={!!upgrading}
                         className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-accent hover:bg-accent-hover text-accent-foreground"
                       >
-                        {upgrading === `mobbex:${plan}` ? "Redirigiendo..." : (
+                        {upgrading === `mp:${plan}` ? "Redirigiendo..." : (
                           <>
                             <CreditCard size={14} />
                             Mejorar a {PLAN_LABELS_AR[plan]}
                             {period === "annual" && " (anual)"}
                           </>
                         )}
-                      </button>
-                      <button
-                        onClick={() => handleUpgradeMP(plan)}
-                        disabled={!!upgrading}
-                        className="w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-400"
-                      >
-                        {upgrading === `mp:${plan}` ? "Redirigiendo..." : "o pagar con Mercado Pago"}
                       </button>
                       {period === "monthly" && (
                         <button
