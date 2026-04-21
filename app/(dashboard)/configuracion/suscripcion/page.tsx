@@ -271,13 +271,15 @@ export default function SuscripcionPage() {
         </motion.div>
       )}
 
-      {/* Manual sync button — shown after MP redirect if sync didn't resolve */}
-      {mpResult === "success" && !welcomed && !syncing && sub?.plan === "FREE" && (
+      {/* Manual sync button — always visible when MP preapproval exists and plan not active */}
+      {!welcomed && !syncing && sub?.mpPreapprovalId && sub?.status !== "ACTIVE" && (
         <div className="flex items-start gap-3 px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-300 text-sm">
           <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
           <div>
-            <p className="font-medium">Tu pago fue procesado pero MP todavía no confirmó.</p>
-            <p className="text-yellow-400/70 text-xs mt-0.5 mb-2">Esto puede tardar hasta 1 minuto. Intentá verificar manualmente.</p>
+            <p className="font-medium">¿Ya pagaste con Mercado Pago?</p>
+            <p className="text-yellow-400/70 text-xs mt-0.5 mb-2">
+              Si tu pago fue aprobado pero el plan no cambió, hacé click para verificar.
+            </p>
             <button
               onClick={async () => {
                 setSyncing(true)
@@ -289,14 +291,14 @@ export default function SuscripcionPage() {
                     const sub2 = await fetch("/api/configuracion/suscripcion").then(r2 => r2.json())
                     setSub(sub2.subscription)
                   } else {
-                    toast.error("MP aún no confirmó — esperá un momento y volvé a intentar")
+                    toast.error(`MP respondió: ${d.mpStatus ?? d.reason ?? "pendiente"}. Si el pago fue aprobado, esperá 1 min y volvé a intentar.`)
                   }
                 } catch { toast.error("Error de red") }
                 setSyncing(false)
               }}
               className="px-3 py-1.5 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-medium transition-colors"
             >
-              Verificar ahora
+              {syncing ? "Verificando…" : "Verificar pago"}
             </button>
           </div>
         </div>

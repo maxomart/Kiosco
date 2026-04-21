@@ -136,6 +136,17 @@ export async function searchPaymentsByPreapproval(preapprovalId: string): Promis
   return data?.results ?? []
 }
 
+/** Finds all preapprovals for a tenant (by external_reference = tenantId). */
+export async function searchPreapprovalsByTenant(tenantId: string): Promise<PreapprovalResponse[]> {
+  const res = await fetch(
+    `${MP_API}/preapproval/search?external_reference=${encodeURIComponent(tenantId)}&limit=10`,
+    { method: "GET", headers: authHeaders() }
+  )
+  if (!res.ok) return []
+  const data = await res.json()
+  return data?.results ?? []
+}
+
 // ─── Webhook signature verification ───────────────────────────────────────────
 /**
  * Verifies the `x-signature` header from a MercadoPago webhook.

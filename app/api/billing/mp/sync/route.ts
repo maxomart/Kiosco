@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
-import { getPreapproval, searchPaymentsByPreapproval } from "@/lib/mp-billing"
+import { getPreapproval, searchPaymentsByPreapproval, searchPreapprovalsByTenant } from "@/lib/mp-billing"
 import { PLAN_PRICES_ARS, type Plan } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -38,54 +38,67 @@ async function createInvoicesFromPayments(subscriptionId: string, preapprovalId:
   }
 }
 
+async function activateFromPreapproval(
+  tenantId: string,
+  sub: { id: string; plan: string },
+  pre: { id: string; status: string; auto_recurring?: { transaction_amount?: number } }
+) {
+  const amount = pre.auto_recurring?.transaction_amount ?? 0
+  const matchedPlan = planFromAmount(amount)
+  console.log(`[mp/sync] activating from preapproval ${pre.id} amount=${amount} plan=${matchedPlan}`)
+
+  await db.subscription.update({
+    where: { tenantId },
+    data: {
+      status: "ACTIVE",
+      plan: matchedPlan ?? sub.plan,
+      mpStatus: "authorized",
+      mpPreapprovalId: pre.id,
+      paymentProvider: "mercadopago",
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      cancelledAt: null,
+    },
+  })
+  await createInvoicesFromPayments(sub.id, pre.id)
+  return matchedPlan ?? sub.plan
+}
+
 /** Called when user returns from MP checkout — forces a status check from MP API. */
 export async function POST() {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
   const sub = await db.subscription.findUnique({ where: { tenantId: tenantId! } })
-  if (!sub?.mpPreapprovalId) {
-    return NextResponse.json({ synced: false, reason: "no_preapproval" })
+
+  // Step 1: check the stored preapproval ID
+  if (sub?.mpPreapprovalId) {
+    let pre
+    try {
+      pre = await getPreapproval(sub.mpPreapprovalId)
+    } catch (err: any) {
+      console.error("[mp/sync] getPreapproval error:", err?.message)
+    }
+
+    if (pre) {
+      console.log(`[mp/sync] stored preapproval ${sub.mpPreapprovalId} → status=${pre.status}`)
+      if (pre.status === "authorized") {
+        const plan = await activateFromPreapproval(tenantId!, sub, pre)
+        return NextResponse.json({ synced: true, plan, status: "ACTIVE" })
+      }
+    }
   }
 
-  let pre
-  try {
-    pre = await getPreapproval(sub.mpPreapprovalId)
-  } catch (err: any) {
-    console.error("[mp/sync] getPreapproval error:", err?.message)
-    return NextResponse.json({ synced: false, reason: "mp_error", detail: err?.message })
+  // Step 2: search all preapprovals for this tenant — the stored ID might be stale
+  console.log(`[mp/sync] searching all preapprovals for tenant ${tenantId}`)
+  const all = await searchPreapprovalsByTenant(tenantId!)
+  const authorized = all.find(p => p.status === "authorized")
+  if (authorized) {
+    const plan = await activateFromPreapproval(tenantId!, sub ?? { id: "", plan: "FREE" }, authorized)
+    return NextResponse.json({ synced: true, plan, status: "ACTIVE" })
   }
 
-  const status = pre.status
-  const amount = pre.auto_recurring?.transaction_amount ?? 0
-  const matchedPlan = planFromAmount(amount)
-
-  console.log(`[mp/sync] preapproval ${sub.mpPreapprovalId} → status=${status} amount=${amount} plan=${matchedPlan}`)
-
-  if (status === "authorized") {
-    await db.subscription.update({
-      where: { tenantId: tenantId! },
-      data: {
-        status: "ACTIVE",
-        plan: matchedPlan ?? sub.plan,
-        mpStatus: "authorized",
-        paymentProvider: "mercadopago",
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        cancelledAt: null,
-      },
-    })
-    // Backfill any payments MP already processed
-    await createInvoicesFromPayments(sub.id, sub.mpPreapprovalId)
-    return NextResponse.json({ synced: true, plan: matchedPlan ?? sub.plan, status: "ACTIVE" })
-  }
-
-  if (status === "cancelled") {
-    await db.subscription.update({
-      where: { tenantId: tenantId! },
-      data: { status: "CANCELLED", mpStatus: "cancelled", cancelledAt: new Date() },
-    })
-  }
-
-  return NextResponse.json({ synced: false, mpStatus: status })
+  const latestStatus = all[0]?.status ?? sub?.mpStatus ?? "unknown"
+  console.log(`[mp/sync] no authorized preapproval found. latest status: ${latestStatus}`)
+  return NextResponse.json({ synced: false, mpStatus: latestStatus, reason: "not_authorized" })
 }
