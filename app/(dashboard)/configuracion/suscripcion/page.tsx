@@ -109,10 +109,28 @@ export default function SuscripcionPage() {
   const success = searchParams.get("success")
   const cancelled = searchParams.get("cancelled")
   const mpResult = searchParams.get("mp")
+  const mobbexResult = searchParams.get("mobbex")
 
   useEffect(() => {
     const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
     const run = async () => {
+      if (mobbexResult === "success") {
+        setSyncing(true)
+        // Mobbex webhook arrives fast — wait a few seconds then reload
+        for (let i = 0; i < 5; i++) {
+          setSyncAttempt(i + 1)
+          if (i > 0) await sleep(3000)
+          const d = await fetch("/api/configuracion/suscripcion").then(r => r.json())
+          if (d.subscription?.status === "ACTIVE") {
+            setSub(d.subscription)
+            setWelcomed(true)
+            router.refresh()
+            setSyncing(false)
+            return
+          }
+        }
+        setSyncing(false)
+      }
       if (mpResult === "success") {
         setSyncing(true)
         const MAX = 8
@@ -133,6 +151,28 @@ export default function SuscripcionPage() {
     }
     run()
   }, [mpResult])
+
+  const handleUpgradeMobbex = async (plan: string) => {
+    setUpgrading(`mobbex:${plan}`)
+    try {
+      const res = await fetch("/api/billing/mobbex/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, period }),
+      })
+      if (res.ok) {
+        const { checkoutUrl } = await res.json()
+        window.location.href = checkoutUrl
+      } else {
+        const d = await res.json().catch(() => ({}))
+        toast.error(d.error || "Error al iniciar pago con Mobbex")
+        setUpgrading(null)
+      }
+    } catch {
+      toast.error("Error de red al contactar Mobbex")
+      setUpgrading(null)
+    }
+  }
 
   const handleUpgradeMP = async (plan: string) => {
     setUpgrading(`mp:${plan}`)
@@ -530,11 +570,11 @@ export default function SuscripcionPage() {
                     /* isUpgrade */
                     <div className="space-y-2">
                       <button
-                        onClick={() => handleUpgradeMP(plan)}
+                        onClick={() => handleUpgradeMobbex(plan)}
                         disabled={!!upgrading}
                         className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-accent hover:bg-accent-hover text-accent-foreground"
                       >
-                        {upgrading === `mp:${plan}` ? "Redirigiendo..." : (
+                        {upgrading === `mobbex:${plan}` ? "Redirigiendo..." : (
                           <>
                             <CreditCard size={14} />
                             Mejorar a {PLAN_LABELS_AR[plan]}
@@ -542,7 +582,14 @@ export default function SuscripcionPage() {
                           </>
                         )}
                       </button>
-                      {period === "monthly" ? (
+                      <button
+                        onClick={() => handleUpgradeMP(plan)}
+                        disabled={!!upgrading}
+                        className="w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-400"
+                      >
+                        {upgrading === `mp:${plan}` ? "Redirigiendo..." : "o pagar con Mercado Pago"}
+                      </button>
+                      {period === "monthly" && (
                         <button
                           onClick={() => handleUpgradeStripe(plan)}
                           disabled={!!upgrading}
@@ -550,10 +597,6 @@ export default function SuscripcionPage() {
                         >
                           {upgrading === `stripe:${plan}` ? "Redirigiendo..." : "o pagar con tarjeta internacional (Stripe USD)"}
                         </button>
-                      ) : (
-                        <p className="text-[11px] text-gray-600 text-center">
-                          Anual solo por Mercado Pago
-                        </p>
                       )}
                     </div>
                   )}
