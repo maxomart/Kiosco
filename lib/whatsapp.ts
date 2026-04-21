@@ -48,16 +48,15 @@ export async function sendWhatsApp(toRaw: string, body: string): Promise<SendRes
   const token = process.env.ULTRAMSG_TOKEN!
 
   try {
-    const params = new URLSearchParams({ token, to, body })
+    // UltraMsg requires token as a query parameter
+    const url = `https://api.ultramsg.com/${instanceId}/messages/chat?token=${encodeURIComponent(token)}`
+    const params = new URLSearchParams({ to, body })
 
-    const res = await fetch(
-      `https://api.ultramsg.com/${instanceId}/messages/chat`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params.toString(),
-      }
-    )
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    })
 
     const data = await res.json().catch(() => ({}))
 

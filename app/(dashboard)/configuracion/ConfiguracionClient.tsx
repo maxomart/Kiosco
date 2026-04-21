@@ -271,10 +271,10 @@ export default function ConfiguracionPage() {
               </div>
 
               <p className="text-[11px] text-gray-600 leading-relaxed">
-                Para recibir mensajes la primera vez, tenés que enviar el código join al WhatsApp del bot de Twilio (te lo damos en la consola de Twilio).
-                Si los mensajes no llegan, fijate de haber configurado <code className="bg-gray-800 px-1 rounded">TWILIO_ACCOUNT_SID</code>,{" "}
-                <code className="bg-gray-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> y{" "}
-                <code className="bg-gray-800 px-1 rounded">TWILIO_WHATSAPP_FROM</code> en Railway.
+                Asegurate de haber escaneado el QR en UltraMsg para vincular tu número.
+                Si los mensajes no llegan, verificá que estén configurados{" "}
+                <code className="bg-gray-800 px-1 rounded">ULTRAMSG_INSTANCE_ID</code> y{" "}
+                <code className="bg-gray-800 px-1 rounded">ULTRAMSG_TOKEN</code> en Railway.
               </p>
             </>
           )}
