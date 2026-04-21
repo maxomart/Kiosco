@@ -84,18 +84,13 @@ const PLAN_ICONS: Record<string, React.ElementType> = {
   BUSINESS: Building2,
 }
 
-const PLAN_COLORS: Record<string, string> = {
-  FREE: "border-gray-700",
-  STARTER: "border-blue-500",
-  PROFESSIONAL: "border-purple-500",
-  BUSINESS: "border-yellow-500",
-}
-
 const PLAN_BADGE_COLORS: Record<string, string> = {
-  FREE: "bg-gray-700 text-gray-300",
-  STARTER: "bg-blue-500/20 text-blue-400",
-  PROFESSIONAL: "bg-purple-500/20 text-purple-400",
-  BUSINESS: "bg-yellow-500/20 text-yellow-400",
+  FREE: "bg-gray-700 text-gray-300 border border-gray-600/50",
+  STARTER: "bg-accent-soft text-accent border border-accent/40",
+  PROFESSIONAL: "bg-accent-soft text-accent border border-accent/40",
+  BUSINESS: "bg-accent-soft text-accent border border-accent/40",
+  ENTERPRISE: "bg-accent-soft text-accent border border-accent/40",
+  CANCELLED: "bg-red-500/15 text-red-300 border border-red-500/30",
 }
 
 export default function SuscripcionPage() {
@@ -242,25 +237,37 @@ export default function SuscripcionPage() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-gray-500 text-sm">Plan actual</p>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className="text-2xl font-bold text-white">{PLAN_LABELS_AR[sub.plan as keyof typeof PLAN_LABELS_AR] ?? sub.plan}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${PLAN_BADGE_COLORS[sub.plan] || "bg-gray-700 text-gray-300"}`}>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  sub.status === "CANCELLED"
+                    ? PLAN_BADGE_COLORS.CANCELLED
+                    : PLAN_BADGE_COLORS[sub.plan] || "bg-gray-700 text-gray-300"
+                }`}>
                   {STATUS_LABELS[sub.status] || sub.status}
                 </span>
                 {isMP && (
-                  <span className="px-2 py-0.5 rounded-full text-xs bg-sky-500/20 text-sky-300">
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-accent-soft text-accent border border-accent/30">
                     Suscrito vía Mercado Pago
                   </span>
                 )}
                 {sub.paymentProvider === "stripe" && (
-                  <span className="px-2 py-0.5 rounded-full text-xs bg-indigo-500/20 text-indigo-300">
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-accent-soft text-accent border border-accent/30">
                     Suscrito vía Stripe
                   </span>
                 )}
               </div>
               {sub.currentPeriodEnd && (
                 <p className="text-gray-500 text-xs mt-1">
-                  Próxima renovación: {new Date(sub.currentPeriodEnd).toLocaleDateString("es-AR")}
+                  {sub.status === "CANCELLED" ? "Acceso hasta" : "Próxima renovación"}:{" "}
+                  <span className={sub.status === "CANCELLED" ? "text-red-300 font-medium" : ""}>
+                    {new Date(sub.currentPeriodEnd).toLocaleDateString("es-AR")}
+                  </span>
+                </p>
+              )}
+              {sub.status === "CANCELLED" && (
+                <p className="text-[11px] text-red-300/80 mt-1 max-w-md">
+                  Cancelaste la suscripción. Seguís con todas las funciones hasta la fecha indicada y después pasás automáticamente al plan Gratis.
                 </p>
               )}
             </div>
@@ -299,10 +306,10 @@ export default function SuscripcionPage() {
           </div>
           <BillingToggle value={period} onChange={setPeriod} annualDiscount={ANNUAL_DISCOUNT} />
         </div>
-        {sub?.plan === "ENTERPRISE" && (
+        {sub?.plan === "ENTERPRISE" && sub.status !== "CANCELLED" && (
           <div className="mb-5 rounded-2xl card-glow p-6 flex items-start gap-4">
-            <div className="shrink-0 w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-              <Crown size={22} className="text-emerald-400" />
+            <div className="shrink-0 w-12 h-12 rounded-xl bg-accent-soft border border-accent/30 flex items-center justify-center">
+              <Crown size={22} className="text-accent" />
             </div>
             <div className="flex-1">
               <p className="text-white font-semibold">Ya estás en el plan Empresa</p>
@@ -350,7 +357,7 @@ export default function SuscripcionPage() {
                   whileHover={{ y: -3, transition: { duration: 0.15 } }}
                   className={`relative card-glow rounded-2xl p-5 flex flex-col ${
                     isPopular ? "ring-1 ring-accent/60" : ""
-                  } ${isCurrent ? "ring-1 ring-emerald-500/60" : ""} ${
+                  } ${isCurrent ? "ring-1 ring-accent" : ""} ${
                     isDowngrade ? "opacity-60" : ""
                   }`}
                 >
@@ -360,25 +367,19 @@ export default function SuscripcionPage() {
                     </div>
                   )}
                   {isCurrent && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-600 rounded-full text-white text-[10px] font-bold tracking-wider">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-accent rounded-full text-accent-foreground text-[10px] font-bold tracking-wider">
                       TU PLAN ACTUAL
                     </div>
                   )}
                   <div className="flex items-center gap-2 mb-4">
                     <div
                       className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                        plan === "FREE" ? "bg-gray-800" :
-                        plan === "STARTER" ? "bg-blue-500/15 border border-blue-500/30" :
-                        plan === "PROFESSIONAL" ? "bg-purple-500/15 border border-purple-500/30" :
-                        "bg-amber-500/15 border border-amber-500/30"
+                        plan === "FREE"
+                          ? "bg-gray-800 border border-gray-700/60"
+                          : "bg-accent-soft border border-accent/30"
                       }`}
                     >
-                      <Icon size={18} className={
-                        plan === "FREE" ? "text-gray-400" :
-                        plan === "STARTER" ? "text-blue-400" :
-                        plan === "PROFESSIONAL" ? "text-purple-400" :
-                        "text-amber-400"
-                      } />
+                      <Icon size={18} className={plan === "FREE" ? "text-gray-400" : "text-accent"} />
                     </div>
                     <span className="text-white font-semibold">{PLAN_LABELS_AR[plan]}</span>
                   </div>
@@ -399,7 +400,7 @@ export default function SuscripcionPage() {
                       <span className="text-[11px] text-gray-500 line-through tabular-nums">
                         {formatCurrency(monthlyARS)}
                       </span>
-                      <span className="text-[11px] font-semibold text-emerald-400">
+                      <span className="text-[11px] font-semibold text-accent">
                         -{Math.round(ANNUAL_DISCOUNT * 100)}%
                       </span>
                     </div>
@@ -408,7 +409,7 @@ export default function SuscripcionPage() {
                   <ul className="space-y-2 mb-5 flex-1">
                     {features.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                        <CheckCircle size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                        <CheckCircle size={14} className="text-accent mt-0.5 shrink-0" />
                         <span>{f}</span>
                       </li>
                     ))}
@@ -421,11 +422,11 @@ export default function SuscripcionPage() {
                       - isUpgrade → MP + Stripe (Stripe solo mensual)
                       - Enterprise actual → todos son downgrade */}
                   {isEnterprise ? (
-                    <div className="w-full py-2.5 rounded-lg bg-emerald-600/10 border border-emerald-600/30 text-center text-emerald-300 text-xs">
+                    <div className="w-full py-2.5 rounded-lg bg-accent-soft border border-accent/30 text-center text-accent text-xs font-medium">
                       Incluido en tu plan Empresa
                     </div>
                   ) : isCurrent ? (
-                    <div className="w-full py-2.5 rounded-lg bg-emerald-600/10 border border-emerald-600/30 text-center text-emerald-300 text-sm font-medium">
+                    <div className="w-full py-2.5 rounded-lg bg-accent-soft border border-accent/40 text-center text-accent text-sm font-medium">
                       ✓ Estás en este plan
                     </div>
                   ) : plan === "FREE" && currentIdx === 0 ? (
@@ -473,7 +474,7 @@ export default function SuscripcionPage() {
           })()}
         </div>
         <p className="text-gray-600 text-xs mt-3 text-center">
-          Pagos en pesos procesados por <span className="text-sky-400">Mercado Pago</span>. También podés pagar con tarjeta internacional vía Stripe (USD). Cancelá cuando quieras.
+          Pagos en pesos procesados por <span className="text-accent font-medium">Mercado Pago</span>. También podés pagar con tarjeta internacional vía Stripe (USD). Cancelá cuando quieras.
         </p>
         <p className="text-gray-700 text-[11px] mt-1 text-center">
           Plan label técnico: <span className="font-mono">{sub?.plan ? PLAN_LABELS[sub.plan as keyof typeof PLAN_LABELS] ?? sub.plan : "—"}</span>
