@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { Suspense, useId, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -39,6 +39,14 @@ const INITIAL: FormState = {
 }
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-lg h-[560px]" />}>
+      <SignupForm />
+    </Suspense>
+  )
+}
+
+function SignupForm() {
   const searchParams = useSearchParams()
   const planParamRaw = searchParams.get("plan")?.toUpperCase() ?? ""
   const selectedPlan: PlanParam = (VALID_PLAN_PARAMS as readonly string[]).includes(planParamRaw)
