@@ -49,7 +49,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </Link>
       </header>
 
-      <main className="relative flex-1 flex items-center justify-center px-4 py-6">
+      <main className="relative flex-1 flex items-start lg:items-center justify-center px-3 sm:px-4 py-4 sm:py-6">
         {children}
       </main>
 

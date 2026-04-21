@@ -5,11 +5,34 @@ import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { Eye, EyeOff, Loader2, Sparkles, UserPlus } from "lucide-react"
-import { BUSINESS_TYPES, PLAN_LABELS_AR } from "@/lib/utils"
+import { Check, Eye, EyeOff, Loader2, Sparkles, UserPlus, Zap, Crown, Building2, Gift } from "lucide-react"
+import { BUSINESS_TYPES, PLAN_LABELS_AR, PLAN_PRICES_ARS } from "@/lib/utils"
 
 const VALID_PLAN_PARAMS = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
 type PlanParam = typeof VALID_PLAN_PARAMS[number]
+
+const PLAN_ICON: Record<PlanParam, React.ElementType> = {
+  FREE: Gift,
+  STARTER: Zap,
+  PROFESSIONAL: Crown,
+  BUSINESS: Building2,
+}
+
+const PLAN_PITCH: Record<PlanParam, string> = {
+  FREE: "Para probar",
+  STARTER: "Kioscos chicos",
+  PROFESSIONAL: "El más elegido",
+  BUSINESS: "Cadenas",
+}
+
+const fmtARS = (n: number) =>
+  n === 0
+    ? "Gratis"
+    : new Intl.NumberFormat("es-AR", {
+        style: "currency",
+        currency: "ARS",
+        maximumFractionDigits: 0,
+      }).format(n)
 
 interface FormState {
   businessName: string
@@ -40,7 +63,7 @@ const INITIAL: FormState = {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="w-full max-w-lg h-[560px]" />}>
+    <Suspense fallback={<div className="w-full max-w-3xl h-[560px]" />}>
       <SignupForm />
     </Suspense>
   )
@@ -49,9 +72,11 @@ export default function SignupPage() {
 function SignupForm() {
   const searchParams = useSearchParams()
   const planParamRaw = searchParams.get("plan")?.toUpperCase() ?? ""
-  const selectedPlan: PlanParam = (VALID_PLAN_PARAMS as readonly string[]).includes(planParamRaw)
+  const initialPlan: PlanParam = (VALID_PLAN_PARAMS as readonly string[]).includes(planParamRaw)
     ? (planParamRaw as PlanParam)
     : "FREE"
+
+  const [selectedPlan, setSelectedPlan] = useState<PlanParam>(initialPlan)
   const isPaid = selectedPlan !== "FREE"
 
   const idBusinessName = useId()
@@ -152,29 +177,70 @@ function SignupForm() {
   const inputErr = "border-red-500/60"
 
   return (
-    <div className="w-full max-w-lg">
-      <div className="mb-4 flex items-center gap-2.5 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5">
-        <Sparkles className="w-4 h-4 text-white shrink-0" />
-        <p className="text-xs text-gray-300">
-          {isPaid ? (
-            <>
-              Plan <span className="font-semibold text-white">{PLAN_LABELS_AR[selectedPlan]}</span> ·
-              <span className="font-semibold text-white"> 14 días gratis</span> sin tarjeta.
-              Después elegís si seguís o cancelás.
-            </>
-          ) : (
-            <>
-              <span className="font-semibold text-white">Plan Gratis</span> — sin costo, sin tarjeta.
-              Podés mejorar cuando quieras.
-            </>
-          )}
-        </p>
+    <div className="w-full max-w-3xl">
+      {/* Plan picker */}
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <Sparkles className="w-4 h-4 text-white/80" />
+          <p className="text-xs sm:text-sm text-gray-300">
+            Elegí tu plan · {isPaid ? (
+              <span className="text-white">14 días gratis sin tarjeta</span>
+            ) : (
+              <span className="text-white">Sin costo, para siempre</span>
+            )}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+          {VALID_PLAN_PARAMS.map((plan) => {
+            const Icon = PLAN_ICON[plan]
+            const isSelected = selectedPlan === plan
+            const isPopular = plan === "PROFESSIONAL"
+            const price = PLAN_PRICES_ARS[plan]
+            return (
+              <button
+                key={plan}
+                type="button"
+                onClick={() => setSelectedPlan(plan)}
+                aria-pressed={isSelected}
+                className={`relative text-left rounded-xl p-3 sm:p-3.5 transition-all ${
+                  isSelected
+                    ? "bg-white/[0.08] border-white/40 ring-1 ring-white/30"
+                    : "bg-white/[0.03] border-white/10 hover:bg-white/[0.05] hover:border-white/20"
+                } border backdrop-blur`}
+              >
+                {isPopular && !isSelected && (
+                  <span className="absolute -top-2 right-2 px-1.5 py-0.5 rounded-full bg-white/90 text-black text-[9px] font-bold tracking-wider">
+                    POPULAR
+                  </span>
+                )}
+                {isSelected && (
+                  <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-white text-black flex items-center justify-center">
+                    <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                  </span>
+                )}
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Icon className={`w-3.5 h-3.5 ${isSelected ? "text-white" : "text-gray-400"}`} />
+                  <span className={`text-xs sm:text-sm font-semibold ${isSelected ? "text-white" : "text-gray-200"}`}>
+                    {PLAN_LABELS_AR[plan]}
+                  </span>
+                </div>
+                <div className="text-base sm:text-lg font-bold text-white tabular-nums">
+                  {fmtARS(price)}
+                  {price > 0 && <span className="text-[10px] sm:text-xs font-normal text-gray-500">/mes</span>}
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{PLAN_PITCH[plan]}</p>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      <div className="relative bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-7 sm:p-8 shadow-2xl shadow-black/50">
-        <div className="flex justify-center mb-5">
+      {/* Form card */}
+      <div className="relative bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-7 lg:p-8 shadow-2xl shadow-black/50">
+        <div className="flex justify-center mb-4 sm:mb-5">
           <div
-            className="w-14 h-14 rounded-full flex items-center justify-center"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center"
             style={{
               background:
                 "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
@@ -184,16 +250,18 @@ function SignupForm() {
             }}
             aria-hidden
           >
-            <UserPlus className="w-6 h-6 text-white" strokeWidth={2} />
+            <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-white" strokeWidth={2} />
           </div>
         </div>
 
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-semibold text-white tracking-tight">
+        <div className="text-center mb-5 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
             Crear cuenta
           </h1>
-          <p className="text-sm text-gray-400 mt-1.5">
-            Empezá a gestionar tu negocio hoy
+          <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-1.5">
+            {isPaid
+              ? `Plan ${PLAN_LABELS_AR[selectedPlan]} · 14 días gratis`
+              : "Empezá a gestionar tu negocio hoy"}
           </p>
         </div>
 
@@ -374,6 +442,8 @@ function SignupForm() {
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Creando cuenta…
               </>
+            ) : isPaid ? (
+              `Empezar prueba de 14 días (${PLAN_LABELS_AR[selectedPlan]})`
             ) : (
               "Crear cuenta gratis"
             )}
