@@ -34,7 +34,6 @@ function authHeaders(): Record<string, string> {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface CreatePreapprovalInput {
-  payerEmail: string
   backUrl: string
   reason: string
   externalReference: string
@@ -65,7 +64,6 @@ export async function createPreapproval(
   const body = {
     reason: input.reason,
     external_reference: input.externalReference,
-    payer_email: input.payerEmail,
     back_url: input.backUrl,
     auto_recurring: {
       frequency: 1,

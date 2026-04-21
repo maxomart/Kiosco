@@ -63,7 +63,6 @@ export async function POST(req: NextRequest) {
   let preapproval
   try {
     preapproval = await createPreapproval({
-      payerEmail: session.user.email!,
       backUrl,
       reason: `RetailAR ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
       externalReference: tenantId!,
