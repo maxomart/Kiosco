@@ -44,6 +44,10 @@
   --surface-sidebar-from: #0b0b14;
   --surface-sidebar-via: #0f0f1a;
   --surface-sidebar-to: #070711;
+  --surface-nav-from: #111827;
+  --surface-nav-to: #0b1220;
+  --surface-card-bg: #111827;
+  --surface-card-border: #1f2937;
   --surface-glow-intensity: 1;
 }
 
@@ -117,6 +121,12 @@ html[data-theme="light"] {
   .bg-gray-950 { background-color: #030712; }
   .text-gray-950 { color: #030712; }
   .border-gray-950 { border-color: #030712; }
+
+  /* Tarjetas tenant-customizables — bg-gray-900 + border-gray-800 se remapean
+     al surface-card, así el usuario puede cambiar el color de todas las
+     tarjetas desde /configuracion. Los defaults coinciden con Tailwind. */
+  .bg-gray-900 { background-color: var(--surface-card-bg); }
+  .border-gray-800 { border-color: var(--surface-card-border); }
 
   /* Accent color utilities (work alongside Tailwind's auto-generated ones) */
   .bg-accent { background-color: var(--color-accent); }
@@ -250,6 +260,17 @@ html[data-theme="light"] {
   background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
   background-size: 24px 24px;
   mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+}
+
+.nav-surface {
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--color-accent) 5%, var(--surface-nav-from)) 0%,
+    var(--surface-nav-to) 100%);
+}
+
+.surface-card {
+  background-color: var(--surface-card-bg);
+  border-color: var(--surface-card-border);
 }
 
 .sidebar-surface {

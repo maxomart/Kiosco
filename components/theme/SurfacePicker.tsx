@@ -104,6 +104,26 @@ export function SurfacePicker() {
             <ColorRow label="Abajo" value={surface.sidebarTo} onChange={(v) => patchSurface({ sidebarTo: v })} />
           </div>
         </section>
+
+        <section>
+          <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            Barra superior
+          </h3>
+          <div className="space-y-2">
+            <ColorRow label="Arriba" value={surface.navFrom} onChange={(v) => patchSurface({ navFrom: v })} />
+            <ColorRow label="Abajo" value={surface.navTo} onChange={(v) => patchSurface({ navTo: v })} />
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            Tarjetas
+          </h3>
+          <div className="space-y-2">
+            <ColorRow label="Fondo" value={surface.cardBg} onChange={(v) => patchSurface({ cardBg: v })} />
+            <ColorRow label="Borde" value={surface.cardBorder} onChange={(v) => patchSurface({ cardBorder: v })} />
+          </div>
+        </section>
       </div>
 
       <section className="pt-2">

@@ -112,17 +112,13 @@ export default function Header({ user, plan: planProp = "FREE" }: HeaderProps) {
   return (
     <header
       className={cn(
-        "h-14 flex items-center px-4 gap-3 flex-shrink-0 sticky top-0 z-30",
+        "nav-surface h-14 flex items-center px-4 gap-3 flex-shrink-0 sticky top-0 z-30",
         "backdrop-blur-md border-b transition-all duration-200",
         scrolled
           ? "border-gray-700/80 shadow-lg shadow-black/30"
           : "border-white/5",
         "relative"
       )}
-      style={{
-        background:
-          "linear-gradient(180deg, color-mix(in oklab, var(--color-accent) 5%, rgb(17 24 39 / 0.90)) 0%, rgb(17 24 39 / 0.85) 100%)",
-      }}
     >
       <button
         onClick={openMobileSidebar}
