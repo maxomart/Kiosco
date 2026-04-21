@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
-import { getPreapproval } from "@/lib/mp-billing"
+import { getPreapproval, searchPaymentsByPreapproval } from "@/lib/mp-billing"
 import { PLAN_PRICES_ARS, type Plan } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -12,10 +12,30 @@ function planFromAmount(amount: number): Plan | null {
   for (const [k, v] of Object.entries(PLAN_PRICES_ARS)) {
     if (v <= 0) continue
     if (v === amount) return k as Plan
-    // Annual billing: monthly × 12 × (1 - discount)
     if (Math.round(v * 12 * (1 - ANNUAL_DISCOUNT)) === amount) return k as Plan
   }
   return null
+}
+
+async function createInvoicesFromPayments(subscriptionId: string, preapprovalId: string) {
+  const payments = await searchPaymentsByPreapproval(preapprovalId)
+  for (const payment of payments) {
+    if (payment.status !== "approved") continue
+    const externalId = `mp_${payment.id}`
+    const existing = await db.invoice.findFirst({ where: { stripeInvoiceId: externalId } })
+    if (existing) continue
+    await db.invoice.create({
+      data: {
+        subscriptionId,
+        number: `MP-${payment.id}`,
+        stripeInvoiceId: externalId,
+        amount: Number(payment.transaction_amount ?? 0),
+        currency: (payment.currency_id ?? "ARS").toUpperCase(),
+        status: "PAID",
+        paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
+      },
+    }).catch(e => console.error("[mp/sync] invoice create failed:", e))
+  }
 }
 
 /** Called when user returns from MP checkout — forces a status check from MP API. */
@@ -33,12 +53,14 @@ export async function POST() {
     pre = await getPreapproval(sub.mpPreapprovalId)
   } catch (err: any) {
     console.error("[mp/sync] getPreapproval error:", err?.message)
-    return NextResponse.json({ synced: false, reason: "mp_error" })
+    return NextResponse.json({ synced: false, reason: "mp_error", detail: err?.message })
   }
 
   const status = pre.status
   const amount = pre.auto_recurring?.transaction_amount ?? 0
   const matchedPlan = planFromAmount(amount)
+
+  console.log(`[mp/sync] preapproval ${sub.mpPreapprovalId} → status=${status} amount=${amount} plan=${matchedPlan}`)
 
   if (status === "authorized") {
     await db.subscription.update({
@@ -53,6 +75,8 @@ export async function POST() {
         cancelledAt: null,
       },
     })
+    // Backfill any payments MP already processed
+    await createInvoicesFromPayments(sub.id, sub.mpPreapprovalId)
     return NextResponse.json({ synced: true, plan: matchedPlan ?? sub.plan, status: "ACTIVE" })
   }
 

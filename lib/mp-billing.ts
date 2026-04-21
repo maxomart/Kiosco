@@ -126,6 +126,16 @@ export async function getPayment(paymentId: string): Promise<any> {
   return res.json()
 }
 
+export async function searchPaymentsByPreapproval(preapprovalId: string): Promise<any[]> {
+  const res = await fetch(
+    `${MP_API}/v1/payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&sort=date_created&criteria=desc&limit=10`,
+    { method: "GET", headers: authHeaders() }
+  )
+  if (!res.ok) return []
+  const data = await res.json()
+  return data?.results ?? []
+}
+
 // ─── Webhook signature verification ───────────────────────────────────────────
 /**
  * Verifies the `x-signature` header from a MercadoPago webhook.

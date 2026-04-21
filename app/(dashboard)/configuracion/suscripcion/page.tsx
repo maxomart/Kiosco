@@ -97,6 +97,7 @@ export default function SuscripcionPage() {
   const [sub, setSub] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [syncAttempt, setSyncAttempt] = useState(0)
   const [welcomed, setWelcomed] = useState(false)
   const [upgrading, setUpgrading] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -109,14 +110,20 @@ export default function SuscripcionPage() {
   const mpResult = searchParams.get("mp")
 
   useEffect(() => {
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
     const run = async () => {
       if (mpResult === "success") {
         setSyncing(true)
-        try {
-          const syncRes = await fetch("/api/billing/mp/sync", { method: "POST" })
-          const syncData = await syncRes.json()
-          if (syncData.synced) setWelcomed(true)
-        } catch { /* silencioso — igual cargamos la sub */ }
+        const MAX = 8
+        for (let i = 0; i < MAX; i++) {
+          setSyncAttempt(i + 1)
+          if (i > 0) await sleep(3000)
+          try {
+            const syncRes = await fetch("/api/billing/mp/sync", { method: "POST" })
+            const syncData = await syncRes.json()
+            if (syncData.synced) { setWelcomed(true); break }
+          } catch { /* silencioso */ }
+        }
         setSyncing(false)
       }
       const d = await fetch("/api/configuracion/suscripcion").then(r => r.json())
@@ -223,6 +230,9 @@ export default function SuscripcionPage() {
       <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-14 h-14 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
         <p className="text-gray-400 text-sm">Verificando tu pago con Mercado Pago…</p>
+        {syncAttempt > 1 && (
+          <p className="text-gray-600 text-xs">Intento {syncAttempt} de 8 — MP puede tardar unos segundos</p>
+        )}
       </div>
     )
   }
@@ -259,6 +269,37 @@ export default function SuscripcionPage() {
             </div>
           </div>
         </motion.div>
+      )}
+
+      {/* Manual sync button — shown after MP redirect if sync didn't resolve */}
+      {mpResult === "success" && !welcomed && !syncing && sub?.plan === "FREE" && (
+        <div className="flex items-start gap-3 px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-300 text-sm">
+          <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Tu pago fue procesado pero MP todavía no confirmó.</p>
+            <p className="text-yellow-400/70 text-xs mt-0.5 mb-2">Esto puede tardar hasta 1 minuto. Intentá verificar manualmente.</p>
+            <button
+              onClick={async () => {
+                setSyncing(true)
+                try {
+                  const r = await fetch("/api/billing/mp/sync", { method: "POST" })
+                  const d = await r.json()
+                  if (d.synced) {
+                    setWelcomed(true)
+                    const sub2 = await fetch("/api/configuracion/suscripcion").then(r2 => r2.json())
+                    setSub(sub2.subscription)
+                  } else {
+                    toast.error("MP aún no confirmó — esperá un momento y volvé a intentar")
+                  }
+                } catch { toast.error("Error de red") }
+                setSyncing(false)
+              }}
+              className="px-3 py-1.5 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-xs font-medium transition-colors"
+            >
+              Verificar ahora
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Alerts */}
