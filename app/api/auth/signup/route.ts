@@ -94,10 +94,10 @@ export async function POST(req: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Trial period: 30 days from now
+    // Trial period: 14 days from now
     const now = new Date()
     const trialEnd = new Date(now)
-    trialEnd.setDate(trialEnd.getDate() + 30)
+    trialEnd.setDate(trialEnd.getDate() + 14)
 
     // Create everything in a transaction
     await db.$transaction(async (tx) => {

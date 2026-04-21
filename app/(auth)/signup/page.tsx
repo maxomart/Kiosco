@@ -1,7 +1,7 @@
 "use client"
 
 import { useId, useState } from "react"
-import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import Link from "next/link"
 import toast from "react-hot-toast"
 import { Eye, EyeOff, Loader2, Sparkles, UserPlus } from "lucide-react"
@@ -35,7 +35,6 @@ const INITIAL: FormState = {
 }
 
 export default function SignupPage() {
-  const router = useRouter()
   const idBusinessName = useId()
   const idBusinessType = useId()
   const idOwnerName = useId()
@@ -80,6 +79,7 @@ export default function SignupPage() {
     if (!validate()) return
     setLoading(true)
     try {
+      const email = form.email.trim().toLowerCase()
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,7 +87,7 @@ export default function SignupPage() {
           businessName: form.businessName.trim(),
           businessType: form.businessType,
           ownerName: form.ownerName.trim(),
-          email: form.email.trim().toLowerCase(),
+          email,
           password: form.password,
         }),
       })
@@ -107,8 +107,18 @@ export default function SignupPage() {
         }
         return
       }
-      toast.success("¡Cuenta creada! Ya podés iniciar sesión.")
-      router.push("/login")
+      const result = await signIn("credentials", {
+        email,
+        password: form.password,
+        redirect: false,
+      })
+      if (result?.ok) {
+        toast.success("¡Cuenta creada! Bienvenido.")
+        window.location.href = "/inicio"
+      } else {
+        toast.success("Cuenta creada. Iniciá sesión.")
+        window.location.href = "/login"
+      }
     } catch {
       toast.error("Ocurrió un error. Intentá de nuevo.")
     } finally {
@@ -126,7 +136,7 @@ export default function SignupPage() {
       <div className="mb-4 flex items-center gap-2.5 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5">
         <Sparkles className="w-4 h-4 text-white shrink-0" />
         <p className="text-xs text-gray-300">
-          <span className="font-semibold text-white">30 días gratis</span> — sin tarjeta de
+          <span className="font-semibold text-white">14 días gratis</span> — sin tarjeta de
           crédito. Cancelá cuando quieras.
         </p>
       </div>
