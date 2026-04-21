@@ -22,7 +22,7 @@ export async function POST() {
 
   if (!isWhatsAppConfigured()) {
     return NextResponse.json({
-      error: "Twilio no está configurado en Railway. Pedile al admin que agregue TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_WHATSAPP_FROM.",
+      error: "UltraMsg no está configurado en Railway. Pedile al admin que agregue ULTRAMSG_INSTANCE_ID y ULTRAMSG_TOKEN.",
     }, { status: 503 })
   }
 
