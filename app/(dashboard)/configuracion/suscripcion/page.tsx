@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { CheckCircle, Zap, Crown, Building2, ArrowRight, ArrowDown, ExternalLink, AlertCircle, CreditCard, Sparkles } from "lucide-react"
 import NumberFlow from "@number-flow/react"
 import { motion } from "framer-motion"
@@ -104,6 +104,7 @@ export default function SuscripcionPage() {
   const [cancelling, setCancelling] = useState(false)
   const [period, setPeriod] = useState<BillingPeriod>("monthly")
   const confirm = useConfirm()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const success = searchParams.get("success")
   const cancelled = searchParams.get("cancelled")
@@ -121,7 +122,7 @@ export default function SuscripcionPage() {
           try {
             const syncRes = await fetch("/api/billing/mp/sync", { method: "POST" })
             const syncData = await syncRes.json()
-            if (syncData.synced) { setWelcomed(true); break }
+            if (syncData.synced) { setWelcomed(true); router.refresh(); break }
           } catch { /* silencioso */ }
         }
         setSyncing(false)
@@ -288,6 +289,7 @@ export default function SuscripcionPage() {
                   const d = await r.json()
                   if (d.synced) {
                     setWelcomed(true)
+                    router.refresh()
                     const sub2 = await fetch("/api/configuracion/suscripcion").then(r2 => r2.json())
                     setSub(sub2.subscription)
                   } else {

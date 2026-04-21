@@ -127,13 +127,25 @@ export async function getPayment(paymentId: string): Promise<any> {
 }
 
 export async function searchPaymentsByPreapproval(preapprovalId: string): Promise<any[]> {
-  const res = await fetch(
-    `${MP_API}/v1/payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&sort=date_created&criteria=desc&limit=10`,
+  // Try the dedicated preapproval payments endpoint first
+  const res1 = await fetch(
+    `${MP_API}/preapproval/${encodeURIComponent(preapprovalId)}/payment`,
     { method: "GET", headers: authHeaders() }
-  )
-  if (!res.ok) return []
-  const data = await res.json()
-  return data?.results ?? []
+  ).catch(() => null)
+  if (res1?.ok) {
+    const data = await res1.json().catch(() => ({}))
+    const results = data?.results ?? data?.payments ?? []
+    if (results.length > 0) return results
+  }
+
+  // Fallback: payments search by preapproval_id
+  const res2 = await fetch(
+    `${MP_API}/v1/payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&limit=10`,
+    { method: "GET", headers: authHeaders() }
+  ).catch(() => null)
+  if (!res2?.ok) return []
+  const data2 = await res2.json().catch(() => ({}))
+  return data2?.results ?? []
 }
 
 /** Finds all preapprovals for a tenant (by external_reference = tenantId). */

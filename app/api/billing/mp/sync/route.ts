@@ -17,8 +17,14 @@ function planFromAmount(amount: number): Plan | null {
   return null
 }
 
-async function createInvoicesFromPayments(subscriptionId: string, preapprovalId: string) {
+async function createInvoicesFromPayments(
+  subscriptionId: string,
+  preapprovalId: string,
+  fallbackAmount?: number
+) {
   const payments = await searchPaymentsByPreapproval(preapprovalId)
+  let created = 0
+
   for (const payment of payments) {
     if (payment.status !== "approved") continue
     const externalId = `mp_${payment.id}`
@@ -35,6 +41,26 @@ async function createInvoicesFromPayments(subscriptionId: string, preapprovalId:
         paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
       },
     }).catch(e => console.error("[mp/sync] invoice create failed:", e))
+    created++
+  }
+
+  // If MP hasn't processed the payment yet, create a synthetic PAID invoice
+  if (created === 0 && fallbackAmount && fallbackAmount > 0) {
+    const externalId = `mp_preapproval_${preapprovalId}`
+    const existing = await db.invoice.findFirst({ where: { stripeInvoiceId: externalId } })
+    if (!existing) {
+      await db.invoice.create({
+        data: {
+          subscriptionId,
+          number: `MP-${preapprovalId.slice(0, 8).toUpperCase()}`,
+          stripeInvoiceId: externalId,
+          amount: fallbackAmount,
+          currency: "ARS",
+          status: "PAID",
+          paidAt: new Date(),
+        },
+      }).catch(e => console.error("[mp/sync] fallback invoice failed:", e))
+    }
   }
 }
 
@@ -47,7 +73,7 @@ async function activateFromPreapproval(
   const matchedPlan = planFromAmount(amount)
   console.log(`[mp/sync] activating from preapproval ${pre.id} amount=${amount} plan=${matchedPlan}`)
 
-  await db.subscription.update({
+  const updated = await db.subscription.update({
     where: { tenantId },
     data: {
       status: "ACTIVE",
@@ -60,7 +86,7 @@ async function activateFromPreapproval(
       cancelledAt: null,
     },
   })
-  await createInvoicesFromPayments(sub.id, pre.id)
+  await createInvoicesFromPayments(updated.id, pre.id, amount)
   return matchedPlan ?? sub.plan
 }
 
