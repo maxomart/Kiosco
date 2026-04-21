@@ -58,6 +58,20 @@ export default function AdminSubscriptionsPage() {
     } finally { setBusyId(null) }
   }
 
+  const syncMP = async (s: Sub) => {
+    setBusyId(s.id + ":sync")
+    try {
+      const res = await fetch(`/api/admin/subscriptions/${s.id}/sync`, { method: "POST" })
+      const d = await res.json()
+      if (res.ok) {
+        toast.success(`Sync OK · MP: ${d.mpStatus} · Facturas creadas: ${d.invoicesCreated}`)
+        load()
+      } else {
+        toast.error(d.error || "Error en sync")
+      }
+    } finally { setBusyId(null) }
+  }
+
   const totalMRR = subs.reduce((acc, s) => acc + s.mrr, 0)
 
   return (
@@ -94,6 +108,7 @@ export default function AdminSubscriptionsPage() {
               <th className="p-4 text-left font-medium">Ciclo</th>
               <th className="p-4 text-left font-medium">Renueva</th>
               <th className="p-4 text-right font-medium">MRR</th>
+              <th className="p-4 text-right font-medium">Sync MP</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
@@ -136,6 +151,16 @@ export default function AdminSubscriptionsPage() {
                 <td className="p-4 text-gray-300">{s.billingCycle}</td>
                 <td className="p-4 text-gray-400">{s.currentPeriodEnd ? formatDate(s.currentPeriodEnd) : "—"}</td>
                 <td className="p-4 text-right text-green-400 font-medium">${s.mrr.toFixed(0)}</td>
+                <td className="p-4 text-right">
+                  <button
+                    onClick={() => syncMP(s)}
+                    disabled={!!busyId}
+                    title="Sync MP: actualiza estado y backfill de facturas"
+                    className="px-2 py-1 rounded text-xs bg-gray-800 hover:bg-purple-900/40 text-gray-400 hover:text-purple-300 transition-colors disabled:opacity-40"
+                  >
+                    {busyId === s.id + ":sync" ? "…" : "Sync"}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

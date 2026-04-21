@@ -109,6 +109,12 @@ export async function POST() {
     if (pre) {
       console.log(`[mp/sync] stored preapproval ${sub.mpPreapprovalId} → status=${pre.status}`)
       if (pre.status === "authorized") {
+        // Already active — just backfill missing invoices
+        if (sub.status === "ACTIVE") {
+          const amount = pre.auto_recurring?.transaction_amount ?? 0
+          await createInvoicesFromPayments(sub.id, sub.mpPreapprovalId, amount)
+          return NextResponse.json({ synced: true, plan: sub.plan, status: "ACTIVE", invoiceBackfill: true })
+        }
         const plan = await activateFromPreapproval(tenantId!, sub, pre)
         return NextResponse.json({ synced: true, plan, status: "ACTIVE" })
       }
