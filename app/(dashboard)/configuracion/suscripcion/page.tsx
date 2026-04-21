@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCircle, Zap, Crown, Building2, ArrowRight, ArrowDown, ExternalLink, AlertCircle, CreditCard, Sparkles } from "lucide-react"
+import { CheckCircle, Zap, Crown, Building2, ArrowRight, ArrowDown, ExternalLink, AlertCircle, CreditCard, Sparkles, X } from "lucide-react"
 import NumberFlow from "@number-flow/react"
 import { motion } from "framer-motion"
 import toast from "react-hot-toast"
@@ -100,6 +100,8 @@ export default function SuscripcionPage() {
   const [portalLoading, setPortalLoading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [period, setPeriod] = useState<BillingPeriod>("monthly")
+  const [mpEmailModal, setMpEmailModal] = useState<{ plan: string } | null>(null)
+  const [mpEmail, setMpEmail] = useState("")
   const confirm = useConfirm()
   const searchParams = useSearchParams()
   const success = searchParams.get("success")
@@ -112,13 +114,19 @@ export default function SuscripcionPage() {
       .then(d => { setSub(d.subscription); setLoading(false) })
   }, [])
 
-  const handleUpgradeMP = async (plan: string) => {
+  const openMpModal = (plan: string) => {
+    setMpEmail("")
+    setMpEmailModal({ plan })
+  }
+
+  const handleUpgradeMP = async (plan: string, payerEmail: string) => {
+    setMpEmailModal(null)
     setUpgrading(`mp:${plan}`)
     try {
       const res = await fetch("/api/billing/mp/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, period }),
+        body: JSON.stringify({ plan, period, payerEmail }),
       })
       if (res.ok) {
         const { initPoint } = await res.json()
@@ -441,7 +449,7 @@ export default function SuscripcionPage() {
                     /* isUpgrade */
                     <div className="space-y-2">
                       <button
-                        onClick={() => handleUpgradeMP(plan)}
+                        onClick={() => openMpModal(plan)}
                         disabled={!!upgrading}
                         className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-accent hover:bg-accent-hover text-accent-foreground"
                       >
@@ -480,6 +488,52 @@ export default function SuscripcionPage() {
           Plan label técnico: <span className="font-mono">{sub?.plan ? PLAN_LABELS[sub.plan as keyof typeof PLAN_LABELS] ?? sub.plan : "—"}</span>
         </p>
       </div>
+
+      {/* MP email modal */}
+      {mpEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md">
+            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+              <h2 className="text-white font-semibold">Pagar con Mercado Pago</h2>
+              <button onClick={() => setMpEmailModal(null)} className="p-2 rounded-lg hover:bg-gray-800 text-gray-400">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-gray-400 text-sm">
+                Ingresá el email de tu cuenta de <span className="text-white font-medium">Mercado Pago</span>. Tenés que pagar con esa misma cuenta para que la suscripción se active correctamente.
+              </p>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Email de Mercado Pago *</label>
+                <input
+                  type="email"
+                  autoFocus
+                  placeholder="tucuenta@ejemplo.com"
+                  value={mpEmail}
+                  onChange={e => setMpEmail(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && mpEmail.includes("@")) handleUpgradeMP(mpEmailModal.plan, mpEmail) }}
+                  className="w-full px-3 py-2.5 bg-black/40 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 p-5 border-t border-gray-800">
+              <button
+                onClick={() => setMpEmailModal(null)}
+                className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleUpgradeMP(mpEmailModal.plan, mpEmail)}
+                disabled={!mpEmail.includes("@")}
+                className="flex-1 py-2.5 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                <CreditCard size={14} /> Ir a pagar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
