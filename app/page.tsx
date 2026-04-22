@@ -15,8 +15,70 @@ import {
   Store,
   Smartphone,
   Sparkles,
+  PartyPopper,
 } from "lucide-react"
-import { PLAN_PRICES_ARS } from "@/lib/utils"
+import { PLAN_PRICES_ARS, PLAN_LABELS_AR } from "@/lib/utils"
+import { db } from "@/lib/db"
+
+// Shape of the active promo rendered in the landing banner + propagated to
+// signup links. Only populated when ?promo= is present in the URL AND the
+// code is valid + not exhausted.
+interface ActivePromo {
+  code: string
+  planGranted: keyof typeof PLAN_LABELS_AR
+  daysGranted: number
+  remaining: number
+  maxUses: number
+}
+
+async function resolvePromo(codeParam: string | undefined): Promise<ActivePromo | null> {
+  if (!codeParam) return null
+  const code = codeParam.trim().toLowerCase()
+  if (!code || code.length > 64) return null
+  try {
+    const promo = await db.promoCode.findUnique({
+      where: { code },
+      select: {
+        code: true,
+        planGranted: true,
+        daysGranted: true,
+        maxUses: true,
+        usedCount: true,
+        active: true,
+        expiresAt: true,
+      },
+    })
+    if (!promo || !promo.active) return null
+    if (promo.expiresAt && promo.expiresAt < new Date()) return null
+    const remaining = promo.maxUses - promo.usedCount
+    if (remaining <= 0) return null
+    return {
+      code: promo.code,
+      planGranted: promo.planGranted as keyof typeof PLAN_LABELS_AR,
+      daysGranted: promo.daysGranted,
+      remaining,
+      maxUses: promo.maxUses,
+    }
+  } catch {
+    return null
+  }
+}
+
+function mesesOdias(n: number): string {
+  if (n % 30 === 0 && n >= 30) {
+    const m = n / 30
+    return m === 1 ? "1 mes" : `${m} meses`
+  }
+  return n === 1 ? "1 día" : `${n} días`
+}
+
+function buildSignupHref(plan: string | undefined, promoCode?: string): string {
+  const qs = new URLSearchParams()
+  if (plan) qs.set("plan", plan)
+  if (promoCode) qs.set("promo", promoCode)
+  const s = qs.toString()
+  return s ? `/signup?${s}` : "/signup"
+}
 
 const fmtARS = (n: number) =>
   n === 0
@@ -27,9 +89,23 @@ const fmtARS = (n: number) =>
         maximumFractionDigits: 0,
       }).format(n)
 
-export default async function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ promo?: string | string[] }>
+}) {
   const session = await auth()
   if (session) redirect("/inicio")
+
+  const sp = await searchParams
+  const promoParam = Array.isArray(sp.promo) ? sp.promo[0] : sp.promo
+  const activePromo = await resolvePromo(promoParam)
+  const promoCode = activePromo?.code
+
+  const freeHref = buildSignupHref(undefined, promoCode)
+  const starterHref = buildSignupHref("STARTER", promoCode)
+  const professionalHref = buildSignupHref("PROFESSIONAL", promoCode)
+  const businessHref = buildSignupHref("BUSINESS", promoCode)
 
   const plans = [
     {
@@ -43,7 +119,7 @@ export default async function LandingPage() {
         "200 ventas/mes",
       ],
       cta: "Empezar gratis",
-      href: "/signup",
+      href: freeHref,
       highlight: false,
     },
     {
@@ -57,7 +133,7 @@ export default async function LandingPage() {
         "WhatsApp alertas de stock",
       ],
       cta: "Probar 14 días",
-      href: "/signup?plan=STARTER",
+      href: starterHref,
       highlight: false,
     },
     {
@@ -71,8 +147,8 @@ export default async function LandingPage() {
         "Multi-caja simultánea",
         "IA 500 mensajes/día",
       ],
-      cta: "Probar 14 días",
-      href: "/signup?plan=PROFESSIONAL",
+      cta: activePromo && activePromo.planGranted === "PROFESSIONAL" ? "Reclamar promo" : "Probar 14 días",
+      href: professionalHref,
       highlight: true,
     },
     {
@@ -87,13 +163,30 @@ export default async function LandingPage() {
         "Soporte por WhatsApp",
       ],
       cta: "Probar 14 días",
-      href: "/signup?plan=BUSINESS",
+      href: businessHref,
       highlight: false,
     },
   ]
 
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden relative landing-root">
+      {/* Promo top strip — only when ?promo= resolves to an active code */}
+      {activePromo && (
+        <Link
+          href={professionalHref}
+          className="fixed top-0 inset-x-0 z-[60] block bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 text-black"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-9 flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold">
+            <PartyPopper size={14} className="shrink-0" />
+            <span className="truncate">
+              Promo <span className="uppercase font-mono tracking-wide">{activePromo.code}</span> ·{" "}
+              {mesesOdias(activePromo.daysGranted)} de {PLAN_LABELS_AR[activePromo.planGranted]} gratis ·
+              quedan {activePromo.remaining}/{activePromo.maxUses} cupos
+            </span>
+            <ArrowRight size={14} className="shrink-0" />
+          </div>
+        </Link>
+      )}
       {/* Global dotted depth pattern */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.35]"
@@ -116,9 +209,11 @@ export default async function LandingPage() {
       />
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/5">
+      <nav
+        className={`fixed ${activePromo ? "top-9" : "top-0"} left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/5`}
+      >
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href={promoCode ? `/?promo=${promoCode}` : "/"} className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center">
               <ShoppingBag size={16} />
             </div>
@@ -134,17 +229,17 @@ export default async function LandingPage() {
               Ingresar
             </Link>
             <Link
-              href="/signup"
+              href={activePromo ? professionalHref : freeHref}
               className="px-4 py-2 rounded-lg bg-white hover:bg-gray-200 text-black text-sm font-semibold transition-colors"
             >
-              Empezar gratis
+              {activePromo ? "Reclamar promo" : "Empezar gratis"}
             </Link>
           </div>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-36 pb-24 px-6">
+      <section className={`relative ${activePromo ? "pt-[10.5rem]" : "pt-36"} pb-24 px-6`}>
         <div className="relative max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs mb-6 backdrop-blur">
             <Sparkles size={12} /> El sistema de gestión para tu comercio en Argentina
@@ -163,10 +258,13 @@ export default async function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/signup"
+              href={activePromo ? professionalHref : freeHref}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-gray-200 text-black font-semibold transition-all shadow-2xl shadow-white/10"
             >
-              Empezar gratis <ArrowRight size={16} />
+              {activePromo
+                ? `Reclamar ${mesesOdias(activePromo.daysGranted)} gratis`
+                : "Empezar gratis"}{" "}
+              <ArrowRight size={16} />
             </Link>
             <Link
               href="#pricing"
@@ -176,7 +274,9 @@ export default async function LandingPage() {
             </Link>
           </div>
           <p className="text-gray-500 text-sm mt-5">
-            Sin tarjeta · 14 días de prueba · Cancelás cuando quieras
+            {activePromo
+              ? `Promo activa · Quedan ${activePromo.remaining} de ${activePromo.maxUses} cupos · Sin tarjeta`
+              : "Sin tarjeta · 14 días de prueba · Cancelás cuando quieras"}
           </p>
         </div>
       </section>
@@ -435,10 +535,13 @@ export default async function LandingPage() {
               Creás tu cuenta en 2 minutos. Sin tarjeta. Sin compromiso.
             </p>
             <Link
-              href="/signup"
+              href={activePromo ? professionalHref : freeHref}
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white hover:bg-gray-200 text-black font-bold transition-colors shadow-2xl"
             >
-              Crear mi cuenta gratis <ArrowRight size={18} />
+              {activePromo
+                ? `Reclamar ${mesesOdias(activePromo.daysGranted)} de ${PLAN_LABELS_AR[activePromo.planGranted]}`
+                : "Crear mi cuenta gratis"}{" "}
+              <ArrowRight size={18} />
             </Link>
           </div>
         </div>

@@ -210,6 +210,24 @@ async function main() {
     console.log("✅ Demo Tenant: Farmacia Sol")
   }
 
+  // ── PROMO CODES ──────────────────────────────────────────────
+  // "lanzamiento": first 100 signups get 90 days of PROFESSIONAL free.
+  // Idempotent: re-running the seed won't reset usedCount (uses upsert.update={}).
+  // To re-open the campaign from zero, run scripts/reset-promo.ts or edit via admin.
+  await db.promoCode.upsert({
+    where: { code: "lanzamiento" },
+    update: {},
+    create: {
+      code: "lanzamiento",
+      description: "Lanzamiento — primeros 100 reciben 3 meses de Profesional gratis",
+      planGranted: "PROFESSIONAL",
+      daysGranted: 90,
+      maxUses: 100,
+      active: true,
+    },
+  })
+  console.log('✅ Promo code: "lanzamiento" (Profesional · 90 días · 100 cupos)')
+
   console.log("✅ Seed completo!")
 
   if (generatedLog.length > 0) {

@@ -1,11 +1,23 @@
 "use client"
 
-import { Suspense, useId, useState } from "react"
+import { Suspense, useEffect, useId, useRef, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { Check, Eye, EyeOff, Loader2, Sparkles, UserPlus, Zap, Crown, Building2, Gift } from "lucide-react"
+import {
+  Check,
+  Eye,
+  EyeOff,
+  Loader2,
+  Sparkles,
+  UserPlus,
+  Zap,
+  Crown,
+  Building2,
+  Gift,
+  PartyPopper,
+} from "lucide-react"
 import { BUSINESS_TYPES, PLAN_LABELS_AR, PLAN_PRICES_ARS } from "@/lib/utils"
 
 const VALID_PLAN_PARAMS = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
@@ -61,6 +73,29 @@ const INITIAL: FormState = {
   confirmPassword: "",
 }
 
+type PromoState =
+  | { status: "idle" }
+  | { status: "loading"; code: string }
+  | {
+      status: "valid"
+      code: string
+      planGranted: PlanParam
+      daysGranted: number
+      remaining: number
+      maxUses: number
+    }
+  | { status: "exhausted"; code: string; planGranted: PlanParam; daysGranted: number; maxUses: number }
+  | { status: "invalid"; code: string }
+
+function pluralDias(n: number): string {
+  if (n === 1) return "1 día"
+  if (n % 30 === 0 && n >= 30) {
+    const meses = n / 30
+    return meses === 1 ? "1 mes" : `${meses} meses`
+  }
+  return `${n} días`
+}
+
 export default function SignupPage() {
   return (
     <Suspense fallback={<div className="w-full max-w-3xl h-[560px]" />}>
@@ -75,9 +110,66 @@ function SignupForm() {
   const initialPlan: PlanParam = (VALID_PLAN_PARAMS as readonly string[]).includes(planParamRaw)
     ? (planParamRaw as PlanParam)
     : "FREE"
+  const promoParamRaw = searchParams.get("promo")?.trim().toLowerCase() ?? ""
 
   const [selectedPlan, setSelectedPlan] = useState<PlanParam>(initialPlan)
+  const [promo, setPromo] = useState<PromoState>(
+    promoParamRaw ? { status: "loading", code: promoParamRaw } : { status: "idle" }
+  )
+  // Track whether the user manually changed plan after promo loaded so we
+  // don't keep overriding their choice on re-render.
+  const userOverrodePromoPlan = useRef(false)
+
+  // Validate promo on mount (only runs if there's a ?promo= param).
+  useEffect(() => {
+    if (!promoParamRaw) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/promo/${encodeURIComponent(promoParamRaw)}`, {
+          cache: "no-store",
+        })
+        if (!res.ok) {
+          if (!cancelled) setPromo({ status: "invalid", code: promoParamRaw })
+          return
+        }
+        const data = await res.json()
+        if (cancelled) return
+        if (data.valid) {
+          const plan = data.planGranted as PlanParam
+          setPromo({
+            status: "valid",
+            code: data.code,
+            planGranted: plan,
+            daysGranted: data.daysGranted,
+            remaining: data.remaining,
+            maxUses: data.maxUses,
+          })
+          if (!userOverrodePromoPlan.current) {
+            setSelectedPlan(plan)
+          }
+        } else if (data.reason === "exhausted") {
+          setPromo({
+            status: "exhausted",
+            code: data.code ?? promoParamRaw,
+            planGranted: (data.planGranted as PlanParam) ?? "PROFESSIONAL",
+            daysGranted: data.daysGranted ?? 0,
+            maxUses: data.maxUses ?? 0,
+          })
+        } else {
+          setPromo({ status: "invalid", code: promoParamRaw })
+        }
+      } catch {
+        if (!cancelled) setPromo({ status: "invalid", code: promoParamRaw })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [promoParamRaw])
+
   const isPaid = selectedPlan !== "FREE"
+  const promoActive = promo.status === "valid"
 
   const idBusinessName = useId()
   const idBusinessType = useId()
@@ -96,6 +188,13 @@ function SignupForm() {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setForm((f) => ({ ...f, [field]: e.target.value }))
       if (errors[field]) setErrors((er) => ({ ...er, [field]: undefined }))
+    }
+  }
+
+  function selectPlan(plan: PlanParam) {
+    setSelectedPlan(plan)
+    if (promo.status === "valid" && plan !== promo.planGranted) {
+      userOverrodePromoPlan.current = true
     }
   }
 
@@ -124,20 +223,47 @@ function SignupForm() {
     setLoading(true)
     try {
       const email = form.email.trim().toLowerCase()
+
+      // Only send promoCode if user didn't override the plan pre-selected by the promo.
+      // Otherwise the backend would override their chosen plan with the promo plan.
+      const shouldApplyPromo = promo.status === "valid" && !userOverrodePromoPlan.current
+      const payload: Record<string, unknown> = {
+        businessName: form.businessName.trim(),
+        businessType: form.businessType,
+        ownerName: form.ownerName.trim(),
+        email,
+        password: form.password,
+        plan: selectedPlan,
+      }
+      if (shouldApplyPromo) payload.promoCode = promo.code
+
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessName: form.businessName.trim(),
-          businessType: form.businessType,
-          ownerName: form.ownerName.trim(),
-          email,
-          password: form.password,
-          plan: selectedPlan,
-        }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) {
+        if (res.status === 409 && data?.code === "PROMO_UNAVAILABLE") {
+          // Someone took the last slot between page load and submit.
+          // Mark promo as exhausted and ask the user to retry without promo.
+          toast.error(
+            data.message ??
+              "Se agotó la promo mientras completabas el formulario. Probá de nuevo sin el código."
+          )
+          setPromo((prev) =>
+            prev.status === "valid"
+              ? {
+                  status: "exhausted",
+                  code: prev.code,
+                  planGranted: prev.planGranted,
+                  daysGranted: prev.daysGranted,
+                  maxUses: prev.maxUses,
+                }
+              : prev
+          )
+          return
+        }
         if (res.status === 409) {
           setErrors({ email: "Este email ya está registrado." })
         } else if (data?.errors) {
@@ -158,7 +284,13 @@ function SignupForm() {
         redirect: false,
       })
       if (result?.ok) {
-        toast.success("¡Cuenta creada! Bienvenido.")
+        if (data.promoApplied) {
+          toast.success(
+            `¡Cuenta creada! Tenés ${pluralDias(data.promoApplied.days)} de ${PLAN_LABELS_AR[data.promoApplied.plan as PlanParam]} gratis.`
+          )
+        } else {
+          toast.success("¡Cuenta creada! Bienvenido.")
+        }
         window.location.href = "/inicio"
       } else {
         toast.success("Cuenta creada. Iniciá sesión.")
@@ -176,17 +308,31 @@ function SignupForm() {
   const inputOk = "border-white/10 hover:border-white/20"
   const inputErr = "border-red-500/60"
 
+  const submitLabel = (() => {
+    if (loading) return "Creando cuenta…"
+    if (promoActive && !userOverrodePromoPlan.current && promo.status === "valid") {
+      return `Reclamar ${pluralDias(promo.daysGranted)} gratis de ${PLAN_LABELS_AR[promo.planGranted]}`
+    }
+    if (isPaid) return `Empezar prueba de 14 días (${PLAN_LABELS_AR[selectedPlan]})`
+    return "Crear cuenta gratis"
+  })()
+
   return (
     <div className="w-full max-w-3xl">
+      {/* Promo banner */}
+      {promo.status !== "idle" && <PromoBanner promo={promo} />}
+
       {/* Plan picker */}
       <div className="mb-5">
         <div className="flex items-center gap-2 mb-3 px-1">
           <Sparkles className="w-4 h-4 text-white/80" />
           <p className="text-xs sm:text-sm text-gray-300">
-            Elegí tu plan · {isPaid ? (
-              <span className="text-white">14 días gratis sin tarjeta</span>
+            {promoActive && !userOverrodePromoPlan.current ? (
+              <span className="text-white">Plan aplicado por la promo — podés cambiarlo si querés</span>
+            ) : isPaid ? (
+              <>Elegí tu plan · <span className="text-white">14 días gratis sin tarjeta</span></>
             ) : (
-              <span className="text-white">Sin costo, para siempre</span>
+              <>Elegí tu plan · <span className="text-white">Sin costo, para siempre</span></>
             )}
           </p>
         </div>
@@ -196,12 +342,14 @@ function SignupForm() {
             const Icon = PLAN_ICON[plan]
             const isSelected = selectedPlan === plan
             const isPopular = plan === "PROFESSIONAL"
+            const isPromoPlan =
+              promo.status === "valid" && plan === promo.planGranted && !userOverrodePromoPlan.current
             const price = PLAN_PRICES_ARS[plan]
             return (
               <button
                 key={plan}
                 type="button"
-                onClick={() => setSelectedPlan(plan)}
+                onClick={() => selectPlan(plan)}
                 aria-pressed={isSelected}
                 className={`relative text-left rounded-xl p-3 sm:p-3.5 transition-all ${
                   isSelected
@@ -209,12 +357,17 @@ function SignupForm() {
                     : "bg-white/[0.03] border-white/10 hover:bg-white/[0.05] hover:border-white/20"
                 } border backdrop-blur`}
               >
-                {isPopular && !isSelected && (
+                {isPromoPlan && (
+                  <span className="absolute -top-2 right-2 px-1.5 py-0.5 rounded-full bg-emerald-400 text-black text-[9px] font-bold tracking-wider">
+                    PROMO
+                  </span>
+                )}
+                {isPopular && !isSelected && !isPromoPlan && (
                   <span className="absolute -top-2 right-2 px-1.5 py-0.5 rounded-full bg-white/90 text-black text-[9px] font-bold tracking-wider">
                     POPULAR
                   </span>
                 )}
-                {isSelected && (
+                {isSelected && !isPromoPlan && (
                   <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-white text-black flex items-center justify-center">
                     <Check className="w-2.5 h-2.5" strokeWidth={3} />
                   </span>
@@ -226,10 +379,20 @@ function SignupForm() {
                   </span>
                 </div>
                 <div className="text-base sm:text-lg font-bold text-white tabular-nums">
-                  {fmtARS(price)}
-                  {price > 0 && <span className="text-[10px] sm:text-xs font-normal text-gray-500">/mes</span>}
+                  {isPromoPlan ? (
+                    <span className="text-emerald-300">Gratis</span>
+                  ) : (
+                    <>
+                      {fmtARS(price)}
+                      {price > 0 && <span className="text-[10px] sm:text-xs font-normal text-gray-500">/mes</span>}
+                    </>
+                  )}
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{PLAN_PITCH[plan]}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                  {isPromoPlan && promo.status === "valid"
+                    ? `${pluralDias(promo.daysGranted)} sin cargo`
+                    : PLAN_PITCH[plan]}
+                </p>
               </button>
             )
           })}
@@ -259,9 +422,11 @@ function SignupForm() {
             Crear cuenta
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-1.5">
-            {isPaid
-              ? `Plan ${PLAN_LABELS_AR[selectedPlan]} · 14 días gratis`
-              : "Empezá a gestionar tu negocio hoy"}
+            {promoActive && !userOverrodePromoPlan.current && promo.status === "valid"
+              ? `Plan ${PLAN_LABELS_AR[promo.planGranted]} · ${pluralDias(promo.daysGranted)} gratis por la promo`
+              : isPaid
+                ? `Plan ${PLAN_LABELS_AR[selectedPlan]} · 14 días gratis`
+                : "Empezá a gestionar tu negocio hoy"}
           </p>
         </div>
 
@@ -437,16 +602,8 @@ function SignupForm() {
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed text-black font-semibold rounded-lg py-2.5 text-sm transition-colors mt-2"
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Creando cuenta…
-              </>
-            ) : isPaid ? (
-              `Empezar prueba de 14 días (${PLAN_LABELS_AR[selectedPlan]})`
-            ) : (
-              "Crear cuenta gratis"
-            )}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {submitLabel}
           </button>
 
           <p className="text-[11px] text-center text-gray-600 leading-relaxed">
@@ -472,6 +629,72 @@ function SignupForm() {
               Iniciá sesión
             </Link>
           </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PromoBanner({ promo }: { promo: PromoState }) {
+  if (promo.status === "idle") return null
+
+  if (promo.status === "loading") {
+    return (
+      <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-center gap-2 text-xs text-gray-400">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        Validando código promocional…
+      </div>
+    )
+  }
+
+  if (promo.status === "invalid") {
+    return (
+      <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-gray-400">
+        El código <span className="font-mono text-gray-300">{promo.code}</span> no es válido o ya venció.
+        Podés registrarte normalmente y probar la app gratis.
+      </div>
+    )
+  }
+
+  if (promo.status === "exhausted") {
+    return (
+      <div className="mb-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
+        <span className="font-semibold">Se agotaron los cupos de la promo.</span> Te saludamos, ¡muchas gracias por el interés!
+        Podés registrarte igual y aprovechar los 14 días de prueba.
+      </div>
+    )
+  }
+
+  // valid
+  const pct = Math.round(((promo.maxUses - promo.remaining) / promo.maxUses) * 100)
+  return (
+    <div className="mb-4 rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-400/15 via-emerald-500/5 to-transparent p-4">
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 w-9 h-9 rounded-full bg-emerald-400/20 border border-emerald-400/40 flex items-center justify-center">
+          <PartyPopper className="w-4 h-4 text-emerald-300" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-emerald-100">
+            Promo <span className="font-mono uppercase tracking-wide">{promo.code}</span> activa
+          </p>
+          <p className="text-xs text-emerald-100/80 mt-0.5">
+            {pluralDias(promo.daysGranted)} de{" "}
+            <span className="font-semibold">{PLAN_LABELS_AR[promo.planGranted]}</span> gratis · sin tarjeta, sin compromiso.
+          </p>
+          <div className="mt-2.5">
+            <div className="flex items-center justify-between text-[11px] text-emerald-100/80 mb-1">
+              <span>
+                Quedan <span className="font-semibold text-emerald-200">{promo.remaining}</span> de {promo.maxUses} cupos
+              </span>
+              <span className="tabular-nums">{pct}% reclamado</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-emerald-950/50 overflow-hidden">
+              <div
+                className="h-full bg-emerald-400 transition-all"
+                style={{ width: `${Math.min(100, Math.max(3, pct))}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

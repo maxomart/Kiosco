@@ -524,3 +524,38 @@ model ComboItem {
   @@unique([comboId, productId])
   @@index([comboId])
 }
+
+// ============= PROMO CODES (launch campaigns, partner coupons) =============
+// Applied at signup to grant a paid plan for a limited time without charging.
+// Counter is global (not per-tenant) and shared with all signups using the code.
+model PromoCode {
+  id           String   @id @default(cuid())
+  code         String   @unique                      // user-facing (lowercased), e.g. "lanzamiento"
+  description  String?
+  planGranted  String                                 // "STARTER" | "PROFESSIONAL" | "BUSINESS"
+  daysGranted  Int                                    // e.g. 90 for 3 months
+  maxUses      Int                                    // cupo total
+  usedCount    Int      @default(0)                   // incremented atomically on signup
+  active       Boolean  @default(true)
+  expiresAt    DateTime?                              // optional cutoff date
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  redemptions PromoRedemption[]
+
+  @@index([active])
+}
+
+model PromoRedemption {
+  id          String   @id @default(cuid())
+  email       String                                   // signup email (for audit/support)
+  tenantId    String                                   // no FK to Tenant so history survives tenant delete
+  createdAt   DateTime @default(now())
+
+  promoCodeId String
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+
+  @@unique([promoCodeId, tenantId])
+  @@index([promoCodeId])
+  @@index([email])
+}
