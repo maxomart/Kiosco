@@ -6,6 +6,8 @@ import toast from "react-hot-toast"
 import { formatDate, PLAN_LABELS } from "@/lib/utils"
 import Breadcrumbs from "@/components/admin/Breadcrumbs"
 
+type Source = "PAID" | "PROMO" | "TRIAL" | "FREE" | "OTHER"
+
 interface Sub {
   id: string
   tenantId: string
@@ -14,11 +16,29 @@ interface Sub {
   status: string
   billingCycle: string
   currentPeriodEnd: string | null
+  paymentProvider: string | null
+  source: Source
   mrr: number
 }
 
 const PLANS = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"]
 const STATUSES = ["ACTIVE", "TRIALING", "PAST_DUE", "PAUSED", "CANCELLED"]
+const SOURCES: { value: Source | ""; label: string }[] = [
+  { value: "", label: "Todos los tipos" },
+  { value: "PAID", label: "Pagantes (MRR real)" },
+  { value: "PROMO", label: "Promo (gratis)" },
+  { value: "TRIAL", label: "Prueba 14 días" },
+  { value: "FREE", label: "Plan gratis" },
+  { value: "OTHER", label: "Cancelados / Pausa" },
+]
+
+const SOURCE_BADGE: Record<Source, { label: string; cls: string }> = {
+  PAID: { label: "PAGANTE", cls: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" },
+  PROMO: { label: "PROMO", cls: "bg-amber-500/15 text-amber-300 border border-amber-500/30" },
+  TRIAL: { label: "TRIAL", cls: "bg-blue-500/15 text-blue-300 border border-blue-500/30" },
+  FREE: { label: "GRATIS", cls: "bg-gray-700/40 text-gray-400 border border-gray-600/40" },
+  OTHER: { label: "—", cls: "bg-gray-800 text-gray-500 border border-gray-700" },
+}
 
 export default function AdminSubscriptionsPage() {
   const [subs, setSubs] = useState<Sub[]>([])
@@ -26,6 +46,7 @@ export default function AdminSubscriptionsPage() {
   const [loading, setLoading] = useState(true)
   const [statusF, setStatusF] = useState("")
   const [planF, setPlanF] = useState("")
+  const [sourceF, setSourceF] = useState<Source | "">("")
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -33,6 +54,7 @@ export default function AdminSubscriptionsPage() {
     const params = new URLSearchParams({
       ...(statusF && { status: statusF }),
       ...(planF && { plan: planF }),
+      ...(sourceF && { source: sourceF }),
     })
     try {
       const res = await fetch(`/api/admin/subscriptions?${params}`)
@@ -42,7 +64,7 @@ export default function AdminSubscriptionsPage() {
         setTotal(d.total || 0)
       }
     } finally { setLoading(false) }
-  }, [statusF, planF])
+  }, [statusF, planF, sourceF])
 
   useEffect(() => { load() }, [load])
 
@@ -73,6 +95,13 @@ export default function AdminSubscriptionsPage() {
   }
 
   const totalMRR = subs.reduce((acc, s) => acc + s.mrr, 0)
+  const counts = subs.reduce(
+    (acc, s) => {
+      acc[s.source] = (acc[s.source] ?? 0) + 1
+      return acc
+    },
+    {} as Record<string, number>
+  )
 
   return (
     <div className="p-6 space-y-6">
@@ -81,11 +110,21 @@ export default function AdminSubscriptionsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Suscripciones</h1>
-          <p className="text-gray-400 text-sm mt-1">{total} suscripciones · MRR ${totalMRR.toFixed(0)} USD/mes</p>
+          <p className="text-gray-400 text-sm mt-1">
+            {total} en total · <span className="text-emerald-300">{counts.PAID ?? 0} pagantes</span>
+            {(counts.PROMO ?? 0) > 0 && <> · <span className="text-amber-300">{counts.PROMO} promo</span></>}
+            {(counts.TRIAL ?? 0) > 0 && <> · <span className="text-blue-300">{counts.TRIAL} trial</span></>}
+            {" · "}
+            <span className="text-green-400 font-medium">MRR real ${totalMRR.toFixed(0)} USD/mes</span>
+          </p>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <select value={sourceF} onChange={e => setSourceF(e.target.value as Source | "")}
+          className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
+          {SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
         <select value={statusF} onChange={e => setStatusF(e.target.value)}
           className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white">
           <option value="">Todos los estados</option>
@@ -103,6 +142,7 @@ export default function AdminSubscriptionsPage() {
           <thead>
             <tr className="border-b border-gray-800 text-gray-400">
               <th className="p-4 text-left font-medium">Tenant</th>
+              <th className="p-4 text-left font-medium">Tipo</th>
               <th className="p-4 text-left font-medium">Plan</th>
               <th className="p-4 text-left font-medium">Estado</th>
               <th className="p-4 text-left font-medium">Ciclo</th>
@@ -113,16 +153,23 @@ export default function AdminSubscriptionsPage() {
           </thead>
           <tbody className="divide-y divide-gray-800">
             {loading ? Array.from({ length: 6 }).map((_, i) => (
-              <tr key={i}><td colSpan={6} className="p-4"><div className="h-4 bg-gray-800 rounded animate-pulse" /></td></tr>
+              <tr key={i}><td colSpan={8} className="p-4"><div className="h-4 bg-gray-800 rounded animate-pulse" /></td></tr>
             )) : subs.length === 0 ? (
-              <tr><td colSpan={6} className="p-12 text-center text-gray-500">Sin suscripciones.</td></tr>
-            ) : subs.map(s => (
+              <tr><td colSpan={8} className="p-12 text-center text-gray-500">Sin suscripciones.</td></tr>
+            ) : subs.map(s => {
+              const badge = SOURCE_BADGE[s.source]
+              return (
               <tr key={s.id} className="hover:bg-gray-800/30">
                 <td className="p-4">
                   <Link href={`/admin/tenants/${s.tenant.id}`} className="text-white font-medium hover:text-purple-300">
                     {s.tenant.name}
                   </Link>
                   <p className="text-gray-500 text-xs">{s.tenant.slug}</p>
+                </td>
+                <td className="p-4">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${badge.cls}`}>
+                    {badge.label}
+                  </span>
                 </td>
                 <td className="p-4">
                   <select
@@ -162,7 +209,8 @@ export default function AdminSubscriptionsPage() {
                   </button>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>

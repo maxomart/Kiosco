@@ -9,6 +9,8 @@ interface AdminStats {
   totalTenants: number
   activeTenants: number
   trialingTenants: number
+  paidTenants?: number
+  promoActiveTenants?: number
   totalUsers: number
   totalRevenue: number
   monthlyRecurringRevenue: number
@@ -62,7 +64,15 @@ export default function AdminDashboard() {
             <Building2 size={16} className="text-purple-400" />
           </div>
           <p className="text-2xl font-bold text-white">{stats.totalTenants}</p>
-          <p className="text-green-400 text-xs mt-1">{stats.activeTenants} activos · {stats.trialingTenants} en prueba</p>
+          <p className="text-xs mt-1 space-x-2">
+            <span className="text-emerald-300">{stats.paidTenants ?? 0} pagantes</span>
+            {(stats.promoActiveTenants ?? 0) > 0 && (
+              <span className="text-amber-300">· {stats.promoActiveTenants} promo</span>
+            )}
+            {stats.trialingTenants > 0 && (
+              <span className="text-blue-300">· {stats.trialingTenants} trial</span>
+            )}
+          </p>
         </div>
 
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
@@ -76,11 +86,11 @@ export default function AdminDashboard() {
 
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-500 text-sm">MRR</span>
+            <span className="text-gray-500 text-sm">MRR real</span>
             <DollarSign size={16} className="text-green-400" />
           </div>
           <p className="text-2xl font-bold text-green-400">${stats.monthlyRecurringRevenue.toFixed(0)}</p>
-          <p className="text-gray-500 text-xs mt-1">USD / mes recurrente</p>
+          <p className="text-gray-500 text-xs mt-1">Solo pagantes (excluye promo/trial)</p>
         </div>
 
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
