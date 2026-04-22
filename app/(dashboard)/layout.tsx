@@ -42,43 +42,90 @@ export default async function DashboardLayout({
   let brandName: string | null = null
   let bannerData: BannerData = { kind: null, plan: "" }
   if (session.user.tenantId) {
+    // Queries split so a single failure doesn't hide all three outputs. The
+    // promoRedemption query in particular may reference a model that isn't
+    // present on older Prisma clients in the running container — keeping it
+    // isolated means the rest of the layout still renders correctly.
+    const tenantId = session.user.tenantId
+
+    let subForBanner: {
+      plan: string
+      status: string | null
+      currentPeriodEnd: Date | null
+      paymentProvider: string | null
+    } | null = null
     try {
-      const [cfg, sub, tenant, redemption] = await Promise.all([
-        db.tenantConfig.findUnique({ where: { tenantId: session.user.tenantId } }) as any,
-        db.subscription.findUnique({
-          where: { tenantId: session.user.tenantId },
-          select: {
-            plan: true,
-            status: true,
-            currentPeriodEnd: true,
-            paymentProvider: true,
-          },
-        }),
-        db.tenant.findUnique({
-          where: { id: session.user.tenantId },
-          select: { name: true },
-        }),
-        db.promoRedemption.findFirst({
-          where: { tenantId: session.user.tenantId },
-          include: { promoCode: { select: { planGranted: true } } },
-        }) as any,
-      ])
+      const sub = await db.subscription.findUnique({
+        where: { tenantId },
+        select: {
+          plan: true,
+          status: true,
+          currentPeriodEnd: true,
+          paymentProvider: true,
+        },
+      })
+      if (sub) {
+        plan = sub.plan ?? "FREE"
+        subForBanner = {
+          plan: sub.plan ?? "FREE",
+          status: sub.status ?? null,
+          currentPeriodEnd: sub.currentPeriodEnd ?? null,
+          paymentProvider: sub.paymentProvider ?? null,
+        }
+      }
+    } catch (e) {
+      console.error("[dashboard-layout] subscription query failed:", e)
+    }
+
+    try {
+      const cfg = (await db.tenantConfig.findUnique({
+        where: { tenantId },
+      })) as any
       initialAccent = cfg?.themeColor ?? null
       const m = cfg?.themeMode
       if (m === "light" || m === "dark" || m === "auto") initialMode = m
-      plan = sub?.plan ?? "FREE"
       logoUrl = cfg?.logoUrl ?? null
-      brandName = tenant?.name ?? null
-      bannerData = deriveBannerState({
-        plan,
-        status: sub?.status,
-        currentPeriodEnd: sub?.currentPeriodEnd,
-        paymentProvider: sub?.paymentProvider,
-        hadPromo: !!redemption,
-        promoPlan: redemption?.promoCode?.planGranted ?? null,
+    } catch (e) {
+      console.error("[dashboard-layout] tenantConfig query failed:", e)
+    }
+
+    try {
+      const tenant = await db.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true },
       })
-    } catch {
-      // Schema may not yet have the columns deployed; fall back gracefully.
+      brandName = tenant?.name ?? null
+    } catch (e) {
+      console.error("[dashboard-layout] tenant query failed:", e)
+    }
+
+    // Promo lookup is best-effort. If it fails, the banner will still render
+    // as a trial-style banner for paid plans without paymentProvider, which
+    // is the correct UX for a user on a promo window anyway.
+    let hadPromo = false
+    let promoPlanGranted: string | null = null
+    try {
+      const redemption = (await db.promoRedemption.findFirst({
+        where: { tenantId },
+        include: { promoCode: { select: { planGranted: true } } },
+      })) as any
+      if (redemption) {
+        hadPromo = true
+        promoPlanGranted = redemption.promoCode?.planGranted ?? null
+      }
+    } catch (e) {
+      console.error("[dashboard-layout] promoRedemption query failed:", e)
+    }
+
+    if (subForBanner) {
+      bannerData = deriveBannerState({
+        plan: subForBanner.plan,
+        status: subForBanner.status,
+        currentPeriodEnd: subForBanner.currentPeriodEnd,
+        paymentProvider: subForBanner.paymentProvider,
+        hadPromo,
+        promoPlan: promoPlanGranted,
+      })
     }
   }
 
