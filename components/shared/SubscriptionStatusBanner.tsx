@@ -3,16 +3,9 @@
 import { useState } from "react"
 import Link from "next/link"
 import { AlertCircle, Crown, Gift, Sparkles, X } from "lucide-react"
-import { PLAN_LABELS_AR } from "@/lib/utils"
+import type { BannerData, BannerKind } from "@/lib/subscription-banner"
 
-export type BannerKind = "trial" | "promo" | "expired-promo" | "expired-trial" | null
-
-export interface BannerData {
-  kind: BannerKind
-  plan: string // plan label, e.g. "Profesional"
-  daysLeft?: number // for active windows
-  upgradeHref?: string
-}
+export type { BannerData, BannerKind }
 
 const LS_KEY = "sub-banner-dismissed"
 
@@ -220,73 +213,7 @@ function CTA({
   )
 }
 
-/* ────────── server-side derivation helper ────────── */
-
-// Call this from the dashboard layout with the tenant's current subscription
-// snapshot. Returns the banner data (or kind=null to hide).
-//
-// Core rule: if the tenant is on a paid plan without paymentProvider AND the
-// current period hasn't ended, they're using the app for free in some way
-// (promo or trial). Show them the countdown regardless of the exact status
-// string. The `hadPromo` flag only picks the copy/color.
-//
-// Historical note: the previous version required status === "TRIALING" for
-// the trial banner but the promo signup creates subscriptions with status
-// ACTIVE, which meant promo users saw no banner when the PromoRedemption
-// lookup failed (e.g. stale Prisma client). This version survives that.
-export function deriveBannerState(args: {
-  plan: string
-  status: string | null | undefined
-  currentPeriodEnd: Date | null | undefined
-  paymentProvider: string | null | undefined
-  hadPromo: boolean
-  promoPlan?: string | null
-}): BannerData {
-  const { plan, currentPeriodEnd, paymentProvider, hadPromo, promoPlan } = args
-  const now = new Date()
-
-  const daysUntil = (d: Date | null | undefined): number =>
-    d ? Math.max(0, Math.ceil((d.getTime() - now.getTime()) / 86_400_000)) : 0
-
-  // Paid plan + payment provider set → real customer, no banner.
-  if (plan !== "FREE" && paymentProvider) {
-    return { kind: null, plan: "" }
-  }
-
-  // Paid plan + NO paymentProvider + period still open → promo or trial window.
-  if (plan !== "FREE" && !paymentProvider && currentPeriodEnd && currentPeriodEnd > now) {
-    return {
-      kind: hadPromo ? "promo" : "trial",
-      plan: label(plan),
-      daysLeft: daysUntil(currentPeriodEnd),
-    }
-  }
-
-  // Downgraded to FREE after a promo window closed.
-  if (hadPromo && plan === "FREE") {
-    return {
-      kind: "expired-promo",
-      plan: label(promoPlan ?? "PROFESSIONAL"),
-    }
-  }
-
-  // FREE with a past currentPeriodEnd and no provider → trial expired.
-  if (
-    !hadPromo &&
-    plan === "FREE" &&
-    currentPeriodEnd &&
-    currentPeriodEnd < now &&
-    !paymentProvider
-  ) {
-    return {
-      kind: "expired-trial",
-      plan: "un plan pago",
-    }
-  }
-
-  return { kind: null, plan: "" }
-}
-
-function label(plan: string): string {
-  return PLAN_LABELS_AR[plan as keyof typeof PLAN_LABELS_AR] ?? plan
-}
+// Note: `deriveBannerState` used to live here but must be server-safe
+// (the dashboard layout is a Server Component). It now lives in
+// lib/subscription-banner.ts and is re-exported for backwards compat.
+export { deriveBannerState } from "@/lib/subscription-banner"

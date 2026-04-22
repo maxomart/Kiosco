@@ -9,10 +9,8 @@ import { AssistantWidget } from "@/components/ai/AssistantWidget"
 import { ConfirmProvider } from "@/components/shared/ConfirmDialog"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
-import SubscriptionStatusBanner, {
-  deriveBannerState,
-  type BannerData,
-} from "@/components/shared/SubscriptionStatusBanner"
+import SubscriptionStatusBanner from "@/components/shared/SubscriptionStatusBanner"
+import { deriveBannerState, type BannerData } from "@/lib/subscription-banner"
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false, noarchive: true, nocache: true },
