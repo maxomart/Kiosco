@@ -3,14 +3,18 @@ import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { PLAN_PRICES_USD, type Plan } from "@/lib/utils"
 
-// `source` distinguishes real paying customers from promo/trial accounts that
-// happen to show status=ACTIVE. Critical for MRR: a PROMO Profesional is
-// worth $0, not $25.
-//   - PAID:  paymentProvider is set (MP/Stripe/Mobbex committed)
-//   - PROMO: tenant has a PromoRedemption record
-//   - TRIAL: status TRIALING and not paid
-//   - FREE:  plan FREE
-//   - OTHER: status CANCELLED / PAST_DUE / PAUSED
+// `source` distinguishes real paying customers from promo/trial/cancelled
+// accounts. Critical for MRR: a PROMO Profesional is worth $0, not $25;
+// and a CANCELLED subscription that still has a paymentProvider tag from
+// its past must NOT count as revenue.
+//
+// Order of precedence (first match wins):
+//   FREE     → plan = FREE (nothing to bill regardless of status)
+//   OTHER    → status CANCELLED / PAST_DUE / PAUSED (not paying right now)
+//   PAID     → paymentProvider set AND status ACTIVE  ← only this counts as MRR
+//   PROMO    → tenant has a PromoRedemption record (was granted a promo plan)
+//   TRIAL    → paid plan, no provider, no promo → default signup trial
+//   OTHER    → fall-through (shouldn't happen but safe default)
 type Source = "PAID" | "PROMO" | "TRIAL" | "FREE" | "OTHER"
 
 function deriveSource(
@@ -20,10 +24,19 @@ function deriveSource(
   isPromo: boolean
 ): Source {
   if (plan === "FREE") return "FREE"
-  if (paymentProvider) return "PAID"
+  // Not-paying states first so a cancelled-but-ex-paymentProvider subscription
+  // doesn't leak into PAID.
+  if (status === "CANCELLED" || status === "PAST_DUE" || status === "PAUSED") {
+    return "OTHER"
+  }
+  // Real paying customer right now.
+  if (paymentProvider && status === "ACTIVE") return "PAID"
+  // Promo users keep the PROMO tag even if the tenant later adds a
+  // paymentProvider (when they convert, we bump them to PAID via the
+  // previous check with status=ACTIVE).
   if (isPromo) return "PROMO"
-  if (status === "TRIALING") return "TRIAL"
-  if (status === "ACTIVE") return "TRIAL" // signup trial that lingered as ACTIVE
+  // TRIALING signup trial (explicit) or ACTIVE lingering without a provider.
+  if (status === "TRIALING" || status === "ACTIVE") return "TRIAL"
   return "OTHER"
 }
 

@@ -32,12 +32,20 @@ const SOURCES: { value: Source | ""; label: string }[] = [
   { value: "OTHER", label: "Cancelados / Pausa" },
 ]
 
+// Badge per source. OTHER reuses the sub.status to say CANCELADO / PAUSADO
+// instead of a meaningless dash — makes the admin row self-explanatory.
 const SOURCE_BADGE: Record<Source, { label: string; cls: string }> = {
   PAID: { label: "PAGANTE", cls: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" },
   PROMO: { label: "PROMO", cls: "bg-amber-500/15 text-amber-300 border border-amber-500/30" },
   TRIAL: { label: "TRIAL", cls: "bg-blue-500/15 text-blue-300 border border-blue-500/30" },
   FREE: { label: "GRATIS", cls: "bg-gray-700/40 text-gray-400 border border-gray-600/40" },
-  OTHER: { label: "—", cls: "bg-gray-800 text-gray-500 border border-gray-700" },
+  OTHER: { label: "INACTIVO", cls: "bg-red-500/10 text-red-300 border border-red-500/30" },
+}
+
+const OTHER_LABEL_BY_STATUS: Record<string, string> = {
+  CANCELLED: "CANCELADO",
+  PAUSED: "PAUSADO",
+  PAST_DUE: "VENCIDO",
 }
 
 export default function AdminSubscriptionsPage() {
@@ -158,6 +166,10 @@ export default function AdminSubscriptionsPage() {
               <tr><td colSpan={8} className="p-12 text-center text-gray-500">Sin suscripciones.</td></tr>
             ) : subs.map(s => {
               const badge = SOURCE_BADGE[s.source]
+              // For OTHER subscriptions, refine the label using the actual
+              // status so the admin row reads "CANCELADO" / "PAUSADO" etc.
+              const label =
+                s.source === "OTHER" ? OTHER_LABEL_BY_STATUS[s.status] ?? badge.label : badge.label
               return (
               <tr key={s.id} className="hover:bg-gray-800/30">
                 <td className="p-4">
@@ -168,7 +180,7 @@ export default function AdminSubscriptionsPage() {
                 </td>
                 <td className="p-4">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${badge.cls}`}>
-                    {badge.label}
+                    {label}
                   </span>
                 </td>
                 <td className="p-4">

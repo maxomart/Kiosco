@@ -35,19 +35,27 @@ export async function GET() {
   const activeTenants = tenants.filter(t => t.active).length
   const trialingTenants = subs.filter((s: any) => s.status === "TRIALING").length
   const promoActiveTenants = subs.filter(
-    (s: any) => s.plan !== "FREE" && !s.paymentProvider && promoTenantIds.has(s.tenantId)
+    (s: any) =>
+      s.plan !== "FREE" &&
+      !s.paymentProvider &&
+      s.status !== "CANCELLED" &&
+      s.status !== "PAUSED" &&
+      promoTenantIds.has(s.tenantId)
   ).length
-  const paidTenants = subs.filter((s: any) => s.plan !== "FREE" && s.paymentProvider).length
+  // "Paying right now" = paymentProvider set AND status ACTIVE. A CANCELLED
+  // subscription that still has its old paymentProvider tag must not count.
+  const paidTenants = subs.filter(
+    (s: any) => s.plan !== "FREE" && s.paymentProvider && s.status === "ACTIVE"
+  ).length
 
   const planCounts: Record<string, number> = {}
   for (const s of subs) planCounts[s.plan] = (planCounts[s.plan] ?? 0) + 1
 
   const byPlan = Object.entries(planCounts).map(([plan, count]) => ({ plan, count }))
 
-  // MRR = only subscriptions actually billing via a payment provider. Promo
-  // and trial accounts that happen to show status=ACTIVE used to inflate this.
+  // MRR = only subscriptions actually billing AND active right now.
   const mrr = (subs as any[])
-    .filter((s) => s.paymentProvider && s.plan !== "FREE")
+    .filter((s) => s.paymentProvider && s.plan !== "FREE" && s.status === "ACTIVE")
     .reduce((acc, s) => acc + (PLAN_PRICES_USD[s.plan as Plan] ?? 0), 0)
 
   const businessCounts: Record<string, number> = {}
