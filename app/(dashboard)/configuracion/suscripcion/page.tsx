@@ -95,6 +95,7 @@ const PLAN_BADGE_COLORS: Record<string, string> = {
 
 export default function SuscripcionPage() {
   const [sub, setSub] = useState<Subscription | null>(null)
+  const [userEmail, setUserEmail] = useState<string>("")
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncAttempt, setSyncAttempt] = useState(0)
@@ -103,6 +104,11 @@ export default function SuscripcionPage() {
   const [portalLoading, setPortalLoading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [period, setPeriod] = useState<BillingPeriod>("monthly")
+  // MP email modal — we can't pass the signup email to MP by default
+  // because if the user's MP account is on a different email (or a
+  // different country), MP rejects with "Cannot operate between different
+  // countries". We ask explicitly before redirecting.
+  const [mpModal, setMpModal] = useState<{ plan: string; email: string; error?: string } | null>(null)
   const confirm = useConfirm()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -147,6 +153,7 @@ export default function SuscripcionPage() {
       }
       const d = await fetch("/api/configuracion/suscripcion").then(r => r.json())
       setSub(d.subscription)
+      if (d.userEmail) setUserEmail(d.userEmail)
       setLoading(false)
     }
     run()
@@ -174,31 +181,50 @@ export default function SuscripcionPage() {
     }
   }
 
-  const handleUpgradeMP = async (plan: string) => {
+  // Opens the MP email modal — actual checkout happens after the user
+  // confirms the email in submitMPCheckout.
+  const handleUpgradeMP = (plan: string) => {
+    setMpModal({ plan, email: userEmail })
+  }
+
+  const submitMPCheckout = async () => {
+    if (!mpModal) return
+    const email = mpModal.email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setMpModal({ ...mpModal, error: "Ingresá un email válido." })
+      return
+    }
+    const { plan } = mpModal
     setUpgrading(`mp:${plan}`)
     try {
       const res = await fetch("/api/billing/mp/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, period }),
+        body: JSON.stringify({ plan, period, payerEmail: email }),
       })
       if (res.ok) {
         const { initPoint } = await res.json()
         if (!initPoint) {
-          toast.error("Mercado Pago no devolvió un link de pago. Intentá de nuevo.")
+          setMpModal({ ...mpModal, error: "Mercado Pago no devolvió un link de pago. Intentá de nuevo." })
           setUpgrading(null)
           return
         }
         window.location.href = initPoint
       } else {
         const d = await res.json().catch(() => ({}))
-        const msg = d.error || "Error al iniciar pago con Mercado Pago"
-        toast.error(msg, { duration: 6000 })
         if (d.detail) console.error("[MP detail]", d.detail)
+        // Keep modal open with an inline error so the user can fix the email.
+        const msg =
+          d.code === "DIFFERENT_COUNTRIES"
+            ? "Ese email no está asociado a una cuenta Mercado Pago Argentina. Probá con el email exacto de tu cuenta MP."
+            : d.code === "PAYER_EMAIL_INVALID"
+              ? "El email no es válido para Mercado Pago."
+              : d.error || "Error al iniciar pago con Mercado Pago."
+        setMpModal({ ...mpModal, error: msg })
         setUpgrading(null)
       }
     } catch {
-      toast.error("Error de red al contactar Mercado Pago")
+      setMpModal({ ...mpModal, error: "Error de red al contactar Mercado Pago." })
       setUpgrading(null)
     }
   }
@@ -613,6 +639,77 @@ export default function SuscripcionPage() {
         </p>
       </div>
 
+      {mpModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !upgrading && setMpModal(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-gray-950 shadow-2xl p-5 sm:p-6"
+          >
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-8 h-8 rounded-full bg-accent-soft text-accent flex items-center justify-center">
+                <CreditCard size={16} />
+              </div>
+              <h3 className="text-white font-semibold text-base">Email de Mercado Pago</h3>
+            </div>
+            <p className="text-sm text-gray-400 leading-relaxed mb-4">
+              Ingresá el email de <span className="text-white">tu cuenta Mercado Pago Argentina</span>.
+              Puede ser distinto al email con el que te registraste.
+            </p>
+            <label className="block text-xs font-medium text-gray-400 mb-1.5">Email de tu cuenta MP</label>
+            <input
+              type="email"
+              autoFocus
+              value={mpModal.email}
+              onChange={(e) => setMpModal({ ...mpModal, email: e.target.value, error: undefined })}
+              placeholder="tu@email.com"
+              className={`w-full bg-black/40 border rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition focus:ring-2 focus:ring-white/20 ${
+                mpModal.error ? "border-red-500/60" : "border-white/10 focus:border-white/30"
+              }`}
+              onKeyDown={(e) => { if (e.key === "Enter" && !upgrading) submitMPCheckout() }}
+            />
+            {mpModal.error && (
+              <p className="mt-2 text-[12px] text-red-300 leading-relaxed">{mpModal.error}</p>
+            )}
+            <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+              Si no tenés cuenta MP Argentina, creá una gratis en{" "}
+              <a
+                href="https://www.mercadopago.com.ar/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline"
+              >
+                mercadopago.com.ar
+              </a>
+              {" "}y volvé acá.
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setMpModal(null)}
+                disabled={!!upgrading}
+                className="px-3.5 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={submitMPCheckout}
+                disabled={!!upgrading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white hover:bg-gray-200 text-black text-sm font-semibold transition-colors disabled:opacity-60"
+              >
+                {upgrading === `mp:${mpModal.plan}` ? "Redirigiendo…" : "Ir a Mercado Pago"}
+                <ExternalLink size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

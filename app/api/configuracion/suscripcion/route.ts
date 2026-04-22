@@ -3,7 +3,7 @@ import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 
 export async function GET() {
-  const { error, tenantId } = await getSessionTenant()
+  const { error, tenantId, session } = await getSessionTenant()
   if (error) return error
   try {
     const subscription = await db.subscription.findUnique({
@@ -19,6 +19,9 @@ export async function GET() {
       },
     })
     return NextResponse.json({
+      // Signup email — used as a suggestion when the UI asks for the user's
+      // MP Argentina account email. The user can edit it before submitting.
+      userEmail: session?.user?.email ?? null,
       subscription:
         subscription ?? {
           plan: "FREE",
