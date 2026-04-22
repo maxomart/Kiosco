@@ -22,7 +22,14 @@ export async function GET() {
     db.tenant.findMany({ select: { id: true, active: true, config: { select: { businessType: true } } } }),
     db.user.count(),
     db.subscription.findMany({
-      select: { plan: true, status: true, tenantId: true, paymentProvider: true },
+      select: {
+        plan: true,
+        status: true,
+        tenantId: true,
+        paymentProvider: true,
+        mpStatus: true,
+        stripeSubscriptionId: true,
+      },
     }),
     db.tenant.findMany({
       orderBy: { createdAt: "desc" },
@@ -31,31 +38,40 @@ export async function GET() {
     }),
   ])
 
+  // A subscription is actually paying right now only when:
+  //   - it's on a paid plan
+  //   - status is ACTIVE (not CANCELLED / PAUSED / PAST_DUE)
+  //   - there's evidence of a real charge: MP/Mobbex mpStatus = "authorized"
+  //     OR a Stripe subscription id (webhook-created)
+  // Promo users who just clicked "Suscribirme" get paymentProvider set as a
+  // side-effect of creating the preapproval — without those extra checks
+  // they'd falsely count as paying.
+  const isReallyPaying = (s: any) =>
+    s.plan !== "FREE" &&
+    s.status === "ACTIVE" &&
+    s.paymentProvider &&
+    (s.mpStatus === "authorized" || !!s.stripeSubscriptionId)
+
   const totalTenants = tenants.length
   const activeTenants = tenants.filter(t => t.active).length
   const trialingTenants = subs.filter((s: any) => s.status === "TRIALING").length
   const promoActiveTenants = subs.filter(
     (s: any) =>
       s.plan !== "FREE" &&
-      !s.paymentProvider &&
       s.status !== "CANCELLED" &&
       s.status !== "PAUSED" &&
-      promoTenantIds.has(s.tenantId)
+      promoTenantIds.has(s.tenantId) &&
+      !isReallyPaying(s) // a promo user that truly converted counts as paid, not promo
   ).length
-  // "Paying right now" = paymentProvider set AND status ACTIVE. A CANCELLED
-  // subscription that still has its old paymentProvider tag must not count.
-  const paidTenants = subs.filter(
-    (s: any) => s.plan !== "FREE" && s.paymentProvider && s.status === "ACTIVE"
-  ).length
+  const paidTenants = subs.filter(isReallyPaying).length
 
   const planCounts: Record<string, number> = {}
   for (const s of subs) planCounts[s.plan] = (planCounts[s.plan] ?? 0) + 1
 
   const byPlan = Object.entries(planCounts).map(([plan, count]) => ({ plan, count }))
 
-  // MRR = only subscriptions actually billing AND active right now.
   const mrr = (subs as any[])
-    .filter((s) => s.paymentProvider && s.plan !== "FREE" && s.status === "ACTIVE")
+    .filter(isReallyPaying)
     .reduce((acc, s) => acc + (PLAN_PRICES_USD[s.plan as Plan] ?? 0), 0)
 
   const businessCounts: Record<string, number> = {}

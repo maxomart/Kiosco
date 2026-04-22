@@ -4,38 +4,53 @@ import { auth } from "@/lib/auth"
 import { PLAN_PRICES_USD, type Plan } from "@/lib/utils"
 
 // `source` distinguishes real paying customers from promo/trial/cancelled
-// accounts. Critical for MRR: a PROMO Profesional is worth $0, not $25;
-// and a CANCELLED subscription that still has a paymentProvider tag from
-// its past must NOT count as revenue.
+// accounts. Critical for MRR accuracy and for not lying to ourselves about
+// who is actually paying.
 //
 // Order of precedence (first match wins):
-//   FREE     → plan = FREE (nothing to bill regardless of status)
-//   OTHER    → status CANCELLED / PAST_DUE / PAUSED (not paying right now)
-//   PAID     → paymentProvider set AND status ACTIVE  ← only this counts as MRR
-//   PROMO    → tenant has a PromoRedemption record (was granted a promo plan)
-//   TRIAL    → paid plan, no provider, no promo → default signup trial
-//   OTHER    → fall-through (shouldn't happen but safe default)
+//   FREE   → plan = FREE (nothing to bill regardless of status)
+//   OTHER  → status CANCELLED / PAST_DUE / PAUSED (not paying right now)
+//   PROMO  → tenant has a PromoRedemption record. Takes precedence over
+//            paymentProvider because the MP checkout sets paymentProvider
+//            to "mercadopago" just by creating the preapproval — even when
+//            the user never completes the payment. So a promo user who
+//            merely clicked "Suscribirme" gets a false paymentProvider.
+//            We treat them as PROMO until mpStatus reports an "authorized"
+//            charge, which only the webhook writes after a real payment.
+//   PAID   → paymentProvider set AND status ACTIVE  ← only this counts as MRR
+//   TRIAL  → paid plan, no provider, no promo → default signup trial
+//   OTHER  → fall-through
 type Source = "PAID" | "PROMO" | "TRIAL" | "FREE" | "OTHER"
 
-function deriveSource(
-  plan: string,
-  status: string,
-  paymentProvider: string | null,
+function deriveSource(args: {
+  plan: string
+  status: string
+  paymentProvider: string | null
+  mpStatus: string | null
+  stripeSubscriptionId: string | null
   isPromo: boolean
-): Source {
+}): Source {
+  const { plan, status, paymentProvider, mpStatus, stripeSubscriptionId, isPromo } = args
+
   if (plan === "FREE") return "FREE"
-  // Not-paying states first so a cancelled-but-ex-paymentProvider subscription
-  // doesn't leak into PAID.
   if (status === "CANCELLED" || status === "PAST_DUE" || status === "PAUSED") {
     return "OTHER"
   }
-  // Real paying customer right now.
-  if (paymentProvider && status === "ACTIVE") return "PAID"
-  // Promo users keep the PROMO tag even if the tenant later adds a
-  // paymentProvider (when they convert, we bump them to PAID via the
-  // previous check with status=ACTIVE).
-  if (isPromo) return "PROMO"
-  // TRIALING signup trial (explicit) or ACTIVE lingering without a provider.
+
+  // Promo user "converted" only if there's evidence of a real charge:
+  //   - MP/Mobbex: mpStatus === "authorized" (webhook confirmed the charge)
+  //   - Stripe:    stripeSubscriptionId set (webhook created the Sub)
+  // Without that evidence, a promo user who merely clicked Suscribirme
+  // shouldn't show as PAGANTE.
+  const realCharge =
+    (paymentProvider && status === "ACTIVE") &&
+    (mpStatus === "authorized" || !!stripeSubscriptionId)
+
+  if (isPromo && !realCharge) return "PROMO"
+  if (realCharge) return "PAID"
+  if (isPromo) return "PROMO" // paranoia: promo with half-baked provider
+
+  // Non-promo with unconfirmed provider → still a trial-ish state, not paying.
   if (status === "TRIALING" || status === "ACTIVE") return "TRIAL"
   return "OTHER"
 }
@@ -86,7 +101,14 @@ export async function GET(req: NextRequest) {
 
   const allItems = (subs as any[]).map((s) => {
     const isPromo = promoTenantSet.has(s.tenantId)
-    const source = deriveSource(s.plan, s.status, s.paymentProvider ?? null, isPromo)
+    const source = deriveSource({
+      plan: s.plan,
+      status: s.status,
+      paymentProvider: s.paymentProvider ?? null,
+      mpStatus: s.mpStatus ?? null,
+      stripeSubscriptionId: s.stripeSubscriptionId ?? null,
+      isPromo,
+    })
     return {
       id: s.id,
       tenantId: s.tenantId,
