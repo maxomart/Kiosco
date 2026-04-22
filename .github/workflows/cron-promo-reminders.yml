@@ -1,0 +1,32 @@
+name: cron-promo-reminders
+
+# Daily at 13:00 UTC (= 10:00 ART). Sends WhatsApp reminders to promo users
+# at the 30 / 10 / 1 day-left thresholds before their period expires.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   APP_URL      e.g. https://mercadoar.up.railway.app  (no trailing slash)
+#   CRON_SECRET  same value set in Railway env vars
+
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit /api/cron/promo-reminders
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL or CRON_SECRET secret is missing"
+            exit 1
+          fi
+          curl -fsSL -X GET "$APP_URL/api/cron/promo-reminders" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Accept: application/json" \
+            --max-time 60 \
+            -w "\nHTTP %{http_code}\n"

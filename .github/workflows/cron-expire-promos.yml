@@ -1,0 +1,34 @@
+name: cron-expire-promos
+
+# Daily at 04:00 UTC (= 01:00 ART). Runs the auto-downgrade for promo windows
+# whose currentPeriodEnd has passed. Github cron uses UTC.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   APP_URL      e.g. https://mercadoar.up.railway.app  (no trailing slash)
+#   CRON_SECRET  same value set in Railway env vars
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit /api/cron/expire-promos
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL or CRON_SECRET secret is missing"
+            exit 1
+          fi
+          # -f: fail on HTTP error · -sS: silent but show errors · -L: follow redirects
+          # -w: print response code at the end · --max-time: hard timeout in seconds
+          curl -fsSL -X GET "$APP_URL/api/cron/expire-promos" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Accept: application/json" \
+            --max-time 60 \
+            -w "\nHTTP %{http_code}\n"
