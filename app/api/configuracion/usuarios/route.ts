@@ -24,7 +24,7 @@ export async function GET() {
 const createSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
-  role: z.enum(["ADMIN", "CASHIER"]),
+  role: z.enum(["OWNER", "ADMIN", "CASHIER"]),
 })
 
 export async function POST(req: NextRequest) {
@@ -36,6 +36,15 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: "Datos inválidos" }, { status: 400 })
+
+  // Only an existing OWNER can grant OWNER to someone else — an ADMIN
+  // promoting an ADMIN to OWNER could de-facto lock out the real owner.
+  if (parsed.data.role === "OWNER" && session.user.role !== "OWNER") {
+    return NextResponse.json(
+      { error: "Solo un dueño puede asignar el rol de dueño." },
+      { status: 403 }
+    )
+  }
 
   // Check plan limit
   const [userCount, sub] = await Promise.all([

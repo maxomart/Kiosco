@@ -211,40 +211,55 @@ export default function UsuariosPage() {
                       </span>
                     </td>
                     <td className="p-4">
-                      {u.role !== "OWNER" && (
-                        <div className="flex items-center gap-1 justify-end">
-                          {/* Toggle active */}
-                          <button
-                            onClick={() => handleToggleActive(u)}
-                            disabled={acting === u.id + ":toggle"}
-                            title={u.active ? "Desactivar" : "Reactivar"}
-                            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                              u.active
-                                ? "hover:bg-amber-500/10 text-gray-400 hover:text-amber-400"
-                                : "hover:bg-emerald-500/10 text-gray-400 hover:text-emerald-400"
-                            }`}
-                          >
-                            {acting === u.id + ":toggle"
-                              ? <Loader2 size={14} className="animate-spin" />
-                              : u.active
-                              ? <UserX size={14} />
-                              : <UserCheck size={14} />
-                            }
-                          </button>
-                          {/* Hard delete */}
-                          <button
-                            onClick={() => handleDelete(u)}
-                            disabled={acting === u.id + ":delete"}
-                            title="Eliminar permanentemente"
-                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50"
-                          >
-                            {acting === u.id + ":delete"
-                              ? <Loader2 size={14} className="animate-spin" />
-                              : <Trash2 size={14} />
-                            }
-                          </button>
-                        </div>
-                      )}
+                      {(() => {
+                        // Last-owner rule: if this is the only active OWNER,
+                        // hide destructive actions entirely so the UI matches
+                        // what the backend will accept. Users can still click
+                        // on another owner once they exist.
+                        const activeOwners = users.filter(x => x.role === "OWNER" && x.active)
+                        const isLastOwner = u.role === "OWNER" && activeOwners.length <= 1
+                        if (isLastOwner) {
+                          return (
+                            <p className="text-[11px] text-gray-500 text-right italic">
+                              Único dueño — creá otro para poder editar
+                            </p>
+                          )
+                        }
+                        return (
+                          <div className="flex items-center gap-1 justify-end">
+                            {/* Toggle active */}
+                            <button
+                              onClick={() => handleToggleActive(u)}
+                              disabled={acting === u.id + ":toggle"}
+                              title={u.active ? "Desactivar" : "Reactivar"}
+                              className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                                u.active
+                                  ? "hover:bg-amber-500/10 text-gray-400 hover:text-amber-400"
+                                  : "hover:bg-emerald-500/10 text-gray-400 hover:text-emerald-400"
+                              }`}
+                            >
+                              {acting === u.id + ":toggle"
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : u.active
+                                ? <UserX size={14} />
+                                : <UserCheck size={14} />
+                              }
+                            </button>
+                            {/* Hard delete */}
+                            <button
+                              onClick={() => handleDelete(u)}
+                              disabled={acting === u.id + ":delete"}
+                              title="Eliminar permanentemente"
+                              className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                            >
+                              {acting === u.id + ":delete"
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : <Trash2 size={14} />
+                              }
+                            </button>
+                          </div>
+                        )
+                      })()}
                     </td>
                   </tr>
                 ))
@@ -295,7 +310,13 @@ export default function UsuariosPage() {
                 >
                   <option value="CASHIER">Cajero — solo POS y caja</option>
                   <option value="ADMIN">Admin — acceso total (sin billing)</option>
+                  <option value="OWNER">Dueño — acceso total + billing</option>
                 </select>
+                {form.role === "OWNER" && (
+                  <p className="text-[11px] text-amber-400/80 mt-1.5 leading-relaxed">
+                    ⚠️ Los dueños tienen acceso total, pueden cancelar la suscripción y eliminar usuarios. Usalo solo con gente de máxima confianza.
+                  </p>
+                )}
               </div>
               <p className="text-xs text-gray-500">Se generará una contraseña aleatoria que podés compartir con el usuario.</p>
             </div>
