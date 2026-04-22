@@ -181,10 +181,58 @@ export default function SuscripcionPage() {
     }
   }
 
-  // Opens the MP email modal — actual checkout happens after the user
-  // confirms the email in submitMPCheckout.
-  const handleUpgradeMP = (plan: string) => {
-    setMpModal({ plan, email: userEmail })
+  // Try the checkout directly with the signup email first (friction-free
+  // happy path). Only open the email modal if MP rejects with
+  // different-country / invalid email — at that point we need the user to
+  // type their actual MP Argentina account email.
+  const attemptMPCheckout = async (
+    plan: string,
+    email: string
+  ): Promise<{ ok: true } | { ok: false; code?: string; error?: string }> => {
+    try {
+      const res = await fetch("/api/billing/mp/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, period, payerEmail: email }),
+      })
+      if (res.ok) {
+        const { initPoint } = await res.json()
+        if (!initPoint) return { ok: false, error: "Mercado Pago no devolvió un link de pago. Intentá de nuevo." }
+        window.location.href = initPoint
+        return { ok: true }
+      }
+      const d = await res.json().catch(() => ({}))
+      if (d.detail) console.error("[MP detail]", d.detail)
+      return { ok: false, code: d.code, error: d.error }
+    } catch {
+      return { ok: false, error: "Error de red al contactar Mercado Pago." }
+    }
+  }
+
+  const handleUpgradeMP = async (plan: string) => {
+    // If we don't have the signup email yet, fall straight to the modal
+    // so the user can type it in.
+    if (!userEmail) {
+      setMpModal({ plan, email: "" })
+      return
+    }
+    setUpgrading(`mp:${plan}`)
+    const result = await attemptMPCheckout(plan, userEmail)
+    if (result.ok) return // redirect happened
+    setUpgrading(null)
+    // Different country / invalid email → open the modal with the error so
+    // the user can switch to their actual MP Argentina email. Any other
+    // error (token, amount, network) gets surfaced as a toast and we don't
+    // bother the user with a form they can't fix.
+    if (result.code === "DIFFERENT_COUNTRIES" || result.code === "PAYER_EMAIL_INVALID") {
+      const msg =
+        result.code === "DIFFERENT_COUNTRIES"
+          ? "Ese email no tiene cuenta Mercado Pago Argentina. Probá con el email exacto de tu cuenta MP."
+          : "El email no es válido para Mercado Pago. Probá con otro."
+      setMpModal({ plan, email: userEmail, error: msg })
+    } else {
+      toast.error(result.error || "Error al iniciar pago con Mercado Pago", { duration: 6000 })
+    }
   }
 
   const submitMPCheckout = async () => {
@@ -194,39 +242,17 @@ export default function SuscripcionPage() {
       setMpModal({ ...mpModal, error: "Ingresá un email válido." })
       return
     }
-    const { plan } = mpModal
-    setUpgrading(`mp:${plan}`)
-    try {
-      const res = await fetch("/api/billing/mp/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, period, payerEmail: email }),
-      })
-      if (res.ok) {
-        const { initPoint } = await res.json()
-        if (!initPoint) {
-          setMpModal({ ...mpModal, error: "Mercado Pago no devolvió un link de pago. Intentá de nuevo." })
-          setUpgrading(null)
-          return
-        }
-        window.location.href = initPoint
-      } else {
-        const d = await res.json().catch(() => ({}))
-        if (d.detail) console.error("[MP detail]", d.detail)
-        // Keep modal open with an inline error so the user can fix the email.
-        const msg =
-          d.code === "DIFFERENT_COUNTRIES"
-            ? "Ese email no está asociado a una cuenta Mercado Pago Argentina. Probá con el email exacto de tu cuenta MP."
-            : d.code === "PAYER_EMAIL_INVALID"
-              ? "El email no es válido para Mercado Pago."
-              : d.error || "Error al iniciar pago con Mercado Pago."
-        setMpModal({ ...mpModal, error: msg })
-        setUpgrading(null)
-      }
-    } catch {
-      setMpModal({ ...mpModal, error: "Error de red al contactar Mercado Pago." })
-      setUpgrading(null)
-    }
+    setUpgrading(`mp:${mpModal.plan}`)
+    const result = await attemptMPCheckout(mpModal.plan, email)
+    if (result.ok) return
+    setUpgrading(null)
+    const msg =
+      result.code === "DIFFERENT_COUNTRIES"
+        ? "Ese email no está asociado a una cuenta Mercado Pago Argentina. Probá con el email exacto de tu cuenta MP."
+        : result.code === "PAYER_EMAIL_INVALID"
+          ? "El email no es válido para Mercado Pago."
+          : result.error || "Error al iniciar pago con Mercado Pago."
+    setMpModal({ ...mpModal, error: msg })
   }
 
   const handleUpgradeStripe = async (plan: string) => {
@@ -394,7 +420,15 @@ export default function SuscripcionPage() {
       )}
 
       {/* Current plan */}
-      {!loading && sub && (
+      {!loading && sub && (() => {
+        // Promo / trial countdown — always shown inside this page (no dismiss).
+        const now = Date.now()
+        const endMs = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd).getTime() : null
+        const daysLeft = endMs ? Math.max(0, Math.ceil((endMs - now) / 86_400_000)) : null
+        const isFreeWindow =
+          sub.plan !== "FREE" && !sub.paymentProvider && !!daysLeft && daysLeft > 0
+        const urgent = isFreeWindow && daysLeft! <= 10
+        return (
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
@@ -427,6 +461,23 @@ export default function SuscripcionPage() {
                   </span>
                 </p>
               )}
+              {isFreeWindow && (
+                <div
+                  className={`mt-3 rounded-lg px-3 py-2 text-xs font-medium flex items-start gap-2 ${
+                    urgent
+                      ? "bg-amber-400/10 border border-amber-400/30 text-amber-200"
+                      : "bg-emerald-400/10 border border-emerald-400/30 text-emerald-200"
+                  }`}
+                >
+                  <Sparkles size={14} className="mt-0.5 shrink-0" />
+                  <span>
+                    {urgent
+                      ? `Te quedan solo ${daysLeft} días de ${PLAN_LABELS_AR[sub.plan as keyof typeof PLAN_LABELS_AR] ?? sub.plan} gratis. `
+                      : `Estás usando ${PLAN_LABELS_AR[sub.plan as keyof typeof PLAN_LABELS_AR] ?? sub.plan} gratis — te quedan ${daysLeft} días. `}
+                    Suscribite antes del vencimiento para no perder features.
+                  </span>
+                </div>
+              )}
               {sub.status === "CANCELLED" && (
                 <p className="text-[11px] text-red-300/80 mt-1 max-w-md">
                   Cancelaste la suscripción. Seguís con todas las funciones hasta la fecha indicada y después pasás automáticamente al plan Gratis.
@@ -450,7 +501,8 @@ export default function SuscripcionPage() {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Plans grid */}
       <div>

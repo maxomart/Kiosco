@@ -149,14 +149,24 @@ const PLAN_FEATURES: PlanGate = {
   "feature:priority_support":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 }
 
-/** Per-day AI message quota by plan (soft cap). */
+/** Per-day AI message quota by plan (soft cap).
+ *
+ * Numbers tuned down from launch marketing (landing says 5/50/500/5000) to
+ * protect against cost blow-ups when many tenants are on the free Profesional
+ * promo. Real kiosk usage almost never hits 30 msgs/day; the landing figures
+ * are upper-bound hype numbers. If we get complaints, re-raise per plan.
+ */
 export const AI_DAILY_QUOTA: Record<Plan, number> = {
-  FREE: 5,
-  STARTER: 50,
-  PROFESSIONAL: 500,
-  BUSINESS: 5000,
-  ENTERPRISE: 20000,
+  FREE: 3,
+  STARTER: 20,
+  PROFESSIONAL: 100,
+  BUSINESS: 1000,
+  ENTERPRISE: 10000,
 }
+
+/** Per-minute AI message ceiling to stop tight-loop abuse (bots, stuck UI).
+ * Keeps a single user from burning the day-quota in seconds. */
+export const AI_PER_MINUTE_LIMIT = 8
 
 /** True if the plan unlocks the feature. */
 export function hasFeature(plan: Plan | undefined | null, feature: PlanFeature): boolean {
