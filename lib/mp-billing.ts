@@ -34,7 +34,15 @@ function authHeaders(): Record<string, string> {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface CreatePreapprovalInput {
-  payerEmail: string
+  /**
+   * OPTIONAL. If omitted, MP shows its own login page and the payer picks any
+   * MP account. Do NOT default to the signup email — MP rejects the
+   * preapproval with "Cannot operate between different countries" when the
+   * email has no Argentine MP account (or belongs to a different country's MP).
+   * Only pass this when the tenant *explicitly* confirms it's their ARG MP
+   * account email.
+   */
+  payerEmail?: string
   backUrl: string
   reason: string
   externalReference: string
@@ -62,10 +70,9 @@ export interface PreapprovalResponse {
 export async function createPreapproval(
   input: CreatePreapprovalInput
 ): Promise<PreapprovalResponse> {
-  const body = {
+  const body: Record<string, unknown> = {
     reason: input.reason,
     external_reference: input.externalReference,
-    payer_email: input.payerEmail,
     back_url: input.backUrl,
     auto_recurring: {
       frequency: 1,
@@ -75,6 +82,10 @@ export async function createPreapproval(
     },
     status: "pending", // user must authorize via init_point
   }
+  // Only include payer_email when explicitly confirmed by the tenant. Sending
+  // the signup email causes "Cannot operate between different countries" when
+  // that email has no ARG MP account.
+  if (input.payerEmail) body.payer_email = input.payerEmail
 
   const res = await fetch(`${MP_API}/preapproval`, {
     method: "POST",

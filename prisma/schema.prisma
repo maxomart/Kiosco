@@ -551,6 +551,9 @@ model PromoRedemption {
   email       String                                   // signup email (for audit/support)
   tenantId    String                                   // no FK to Tenant so history survives tenant delete
   createdAt   DateTime @default(now())
+  // Reminders flow: 0 = none sent, 1 = ~30 days left, 2 = ~10 days, 3 = 1 day
+  // Bumped by /api/cron/promo-reminders so we don't double-notify on daily ticks.
+  remindersSent Int    @default(0)
 
   promoCodeId String
   promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  let body: { plan?: string; period?: string }
+  let body: { plan?: string; period?: string; payerEmail?: string }
   try {
     body = await req.json()
   } catch {
@@ -33,6 +33,16 @@ export async function POST(req: NextRequest) {
   if (!plan || !PAID_PLANS.includes(plan)) {
     return NextResponse.json({ error: "Plan inválido" }, { status: 400 })
   }
+
+  // Only forward payerEmail if the UI explicitly captured it (the user chose
+  // "ya tengo cuenta MP con este email"). Never fall back to session email:
+  // if that email doesn't have an Argentine MP account, MP rejects with
+  // "Cannot operate between different countries". Without payer_email, MP
+  // shows its own login page and the user picks any account they have.
+  const payerEmail =
+    typeof body.payerEmail === "string" && body.payerEmail.trim().length > 0
+      ? body.payerEmail.trim().toLowerCase()
+      : undefined
 
   const period: "monthly" | "annual" =
     body.period === "annual" ? "annual" : "monthly"
@@ -60,17 +70,10 @@ export async function POST(req: NextRequest) {
   const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? ""
   const backUrl = `${baseUrl}/configuracion/suscripcion?mp=success`
 
-  if (!session.user.email) {
-    return NextResponse.json(
-      { error: "Tu cuenta no tiene email. Agregá uno antes de suscribirte." },
-      { status: 400 }
-    )
-  }
-
   let preapproval
   try {
     preapproval = await createPreapproval({
-      payerEmail: session.user.email,
+      payerEmail, // undefined on purpose when not confirmed — see checkout comment
       backUrl,
       reason: `RetailAR ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
       externalReference: tenantId!,
@@ -82,15 +85,23 @@ export async function POST(req: NextRequest) {
     console.error("[mp/checkout] createPreapproval error:", rawMsg)
     // Surface MP's human-readable error when possible so the user knows what to do.
     let friendly = "No se pudo iniciar el pago con Mercado Pago."
-    if (/MP_PLATFORM_ACCESS_TOKEN/i.test(rawMsg))
+    let code: string | undefined
+    if (/different countries/i.test(rawMsg)) {
+      friendly =
+        "El email ingresado no tiene una cuenta de Mercado Pago Argentina. Dejá el campo vacío para elegir tu cuenta directamente en Mercado Pago."
+      code = "DIFFERENT_COUNTRIES"
+    } else if (/MP_PLATFORM_ACCESS_TOKEN/i.test(rawMsg)) {
       friendly = "Mercado Pago no está configurado en el servidor. Contactá soporte."
-    else if (/401|invalid.*token|unauthorized/i.test(rawMsg))
+    } else if (/401|invalid.*token|unauthorized/i.test(rawMsg)) {
       friendly = "El token de Mercado Pago es inválido o expiró. Contactá soporte."
-    else if (/payer_email/i.test(rawMsg))
-      friendly = "El email no es válido para Mercado Pago. Revisá el email de tu cuenta."
-    else if (/auto_recurring|transaction_amount/i.test(rawMsg))
+    } else if (/payer_email/i.test(rawMsg)) {
+      friendly =
+        "El email no es válido para Mercado Pago. Dejá el campo vacío para seguir sin él."
+      code = "PAYER_EMAIL_INVALID"
+    } else if (/auto_recurring|transaction_amount/i.test(rawMsg)) {
       friendly = "El monto del plan es inválido. Contactá soporte."
-    return NextResponse.json({ error: friendly, detail: rawMsg }, { status: 502 })
+    }
+    return NextResponse.json({ error: friendly, detail: rawMsg, code }, { status: 502 })
   }
 
   // Persist preliminary record so the webhook can match this preapproval.
