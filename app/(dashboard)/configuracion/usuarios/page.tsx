@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Mail, UserCheck, UserX, X, Copy, Loader2, AlertCircle } from "lucide-react"
+import { Plus, Trash2, Mail, UserCheck, UserX, X, Copy, Loader2, AlertCircle, KeyRound, Eye, EyeOff } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
 import toast from "react-hot-toast"
@@ -33,6 +33,50 @@ export default function UsuariosPage() {
   const [newUserCreds, setNewUserCreds] = useState<{ email: string; password: string } | null>(null)
   const [limitError, setLimitError] = useState<string | null>(null)
   const confirm = useConfirm()
+
+  // My-password change modal state
+  const [pwModal, setPwModal] = useState<null | {
+    current: string
+    next: string
+    confirm: string
+    showCurrent: boolean
+    showNext: boolean
+    error?: string
+    saving: boolean
+  }>(null)
+
+  const openPwModal = () =>
+    setPwModal({ current: "", next: "", confirm: "", showCurrent: false, showNext: false, saving: false })
+  const closePwModal = () => setPwModal(null)
+
+  const submitPwChange = async () => {
+    if (!pwModal) return
+    if (pwModal.next.length < 10) {
+      setPwModal({ ...pwModal, error: "La nueva contraseña debe tener al menos 10 caracteres." })
+      return
+    }
+    if (pwModal.next !== pwModal.confirm) {
+      setPwModal({ ...pwModal, error: "Las contraseñas no coinciden." })
+      return
+    }
+    setPwModal({ ...pwModal, saving: true, error: undefined })
+    try {
+      const res = await fetch("/api/configuracion/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: pwModal.current, newPassword: pwModal.next }),
+      })
+      if (res.ok) {
+        toast.success("Contraseña actualizada.")
+        setPwModal(null)
+      } else {
+        const d = await res.json().catch(() => ({}))
+        setPwModal({ ...pwModal, saving: false, error: d.error || "No se pudo cambiar la contraseña." })
+      }
+    } catch {
+      setPwModal({ ...pwModal, saving: false, error: "Error de red. Probá de nuevo." })
+    }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -267,6 +311,126 @@ export default function UsuariosPage() {
           </tbody>
         </table>
       </div>
+
+      {/* My password card */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-accent-soft border border-accent/20 flex items-center justify-center text-accent flex-shrink-0">
+            <KeyRound size={16} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-white font-semibold">Mi contraseña</h2>
+            <p className="text-gray-400 text-sm mt-0.5">
+              Cambiá tu contraseña cuando quieras. Requiere ingresar la actual.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={openPwModal}
+          className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-sm font-medium transition-colors"
+        >
+          Cambiar contraseña
+        </button>
+      </div>
+
+      {/* Password change modal */}
+      {pwModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => !pwModal.saving && closePwModal()}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md"
+          >
+            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+              <h2 className="text-white font-semibold">Cambiar mi contraseña</h2>
+              <button
+                onClick={closePwModal}
+                disabled={pwModal.saving}
+                className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 disabled:opacity-40"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              {pwModal.error && (
+                <div className="flex items-start gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                  <AlertCircle size={14} className="mt-0.5 shrink-0" /> {pwModal.error}
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Contraseña actual</label>
+                <div className="relative">
+                  <input
+                    type={pwModal.showCurrent ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={pwModal.current}
+                    onChange={(e) => setPwModal({ ...pwModal, current: e.target.value, error: undefined })}
+                    className="w-full px-3 py-2.5 pr-10 bg-black/40 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPwModal({ ...pwModal, showCurrent: !pwModal.showCurrent })}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-200"
+                    aria-label={pwModal.showCurrent ? "Ocultar" : "Mostrar"}
+                  >
+                    {pwModal.showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Contraseña nueva</label>
+                <div className="relative">
+                  <input
+                    type={pwModal.showNext ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder="Mínimo 10 caracteres"
+                    value={pwModal.next}
+                    onChange={(e) => setPwModal({ ...pwModal, next: e.target.value, error: undefined })}
+                    className="w-full px-3 py-2.5 pr-10 bg-black/40 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPwModal({ ...pwModal, showNext: !pwModal.showNext })}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-200"
+                    aria-label={pwModal.showNext ? "Ocultar" : "Mostrar"}
+                  >
+                    {pwModal.showNext ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Confirmar contraseña nueva</label>
+                <input
+                  type={pwModal.showNext ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={pwModal.confirm}
+                  onChange={(e) => setPwModal({ ...pwModal, confirm: e.target.value, error: undefined })}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !pwModal.saving) submitPwChange() }}
+                  className="w-full px-3 py-2.5 bg-black/40 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 p-5 border-t border-gray-800">
+              <button
+                onClick={closePwModal}
+                disabled={pwModal.saving}
+                className="flex-1 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition-colors disabled:opacity-40"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={submitPwChange}
+                disabled={pwModal.saving || !pwModal.current || !pwModal.next || !pwModal.confirm}
+                className="flex-1 py-2.5 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-sm font-semibold transition-colors"
+              >
+                {pwModal.saving ? "Guardando…" : "Guardar contraseña"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create user modal */}
       {showModal && (

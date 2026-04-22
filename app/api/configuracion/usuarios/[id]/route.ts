@@ -133,6 +133,25 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     )
   }
 
-  await db.user.delete({ where: { id } })
-  return NextResponse.json({ ok: true })
+  try {
+    await db.user.delete({ where: { id } })
+    return NextResponse.json({ ok: true })
+  } catch (err: any) {
+    // Prisma P2003 = foreign key constraint violation. Fires when the user
+    // has Sale / StockMovement / CashSession / AuditLog / etc. rows pointing
+    // at them (none of those relations cascade from User for audit reasons).
+    // Tell the user to deactivate instead so history stays intact.
+    if (err?.code === "P2003") {
+      return NextResponse.json(
+        {
+          error:
+            "Este usuario tiene ventas o movimientos registrados — no se puede eliminar sin perder historial. Desactivalo en su lugar.",
+          code: "HAS_RELATED_DATA",
+        },
+        { status: 400 }
+      )
+    }
+    console.error("[DELETE /api/configuracion/usuarios/[id]]", err)
+    return NextResponse.json({ error: "Error al eliminar usuario" }, { status: 500 })
+  }
 }
