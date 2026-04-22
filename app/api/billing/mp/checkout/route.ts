@@ -104,8 +104,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: friendly, detail: rawMsg, code }, { status: 502 })
   }
 
-  // Persist preliminary record so the webhook can match this preapproval.
-  // Valid statuses: ACTIVE, TRIALING, PAST_DUE, PAUSED, CANCELLED. FREE is a plan, not a status.
+  // Persist ONLY the preapproval id + pending mpStatus so the webhook can
+  // match the response later. We deliberately DO NOT set paymentProvider
+  // here — the user just clicked "Suscribirme", they haven't actually
+  // paid. paymentProvider gets set by the MP webhook (or by the manual
+  // sync endpoint) only after MP reports the preapproval as "authorized"
+  // and a real charge exists. Otherwise admin metrics would treat every
+  // person who merely opened the checkout as a paying customer.
   await db.subscription.upsert({
     where: { tenantId: tenantId! },
     create: {
@@ -114,12 +119,12 @@ export async function POST(req: NextRequest) {
       status: tenant.subscription?.status ?? "ACTIVE",
       mpPreapprovalId: preapproval.id,
       mpStatus: "pending",
-      paymentProvider: "mercadopago",
     },
     update: {
       mpPreapprovalId: preapproval.id,
       mpStatus: "pending",
-      paymentProvider: "mercadopago",
+      // Note: not touching paymentProvider on purpose. Will be set on
+      // payment confirmation by webhook / sync.
     },
   })
 

@@ -29,6 +29,34 @@ const SEVERITY_STYLES = {
 } as const
 
 const STORAGE_KEY = "retailar:ai-chat-history"
+const CORNER_STORAGE_KEY = "retailar:ai-corner"
+
+// Which screen corner the widget is anchored to. Saved per browser. The user
+// can drag the FAB and it snaps to the nearest of these four.
+type Corner = "tl" | "tr" | "bl" | "br"
+
+const CORNER_POSITION: Record<Corner, string> = {
+  tl: "top-5 left-5",
+  tr: "top-5 right-5",
+  bl: "bottom-5 left-5",
+  br: "bottom-5 right-5",
+}
+
+// Where the panel slides in from, depending on the FAB's corner.
+const PANEL_ANIM: Record<Corner, string> = {
+  tl: "slide-in-from-top-2 slide-in-from-left-2",
+  tr: "slide-in-from-top-2 slide-in-from-right-2",
+  bl: "slide-in-from-bottom-2 slide-in-from-left-2",
+  br: "slide-in-from-bottom-2 slide-in-from-right-2",
+}
+
+function nearestCorner(x: number, y: number): Corner {
+  const w = window.innerWidth
+  const h = window.innerHeight
+  const horiz: "l" | "r" = x < w / 2 ? "l" : "r"
+  const vert: "t" | "b" = y < h / 2 ? "t" : "b"
+  return (vert + horiz) as Corner
+}
 
 export function AssistantWidget({ plan = "FREE" }: { plan?: Plan }) {
   const [open, setOpen] = useState(false)
@@ -42,6 +70,95 @@ export function AssistantWidget({ plan = "FREE" }: { plan?: Plan }) {
   const [quotaInfo, setQuotaInfo] = useState<{ used: number; quota: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Drag state for the floating button.
+  // - corner: persisted anchor (tl/tr/bl/br)
+  // - dragging: when true, button follows the pointer (we render with absolute
+  //   left/top instead of corner classes)
+  // - dragPos: live cursor position while dragging
+  // - We require a long-press (~250ms hold) before starting to drag, so a
+  //   normal tap still toggles open/close without moving the button.
+  const [corner, setCorner] = useState<Corner>("br")
+  const [dragging, setDragging] = useState(false)
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dragStartedRef = useRef(false) // distinguishes drag from click on pointerup
+  const pointerIdRef = useRef<number | null>(null)
+
+  // Restore saved corner on mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const saved = window.localStorage.getItem(CORNER_STORAGE_KEY) as Corner | null
+      if (saved && ["tl", "tr", "bl", "br"].includes(saved)) setCorner(saved)
+    } catch {}
+  }, [])
+
+  function persistCorner(c: Corner) {
+    try { window.localStorage.setItem(CORNER_STORAGE_KEY, c) } catch {}
+  }
+
+  function clearLongPressTimer() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  function onFabPointerDown(e: React.PointerEvent<HTMLButtonElement>) {
+    if (open) return // don't drag while panel is open
+    pointerIdRef.current = e.pointerId
+    dragStartedRef.current = false
+    const startX = e.clientX
+    const startY = e.clientY
+    longPressTimer.current = setTimeout(() => {
+      dragStartedRef.current = true
+      setDragging(true)
+      setDragPos({ x: startX, y: startY })
+      try {
+        (e.target as HTMLElement).setPointerCapture(pointerIdRef.current!)
+      } catch {}
+    }, 250)
+  }
+
+  function onFabPointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+    if (!dragStartedRef.current) {
+      // If user moves >8px before long-press fires, cancel the press
+      // so the button stays clickable but nothing was dragged.
+      return
+    }
+    setDragPos({ x: e.clientX, y: e.clientY })
+  }
+
+  function onFabPointerUp(e: React.PointerEvent<HTMLButtonElement>) {
+    clearLongPressTimer()
+    if (dragStartedRef.current) {
+      // Snap to nearest corner of the viewport.
+      const c = nearestCorner(e.clientX, e.clientY)
+      setCorner(c)
+      persistCorner(c)
+      setDragging(false)
+      setDragPos(null)
+      dragStartedRef.current = false
+      try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId)
+      } catch {}
+      // Don't trigger click after drag.
+      e.preventDefault()
+      return
+    }
+    // Plain tap → toggle panel.
+    setOpen((v) => !v)
+  }
+
+  function onFabPointerCancel() {
+    clearLongPressTimer()
+    if (dragStartedRef.current) {
+      setDragging(false)
+      setDragPos(null)
+      dragStartedRef.current = false
+    }
+  }
 
   // Restore chat from localStorage
   useEffect(() => {
@@ -152,31 +269,53 @@ export function AssistantWidget({ plan = "FREE" }: { plan?: Plan }) {
 
   const insightCount = insights.length
 
+  // Compute FAB position. While dragging we follow the pointer; otherwise we
+  // anchor to the saved corner via tailwind class.
+  const fabStyle: React.CSSProperties =
+    dragging && dragPos
+      ? { position: "fixed", left: dragPos.x - 28, top: dragPos.y - 28, zIndex: 60 }
+      : {}
+  const fabCornerClass = dragging ? "" : `fixed ${CORNER_POSITION[corner]} z-40`
+
   return (
     <>
-      {/* Floating button */}
+      {/* Floating circular button — tap to open, long-press + drag to move */}
       <button
-        onClick={() => setOpen((v) => !v)}
+        onPointerDown={onFabPointerDown}
+        onPointerMove={onFabPointerMove}
+        onPointerUp={onFabPointerUp}
+        onPointerCancel={onFabPointerCancel}
+        onContextMenu={(e) => e.preventDefault()}
+        style={fabStyle}
         className={cn(
-          "fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full shadow-2xl transition-all duration-200",
-          "bg-accent hover:bg-accent-hover text-accent-foreground",
-          "px-4 py-3 hover:scale-105 active:scale-95",
+          fabCornerClass,
+          "w-14 h-14 rounded-full shadow-2xl flex items-center justify-center select-none touch-none",
+          "bg-accent hover:bg-accent-hover text-accent-foreground transition-transform duration-150",
+          dragging
+            ? "scale-110 ring-4 ring-accent/40 cursor-grabbing"
+            : "hover:scale-105 active:scale-95 cursor-grab",
           open && "scale-90 opacity-0 pointer-events-none"
         )}
-        aria-label="Abrir asistente"
+        aria-label="Asistente IA — tocá para abrir, mantené apretado para mover"
+        title="Tocá para abrir · Mantené apretado para mover a otra esquina"
       >
-        <Sparkles className="w-5 h-5" />
-        <span className="hidden sm:inline text-sm font-semibold">Asistente IA</span>
-        {insightCount > 0 && (
+        <Sparkles className="w-6 h-6" />
+        {insightCount > 0 && !dragging && (
           <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center animate-in zoom-in-75 duration-200">
             {insightCount > 9 ? "9+" : insightCount}
           </span>
         )}
       </button>
 
-      {/* Panel */}
+      {/* Panel — anchored to the same corner as the FAB */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 w-[calc(100vw-2.5rem)] sm:w-96 max-w-[420px] h-[calc(100vh-6rem)] sm:h-[600px] bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 zoom-in-95 duration-200">
+        <div className={cn(
+          "fixed z-50 w-[calc(100vw-2.5rem)] sm:w-96 max-w-[420px] h-[calc(100vh-6rem)] sm:h-[600px]",
+          "bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden",
+          "animate-in fade-in zoom-in-95 duration-200",
+          CORNER_POSITION[corner],
+          PANEL_ANIM[corner]
+        )}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gradient-to-r from-accent/20 to-transparent">
             <div className="flex items-center gap-2 min-w-0">
