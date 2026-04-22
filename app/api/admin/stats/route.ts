@@ -18,11 +18,12 @@ export async function GET() {
     console.error("[admin/stats] promoRedemption lookup failed:", e)
   }
 
-  const [tenants, users, subs, recent] = await Promise.all([
+  const [tenants, users, subs, recent, paidInvoices] = await Promise.all([
     db.tenant.findMany({ select: { id: true, active: true, config: { select: { businessType: true } } } }),
     db.user.count(),
     db.subscription.findMany({
       select: {
+        id: true,
         plan: true,
         status: true,
         tenantId: true,
@@ -36,21 +37,22 @@ export async function GET() {
       take: 10,
       select: { id: true, name: true, createdAt: true, subscription: { select: { plan: true } } },
     }),
+    db.invoice.findMany({ where: { status: "PAID" }, select: { subscriptionId: true } }),
   ])
 
-  // A subscription is actually paying right now only when:
-  //   - it's on a paid plan
-  //   - status is ACTIVE (not CANCELLED / PAUSED / PAST_DUE)
-  //   - there's evidence of a real charge: MP/Mobbex mpStatus = "authorized"
-  //     OR a Stripe subscription id (webhook-created)
-  // Promo users who just clicked "Suscribirme" get paymentProvider set as a
-  // side-effect of creating the preapproval — without those extra checks
-  // they'd falsely count as paying.
+  const paidSubscriptionSet = new Set<string>(
+    (paidInvoices as any[]).map((i) => i.subscriptionId)
+  )
+
+  // "Paying right now" requires plan != FREE, status ACTIVE, AND a real
+  // payment signal — either a paid invoice in the DB or a webhook-confirmed
+  // mpStatus / stripeSubscriptionId. paymentProvider alone doesn't count
+  // because the MP checkout sets it just by creating the preapproval.
   const isReallyPaying = (s: any) =>
     s.plan !== "FREE" &&
     s.status === "ACTIVE" &&
-    s.paymentProvider &&
-    (s.mpStatus === "authorized" || !!s.stripeSubscriptionId)
+    (paidSubscriptionSet.has(s.id) ||
+      (s.paymentProvider && (s.mpStatus === "authorized" || !!s.stripeSubscriptionId)))
 
   const totalTenants = tenants.length
   const activeTenants = tenants.filter(t => t.active).length

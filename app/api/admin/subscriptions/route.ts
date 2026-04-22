@@ -4,21 +4,27 @@ import { auth } from "@/lib/auth"
 import { PLAN_PRICES_USD, type Plan } from "@/lib/utils"
 
 // `source` distinguishes real paying customers from promo/trial/cancelled
-// accounts. Critical for MRR accuracy and for not lying to ourselves about
-// who is actually paying.
+// accounts. Critical for MRR accuracy.
 //
-// Order of precedence (first match wins):
-//   FREE   → plan = FREE (nothing to bill regardless of status)
-//   OTHER  → status CANCELLED / PAST_DUE / PAUSED (not paying right now)
-//   PROMO  → tenant has a PromoRedemption record. Takes precedence over
-//            paymentProvider because the MP checkout sets paymentProvider
-//            to "mercadopago" just by creating the preapproval — even when
-//            the user never completes the payment. So a promo user who
-//            merely clicked "Suscribirme" gets a false paymentProvider.
-//            We treat them as PROMO until mpStatus reports an "authorized"
-//            charge, which only the webhook writes after a real payment.
-//   PAID   → paymentProvider set AND status ACTIVE  ← only this counts as MRR
-//   TRIAL  → paid plan, no provider, no promo → default signup trial
+// "Real payment" signals — ANY of these counts as evidence of money in the
+// account. Each is sufficient on its own:
+//   - At least one Invoice with status="PAID" linked to the subscription
+//     (the most reliable signal — comes from a confirmed charge, regardless
+//     of provider)
+//   - mpStatus === "authorized" (MP/Mobbex webhook marks this on confirmed
+//     recurring auth)
+//   - stripeSubscriptionId set (Stripe webhook creates this on completed
+//     checkout)
+// We DON'T trust paymentProvider alone — the MP checkout sets it just by
+// creating the preapproval, before any real charge.
+//
+// Precedence:
+//   FREE   → plan = FREE
+//   OTHER  → status CANCELLED / PAST_DUE / PAUSED
+//   PAID   → status ACTIVE + any real-payment signal (even if isPromo, since
+//            a promo user who actually pays converted to a real customer)
+//   PROMO  → has PromoRedemption (and didn't convert above)
+//   TRIAL  → paid plan, ACTIVE/TRIALING, no payment evidence, no promo
 //   OTHER  → fall-through
 type Source = "PAID" | "PROMO" | "TRIAL" | "FREE" | "OTHER"
 
@@ -28,29 +34,24 @@ function deriveSource(args: {
   paymentProvider: string | null
   mpStatus: string | null
   stripeSubscriptionId: string | null
+  hasPaidInvoice: boolean
   isPromo: boolean
 }): Source {
-  const { plan, status, paymentProvider, mpStatus, stripeSubscriptionId, isPromo } = args
+  const { plan, status, paymentProvider, mpStatus, stripeSubscriptionId, hasPaidInvoice, isPromo } = args
 
   if (plan === "FREE") return "FREE"
   if (status === "CANCELLED" || status === "PAST_DUE" || status === "PAUSED") {
     return "OTHER"
   }
 
-  // Promo user "converted" only if there's evidence of a real charge:
-  //   - MP/Mobbex: mpStatus === "authorized" (webhook confirmed the charge)
-  //   - Stripe:    stripeSubscriptionId set (webhook created the Sub)
-  // Without that evidence, a promo user who merely clicked Suscribirme
-  // shouldn't show as PAGANTE.
+  // Hard evidence of money: a paid invoice OR a webhook-confirmed status.
   const realCharge =
-    (paymentProvider && status === "ACTIVE") &&
-    (mpStatus === "authorized" || !!stripeSubscriptionId)
+    status === "ACTIVE" &&
+    (hasPaidInvoice ||
+      (paymentProvider && (mpStatus === "authorized" || !!stripeSubscriptionId)))
 
-  if (isPromo && !realCharge) return "PROMO"
   if (realCharge) return "PAID"
-  if (isPromo) return "PROMO" // paranoia: promo with half-baked provider
-
-  // Non-promo with unconfirmed provider → still a trial-ish state, not paying.
+  if (isPromo) return "PROMO"
   if (status === "TRIALING" || status === "ACTIVE") return "TRIAL"
   return "OTHER"
 }
@@ -84,9 +85,13 @@ export async function GET(req: NextRequest) {
     db.subscription.count({ where: where as never }),
   ])
 
-  // Bulk promo lookup — one query for all tenants shown.
+  // Bulk promo + paid-invoice lookup — one query each, joined in memory.
   const tenantIds = subs.map((s: any) => s.tenantId)
+  const subscriptionIds = subs.map((s: any) => s.id)
+
   let promoTenantSet = new Set<string>()
+  let paidSubscriptionSet = new Set<string>()
+
   if (tenantIds.length > 0) {
     try {
       const redemptions = await db.promoRedemption.findMany({
@@ -99,14 +104,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  if (subscriptionIds.length > 0) {
+    try {
+      const paid = await db.invoice.findMany({
+        where: { subscriptionId: { in: subscriptionIds }, status: "PAID" },
+        select: { subscriptionId: true },
+      })
+      paidSubscriptionSet = new Set(paid.map((i: any) => i.subscriptionId))
+    } catch (e) {
+      console.error("[admin/subscriptions] paid-invoice lookup failed:", e)
+    }
+  }
+
   const allItems = (subs as any[]).map((s) => {
     const isPromo = promoTenantSet.has(s.tenantId)
+    const hasPaidInvoice = paidSubscriptionSet.has(s.id)
     const source = deriveSource({
       plan: s.plan,
       status: s.status,
       paymentProvider: s.paymentProvider ?? null,
       mpStatus: s.mpStatus ?? null,
       stripeSubscriptionId: s.stripeSubscriptionId ?? null,
+      hasPaidInvoice,
       isPromo,
     })
     return {
