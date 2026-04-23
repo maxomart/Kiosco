@@ -17,7 +17,7 @@ export async function POST() {
   })
   const plan = (sub?.plan as Plan) ?? "FREE"
   if (!hasFeature(plan, "feature:whatsapp")) {
-    return NextResponse.json({ error: "WhatsApp no está incluido en tu plan." }, { status: 402 })
+    return NextResponse.json({ error: "Esta función requiere plan Professional o superior." }, { status: 403 })
   }
 
   if (!isWhatsAppConfigured()) {
