@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     where: { tenantId: tenantId! },
     select: { plan: true },
   })
-  const plan = (sub?.plan as Plan) ?? "FREE"
+  const plan = (sub?.plan as Plan) ?? "STARTER"
 
   if (!hasFeature(plan, "feature:ai_assistant")) {
     return NextResponse.json({ error: "El asistente IA no está incluido en tu plan." }, { status: 402 })

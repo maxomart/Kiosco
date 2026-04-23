@@ -68,8 +68,8 @@ export async function POST(req: NextRequest) {
     where: { tenantId: tenantId! },
     create: {
       tenantId: tenantId!,
-      plan: "FREE",
-      status: "FREE",
+      plan: "STARTER",
+      status: "STARTER",
       mpPreapprovalId: compositeId,
       mpStatus: "pending",
       paymentProvider: "mobbex",

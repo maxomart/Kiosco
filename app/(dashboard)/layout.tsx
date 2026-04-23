@@ -35,7 +35,7 @@ export default async function DashboardLayout({
   // the correct accent and the sidebar can lock plan-gated items.
   let initialAccent: string | null = null
   let initialMode: "dark" | "light" | "auto" = "dark"
-  let plan: string = "FREE"
+  let plan: string = "STARTER"
   let logoUrl: string | null = null
   let brandName: string | null = null
   let bannerData: BannerData = { kind: null, plan: "" }
@@ -63,9 +63,9 @@ export default async function DashboardLayout({
         },
       })
       if (sub) {
-        plan = sub.plan ?? "FREE"
+        plan = sub.plan ?? "STARTER"
         subForBanner = {
-          plan: sub.plan ?? "FREE",
+          plan: sub.plan ?? "STARTER",
           status: sub.status ?? null,
           currentPeriodEnd: sub.currentPeriodEnd ?? null,
           paymentProvider: sub.paymentProvider ?? null,

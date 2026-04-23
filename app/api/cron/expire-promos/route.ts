@@ -59,7 +59,7 @@ async function run(req: NextRequest) {
     await db.subscription.update({
       where: { id: sub.id },
       data: {
-        plan: "FREE",
+        plan: "STARTER",
         status: "ACTIVE",
         currentPeriodEnd: null,
       },

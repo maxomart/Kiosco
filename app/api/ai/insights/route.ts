@@ -29,9 +29,9 @@ export async function GET() {
     where: { tenantId: tenantId! },
     select: { plan: true },
   })
-  const plan = (sub?.plan as Plan) ?? "FREE"
+  const plan = (sub?.plan as Plan) ?? "STARTER"
 
-  // The widget itself is FREE+, but the live context is computed for everyone.
+  // The widget itself is available to paid plans, but the live context is computed for everyone.
   if (!hasFeature(plan, "feature:ai_assistant")) {
     return NextResponse.json({ insights: [] })
   }

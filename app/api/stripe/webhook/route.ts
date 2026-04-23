@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
         if (!tenantId) break
         await db.subscription.updateMany({
           where: { tenantId },
-          data: { plan: "FREE", status: "CANCELLED", stripeSubscriptionId: null, cancelledAt: new Date() },
+          data: { plan: "STARTER", status: "CANCELLED", stripeSubscriptionId: null, cancelledAt: new Date() },
         })
         break
       }

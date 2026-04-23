@@ -15,23 +15,20 @@ import {
   Zap,
   Crown,
   Building2,
-  Gift,
   PartyPopper,
 } from "lucide-react"
 import { BUSINESS_TYPES, PLAN_LABELS_AR, PLAN_PRICES_ARS } from "@/lib/utils"
 
-const VALID_PLAN_PARAMS = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
+const VALID_PLAN_PARAMS = ["STARTER", "PROFESSIONAL", "BUSINESS"] as const
 type PlanParam = typeof VALID_PLAN_PARAMS[number]
 
 const PLAN_ICON: Record<PlanParam, React.ElementType> = {
-  FREE: Gift,
   STARTER: Zap,
   PROFESSIONAL: Crown,
   BUSINESS: Building2,
 }
 
 const PLAN_PITCH: Record<PlanParam, string> = {
-  FREE: "Para probar",
   STARTER: "Kioscos chicos",
   PROFESSIONAL: "El más elegido",
   BUSINESS: "Cadenas",
@@ -109,7 +106,7 @@ function SignupForm() {
   const planParamRaw = searchParams.get("plan")?.toUpperCase() ?? ""
   const initialPlan: PlanParam = (VALID_PLAN_PARAMS as readonly string[]).includes(planParamRaw)
     ? (planParamRaw as PlanParam)
-    : "FREE"
+    : "STARTER"
   const promoParamRaw = searchParams.get("promo")?.trim().toLowerCase() ?? ""
 
   const [selectedPlan, setSelectedPlan] = useState<PlanParam>(initialPlan)
@@ -168,7 +165,6 @@ function SignupForm() {
     }
   }, [promoParamRaw])
 
-  const isPaid = selectedPlan !== "FREE"
   const promoActive = promo.status === "valid"
 
   const idBusinessName = useId()
@@ -313,8 +309,7 @@ function SignupForm() {
     if (promoActive && !userOverrodePromoPlan.current && promo.status === "valid") {
       return `Reclamar ${pluralDias(promo.daysGranted)} gratis de ${PLAN_LABELS_AR[promo.planGranted]}`
     }
-    if (isPaid) return `Empezar prueba de 14 días (${PLAN_LABELS_AR[selectedPlan]})`
-    return "Crear cuenta gratis"
+    return `Empezar prueba de 14 días (${PLAN_LABELS_AR[selectedPlan]})`
   })()
 
   return (
@@ -329,10 +324,8 @@ function SignupForm() {
           <p className="text-xs sm:text-sm text-gray-300">
             {promoActive && !userOverrodePromoPlan.current ? (
               <span className="text-white">Plan aplicado por la promo — podés cambiarlo si querés</span>
-            ) : isPaid ? (
-              <>Elegí tu plan · <span className="text-white">14 días gratis sin tarjeta</span></>
             ) : (
-              <>Elegí tu plan · <span className="text-white">Sin costo, para siempre</span></>
+              <>Elegí tu plan · <span className="text-white">14 días gratis sin tarjeta</span></>
             )}
           </p>
         </div>
@@ -424,9 +417,7 @@ function SignupForm() {
           <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-1.5">
             {promoActive && !userOverrodePromoPlan.current && promo.status === "valid"
               ? `Plan ${PLAN_LABELS_AR[promo.planGranted]} · ${pluralDias(promo.daysGranted)} gratis por la promo`
-              : isPaid
-                ? `Plan ${PLAN_LABELS_AR[selectedPlan]} · 14 días gratis`
-                : "Empezá a gestionar tu negocio hoy"}
+              : `Plan ${PLAN_LABELS_AR[selectedPlan]} · 14 días gratis`}
           </p>
         </div>
 

@@ -58,7 +58,7 @@ function nearestCorner(x: number, y: number): Corner {
   return (vert + horiz) as Corner
 }
 
-export function AssistantWidget({ plan = "FREE" }: { plan?: Plan }) {
+export function AssistantWidget({ plan = "STARTER" }: { plan?: Plan }) {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<"insights" | "chat">("insights")
   const [insights, setInsights] = useState<Insight[]>([])

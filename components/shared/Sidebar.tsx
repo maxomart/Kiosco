@@ -70,7 +70,7 @@ const ROLE_LABELS: Record<string, string> = {
   CASHIER: "Cajero/a",
 }
 
-export default function Sidebar({ user, plan = "FREE", logoUrl, brandName }: SidebarProps) {
+export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)

@@ -128,7 +128,7 @@ type PlanGate = Record<PlanFeature, Plan[]>
 
 // Which plans UNLOCK each feature. If a plan is in the list, it has access.
 const PLAN_FEATURES: PlanGate = {
-  "feature:reports_basic":     ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:reports_basic":     ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:reports_full":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:expenses":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:recharges":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
@@ -138,10 +138,10 @@ const PLAN_FEATURES: PlanGate = {
   "feature:csv_import":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_export":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:theme_picker":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:theme_picker":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:custom_logo":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:advanced_pos":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:ai_assistant":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:advanced_pos":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:ai_assistant":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant_full": ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:whatsapp":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
@@ -151,13 +151,11 @@ const PLAN_FEATURES: PlanGate = {
 
 /** Per-day AI message quota by plan (soft cap).
  *
- * Numbers tuned down from launch marketing (landing says 5/50/500/5000) to
- * protect against cost blow-ups when many tenants are on the free Profesional
- * promo. Real kiosk usage almost never hits 30 msgs/day; the landing figures
- * are upper-bound hype numbers. If we get complaints, re-raise per plan.
+ * Numbers tuned to balance usage patterns. Real kiosk usage almost never hits
+ * these limits; they're soft caps to protect against cost blow-ups. If we get
+ * complaints, re-raise per plan.
  */
 export const AI_DAILY_QUOTA: Record<Plan, number> = {
-  FREE: 3,
   STARTER: 20,
   PROFESSIONAL: 100,
   BUSINESS: 1000,

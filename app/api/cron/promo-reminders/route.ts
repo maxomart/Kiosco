@@ -100,7 +100,7 @@ async function run(req: NextRequest) {
       select: { plan: true, currentPeriodEnd: true, paymentProvider: true },
     })
     if (!sub) continue
-    if (sub.plan === "FREE") continue // already downgraded
+    if (sub.plan === "STARTER") continue // already downgraded
     if (sub.paymentProvider) continue // converted, don't spam
     if (!sub.currentPeriodEnd) continue
 

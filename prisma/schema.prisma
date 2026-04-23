@@ -353,7 +353,7 @@ model Recharge {
 // ============= SUBSCRIPTIONS =============
 model Subscription {
   id                   String    @id @default(cuid())
-  plan                 String    @default("FREE")
+  plan                 String    @default("STARTER")
   status               String    @default("ACTIVE")
   priceUSD             Decimal   @default(0) @db.Decimal(8, 2)
   billingCycle         String    @default("MONTHLY")

@@ -44,12 +44,11 @@ export async function GET() {
     (paidInvoices as any[]).map((i) => i.subscriptionId)
   )
 
-  // "Paying right now" requires plan != FREE, status ACTIVE, AND a real
-  // payment signal — either a paid invoice in the DB or a webhook-confirmed
-  // mpStatus / stripeSubscriptionId. paymentProvider alone doesn't count
-  // because the MP checkout sets it just by creating the preapproval.
+  // "Paying right now" requires status ACTIVE AND a real payment signal —
+  // either a paid invoice in the DB or a webhook-confirmed mpStatus /
+  // stripeSubscriptionId. paymentProvider alone doesn't count because the MP
+  // checkout sets it just by creating the preapproval.
   const isReallyPaying = (s: any) =>
-    s.plan !== "FREE" &&
     s.status === "ACTIVE" &&
     (paidSubscriptionSet.has(s.id) ||
       (s.paymentProvider && (s.mpStatus === "authorized" || !!s.stripeSubscriptionId)))
@@ -59,7 +58,6 @@ export async function GET() {
   const trialingTenants = subs.filter((s: any) => s.status === "TRIALING").length
   const promoActiveTenants = subs.filter(
     (s: any) =>
-      s.plan !== "FREE" &&
       s.status !== "CANCELLED" &&
       s.status !== "PAUSED" &&
       promoTenantIds.has(s.tenantId) &&
@@ -96,7 +94,7 @@ export async function GET() {
     byBusinessType,
     recentSignups: recent.map(r => ({
       id: r.id, name: r.name,
-      plan: r.subscription?.plan ?? "FREE",
+      plan: r.subscription?.plan ?? "STARTER",
       createdAt: r.createdAt.toISOString(),
     })),
   })

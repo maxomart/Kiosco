@@ -53,18 +53,7 @@ export function generatePassword(length = 16): string {
 
 // Numeric hard limits per plan. Use Number.POSITIVE_INFINITY for "unlimited".
 // historyDays = how far back the user can see their own data (sales, reports).
-// salesPerMonth = soft cap for the FREE tier so we don't get free-rider abuse.
 export const PLAN_LIMITS = {
-  FREE: {
-    products: 50,
-    users: 1,
-    clients: 25,
-    suppliers: 0,           // 0 = feature locked
-    categories: 3,
-    salesPerMonth: 200,
-    historyDays: 7,
-    api: false,
-  },
   STARTER: {
     products: 500,
     users: 3,
@@ -113,7 +102,6 @@ export type Plan = keyof typeof PLAN_LIMITS
 // Update these as inflation moves. Backend MercadoPago Suscripciones uses ARS;
 // Stripe legacy paths still consume the USD column (kept for international fallback).
 export const PLAN_PRICES_ARS: Record<Plan, number> = {
-  FREE: 0,
   STARTER: 9999,        // Básico — anchor at "10 lucas"
   PROFESSIONAL: 24900,  // Pro
   BUSINESS: 59900,      // Negocio
@@ -123,7 +111,6 @@ export const PLAN_PRICES_ARS: Record<Plan, number> = {
 // USD column kept for Stripe + international display ("≈ USD X").
 // Recompute periodically: priceARS / blue-chip-rate.
 export const PLAN_PRICES_USD: Record<Plan, number> = {
-  FREE: 0,
   STARTER: 10,
   PROFESSIONAL: 25,
   BUSINESS: 60,
@@ -132,7 +119,6 @@ export const PLAN_PRICES_USD: Record<Plan, number> = {
 
 // Spanish-natural plan labels for the UI.
 export const PLAN_LABELS_AR: Record<Plan, string> = {
-  FREE: "Gratis",
   STARTER: "Básico",
   PROFESSIONAL: "Profesional",
   BUSINESS: "Negocio",
@@ -140,7 +126,6 @@ export const PLAN_LABELS_AR: Record<Plan, string> = {
 }
 
 export const PLAN_LABELS: Record<Plan, string> = {
-  FREE: "Gratis",
   STARTER: "Starter",
   PROFESSIONAL: "Professional",
   BUSINESS: "Business",

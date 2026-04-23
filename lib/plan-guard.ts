@@ -8,13 +8,13 @@
 import { db } from "@/lib/db"
 import { PLAN_LIMITS, type Plan, PLAN_LABELS } from "@/lib/utils"
 
-/** Fetch plan for a tenant (defaults to FREE if no subscription row). */
+/** Fetch plan for a tenant (defaults to STARTER if no subscription row). */
 export async function getTenantPlan(tenantId: string): Promise<Plan> {
   const sub = await db.subscription.findUnique({
     where: { tenantId },
     select: { plan: true },
   })
-  return (sub?.plan as Plan) ?? "FREE"
+  return (sub?.plan as Plan) ?? "STARTER"
 }
 
 interface QuotaResult {

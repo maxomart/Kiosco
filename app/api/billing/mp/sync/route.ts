@@ -126,7 +126,7 @@ export async function POST() {
   const all = await searchPreapprovalsByTenant(tenantId!)
   const authorized = all.find(p => p.status === "authorized")
   if (authorized) {
-    const plan = await activateFromPreapproval(tenantId!, sub ?? { id: "", plan: "FREE" }, authorized)
+    const plan = await activateFromPreapproval(tenantId!, sub ?? { id: "", plan: "STARTER" }, authorized)
     return NextResponse.json({ synced: true, plan, status: "ACTIVE" })
   }
 

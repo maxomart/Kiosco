@@ -64,7 +64,7 @@ function StatBox({ label, value, sub, color = "purple" }: { label: string; value
   )
 }
 
-export default function ReportesPage({ plan = "FREE" }: { plan?: Plan }) {
+export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
   const isLimited = plan === "FREE"
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)

@@ -24,8 +24,8 @@ export async function GET() {
       userEmail: session?.user?.email ?? null,
       subscription:
         subscription ?? {
-          plan: "FREE",
-          status: "FREE",
+          plan: "STARTER",
+          status: "STARTER",
           currentPeriodEnd: null,
           stripeCustomerId: null,
           mpPreapprovalId: null,

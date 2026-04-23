@@ -13,12 +13,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Sin permisos para ver reportes" }, { status: 403 })
   }
 
-  // Plan: FREE gets reports_basic (today only), paid gets reports_full.
+  // Plan: STARTER gets reports_basic (today only), paid higher tiers get reports_full.
   const sub = await db.subscription.findUnique({
     where: { tenantId: tenantId! },
     select: { plan: true },
   })
-  const plan = (sub?.plan as Plan) ?? "FREE"
+  const plan = (sub?.plan as Plan) ?? "STARTER"
   const hasFull = hasFeature(plan, "feature:reports_full")
 
   const { searchParams } = new URL(req.url)

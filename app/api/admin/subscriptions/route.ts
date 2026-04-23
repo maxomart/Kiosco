@@ -19,14 +19,13 @@ import { PLAN_PRICES_USD, type Plan } from "@/lib/utils"
 // creating the preapproval, before any real charge.
 //
 // Precedence:
-//   FREE   → plan = FREE
 //   OTHER  → status CANCELLED / PAST_DUE / PAUSED
 //   PAID   → status ACTIVE + any real-payment signal (even if isPromo, since
 //            a promo user who actually pays converted to a real customer)
 //   PROMO  → has PromoRedemption (and didn't convert above)
 //   TRIAL  → paid plan, ACTIVE/TRIALING, no payment evidence, no promo
 //   OTHER  → fall-through
-type Source = "PAID" | "PROMO" | "TRIAL" | "FREE" | "OTHER"
+type Source = "PAID" | "PROMO" | "TRIAL" | "OTHER"
 
 function deriveSource(args: {
   plan: string
@@ -37,9 +36,8 @@ function deriveSource(args: {
   hasPaidInvoice: boolean
   isPromo: boolean
 }): Source {
-  const { plan, status, paymentProvider, mpStatus, stripeSubscriptionId, hasPaidInvoice, isPromo } = args
+  const { status, paymentProvider, mpStatus, stripeSubscriptionId, hasPaidInvoice, isPromo } = args
 
-  if (plan === "FREE") return "FREE"
   if (status === "CANCELLED" || status === "PAST_DUE" || status === "PAUSED") {
     return "OTHER"
   }

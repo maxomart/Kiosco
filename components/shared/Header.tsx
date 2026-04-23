@@ -63,7 +63,7 @@ function openMobileSidebar() {
   btn?.click()
 }
 
-export default function Header({ user, plan: planProp = "FREE" }: HeaderProps) {
+export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps) {
   const pathname = usePathname()
   const title = getPageTitle(pathname)
   const [scrolled, setScrolled] = useState(false)

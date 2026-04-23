@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     customerId = customer.id
     await db.subscription.upsert({
       where: { tenantId: tenantId! },
-      create: { tenantId: tenantId!, plan: "FREE", stripeCustomerId: customerId },
+      create: { tenantId: tenantId!, plan: "STARTER", stripeCustomerId: customerId },
       update: { stripeCustomerId: customerId },
     })
   }

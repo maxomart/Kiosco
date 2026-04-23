@@ -34,15 +34,6 @@ interface Subscription {
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  FREE: [
-    "Hasta 50 productos",
-    "Hasta 200 ventas/mes",
-    "1 usuario",
-    "Hasta 25 clientes · 3 categorías",
-    "POS, caja y reportes básicos del día",
-    "Asistente IA — 5 mensajes/día",
-    "Historial de 7 días",
-  ],
   STARTER: [
     "Hasta 500 productos",
     "Hasta 2.000 ventas/mes",
@@ -78,14 +69,12 @@ const PLAN_FEATURES: Record<string, string[]> = {
 }
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
-  FREE: Zap,
   STARTER: Zap,
   PROFESSIONAL: Crown,
   BUSINESS: Building2,
 }
 
 const PLAN_BADGE_COLORS: Record<string, string> = {
-  FREE: "bg-gray-700 text-gray-300 border border-gray-600/50",
   STARTER: "bg-accent-soft text-accent border border-accent/40",
   PROFESSIONAL: "bg-accent-soft text-accent border border-accent/40",
   BUSINESS: "bg-accent-soft text-accent border border-accent/40",
@@ -540,9 +529,9 @@ export default function SuscripcionPage() {
             </div>
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {(() => {
-            const PLAN_ORDER = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
+            const PLAN_ORDER = ["STARTER", "PROFESSIONAL", "BUSINESS"] as const
             // "ENTERPRISE" se muestra en una card aparte (arriba). En este grid
             // marcamos todos como "ya desbloqueado" para el tenant Enterprise.
             const subPlan = sub?.plan
@@ -586,14 +575,8 @@ export default function SuscripcionPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2 mb-4">
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                        plan === "FREE"
-                          ? "bg-gray-800 border border-gray-700/60"
-                          : "bg-accent-soft border border-accent/30"
-                      }`}
-                    >
-                      <Icon size={18} className={plan === "FREE" ? "text-gray-400" : "text-accent"} />
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-accent-soft border border-accent/30">
+                      <Icon size={18} className="text-accent" />
                     </div>
                     <span className="text-white font-semibold">{PLAN_LABELS_AR[plan]}</span>
                   </div>
@@ -636,7 +619,6 @@ export default function SuscripcionPage() {
 
                   {/* CTA logic:
                       - isCurrent → "Estás en este plan"
-                      - FREE y currentIdx === 0 (sin subscription) → "Plan base"
                       - isDowngrade → mensaje discreto "Plan inferior" (no botón activo)
                       - isUpgrade → MP + Stripe (Stripe solo mensual)
                       - Enterprise actual → todos son downgrade */}
@@ -646,11 +628,7 @@ export default function SuscripcionPage() {
                     </div>
                   ) : isCurrent ? (
                     <div className="w-full py-2.5 rounded-lg bg-accent-soft border border-accent/40 text-center text-accent text-sm font-medium">
-                      {plan === "FREE" ? "✓ Gratis para siempre" : "✓ Estás en este plan"}
-                    </div>
-                  ) : plan === "FREE" && currentIdx === 0 ? (
-                    <div className="w-full py-2.5 rounded-lg border border-gray-800 text-center text-gray-600 text-sm">
-                      Plan base
+                      ✓ Estás en este plan
                     </div>
                   ) : isDowngrade ? (
                     <div className="w-full py-2.5 rounded-lg border border-gray-800 text-center text-gray-600 text-xs">
