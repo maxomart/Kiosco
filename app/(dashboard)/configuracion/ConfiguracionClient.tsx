@@ -39,7 +39,7 @@ export default function ConfiguracionPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testingWa, setTestingWa] = useState(false)
-  const [plan, setPlan] = useState<string>("FREE")
+  const [plan, setPlan] = useState<string>("STARTER")
   const { accent, mode } = useTheme()
 
   useEffect(() => {

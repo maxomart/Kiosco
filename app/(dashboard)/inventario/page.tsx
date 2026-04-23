@@ -50,7 +50,7 @@ export default function InventarioPage() {
   const [showStockBulk, setShowStockBulk] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
-  const [plan, setPlan] = useState<Plan>("FREE")
+  const [plan, setPlan] = useState<Plan>("STARTER")
   const confirm = useConfirm()
   const PER_PAGE = 20
 

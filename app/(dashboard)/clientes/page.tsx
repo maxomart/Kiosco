@@ -42,7 +42,7 @@ export default function ClientesPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [plan, setPlan] = useState<Plan>("FREE")
+  const [plan, setPlan] = useState<Plan>("STARTER")
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false)
   const confirm = useConfirm()
   const PER_PAGE = 20
