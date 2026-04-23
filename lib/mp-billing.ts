@@ -70,13 +70,18 @@ export interface PreapprovalResponse {
 export async function createPreapproval(
   input: CreatePreapprovalInput
 ): Promise<PreapprovalResponse> {
+  // MP only accepts "days" or "months", convert "years" to "months"
+  const frequencyType = input.frequencyType ?? "months"
+  const frequency = frequencyType === "years" ? 12 : 1
+  const actualFrequencyType = frequencyType === "years" ? "months" : frequencyType
+
   const body: Record<string, unknown> = {
     reason: input.reason,
     external_reference: input.externalReference,
     back_url: input.backUrl,
     auto_recurring: {
-      frequency: 1,
-      frequency_type: input.frequencyType ?? "months",
+      frequency,
+      frequency_type: actualFrequencyType,
       transaction_amount: input.amountARS,
       currency_id: "ARS",
     },
