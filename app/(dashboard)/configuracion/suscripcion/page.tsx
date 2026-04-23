@@ -605,18 +605,23 @@ export default function SuscripcionPage() {
                         <span className="text-3xl font-bold text-white tabular-nums">
                           $ <NumberFlow value={displayPrice} format={{ useGrouping: true }} />
                         </span>
-                        <span className="text-gray-500 text-sm">/mes</span>
+                        <span className="text-gray-500 text-sm">{period === "annual" ? "/mes" : "/mes"}</span>
                       </div>
                     )}
                   </div>
                   {period === "annual" && monthlyARS > 0 && (
-                    <div className="flex items-center gap-1 mb-3">
-                      <span className="text-[11px] text-gray-500 line-through tabular-nums">
-                        {formatCurrency(monthlyARS)}
-                      </span>
-                      <span className="text-[11px] font-semibold text-accent">
-                        -{Math.round(ANNUAL_DISCOUNT * 100)}%
-                      </span>
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-gray-500 line-through tabular-nums">
+                          {formatCurrency(monthlyARS)}
+                        </span>
+                        <span className="text-[11px] font-semibold text-accent">
+                          -{Math.round(ANNUAL_DISCOUNT * 100)}%
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-gray-400 bg-gray-800/40 rounded px-2 py-1.5">
+                        <span className="text-white font-semibold">Total anual: ${formatCurrency(Math.round(monthlyARS * 12 * (1 - ANNUAL_DISCOUNT)))}</span>
+                      </div>
                     </div>
                   )}
                   {monthlyARS === 0 && <div className="mb-3" />}

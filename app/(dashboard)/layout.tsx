@@ -133,7 +133,7 @@ export default async function DashboardLayout({
     <ThemeProvider initialAccent={initialAccent} initialMode={initialMode}>
       <SurfaceThemeProvider>
         <ConfirmProvider>
-          <div className="flex h-screen app-surface overflow-hidden">
+          <div suppressHydrationWarning className="flex h-screen app-surface overflow-hidden">
             <Sidebar user={session.user} plan={plan as any} logoUrl={logoUrl} brandName={brandName} />
             <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-10">
               <Header user={session.user} plan={plan as any} />

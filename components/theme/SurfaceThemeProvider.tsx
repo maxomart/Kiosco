@@ -36,7 +36,7 @@ export function SurfaceThemeProvider({
     applySurface(surface)
   }, [surface])
 
-  // Hydrate from localStorage si no vino del server
+  // Hydrate from localStorage si no vino del server — ejecutar inmediatamente al montar
   useEffect(() => {
     if (initialSurface) return
     if (typeof window === "undefined") return
@@ -46,11 +46,13 @@ export function SurfaceThemeProvider({
         const parsed = JSON.parse(cached)
         const safe = sanitizeSurface(parsed)
         setSurfaceState(safe)
+        // Aplicar CSS vars de inmediato
+        applySurface(safe)
       }
     } catch {
       // ignore malformed cache
     }
-  }, [initialSurface])
+  }, [])
 
   const setSurface = useCallback((next: SurfaceTheme) => {
     const safe = sanitizeSurface(next)
