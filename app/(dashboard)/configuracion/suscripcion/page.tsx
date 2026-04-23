@@ -40,12 +40,8 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "3 usuarios",
     "Clientes y categorías ilimitados",
     "Proveedores, gastos y cargas",
-    "Reportes avanzados con gráficos",
-    "WhatsApp — alertas de stock bajo",
-    "Importar / exportar CSV",
     "Logo personalizado",
-    "Asistente IA — 50 mensajes/día",
-    "Historial de 90 días",
+    "Historial de 30 días",
   ],
   PROFESSIONAL: [
     "Hasta 5.000 productos",

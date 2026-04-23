@@ -280,68 +280,6 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
-          {/* Logo del negocio */}
-          {config && (
-            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ImageIcon size={18} className="text-accent" />
-                  <h2 className="text-white font-semibold">Logo del negocio</h2>
-                  {!logoUnlocked && (
-                    <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-medium">
-                      <Lock size={10} /> STARTER+
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {!logoUnlocked ? (
-                <div className="bg-gray-800/50 border border-gray-800 rounded-xl p-4 text-center">
-                  <p className="text-sm text-gray-300 mb-1">Personalizá tu marca</p>
-                  <p className="text-xs text-gray-500 mb-4">Mostrá tu logo en el sidebar y en los tickets. Disponible desde el plan Starter.</p>
-                  <Link href="/configuracion/suscripcion"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium transition">
-                    Ver planes
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-4">
-                    {config.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={config.logoUrl} alt="Logo" className="w-14 h-14 rounded-lg object-cover bg-gray-800 border border-gray-700" />
-                    ) : (
-                      <div className="w-14 h-14 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600">
-                        <ImageIcon size={20} />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <Input
-                        label="URL del logo"
-                        type="url"
-                        value={config.logoUrl || ""}
-                        onChange={e => set("logoUrl", e.target.value)}
-                        placeholder="https://i.imgur.com/tu-logo.png"
-                        hint="Subí tu logo a un host (Cloudinary, imgur) y pegá el link acá. Pronto soportamos upload directo."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-800">
-                    <Button onClick={handleSave} loading={saving} size="md">
-                      {saving ? "Guardando..." : "Guardar logo"}
-                    </Button>
-                    {config.logoUrl && (
-                      <Button variant="secondary" onClick={() => set("logoUrl", "")}>
-                        Sacar logo
-                      </Button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
           {/* Programa de fidelidad */}
           {config && (
             <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
