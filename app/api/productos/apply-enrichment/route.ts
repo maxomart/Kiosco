@@ -57,7 +57,15 @@ export async function POST(req: NextRequest) {
 
   const parsed = applySchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+    const issue = parsed.error.issues[0]
+    console.error("[apply-enrichment] validation failed:", JSON.stringify(parsed.error.issues))
+    return NextResponse.json(
+      {
+        error: `Validación: ${issue.message} en ${issue.path.join(".")}`,
+        detail: parsed.error.issues,
+      },
+      { status: 400 }
+    )
   }
 
   const { changes } = parsed.data

@@ -84,13 +84,18 @@ export function AIEnrichModal({
       }
       setCategoriesExisting(data.categoriesExisting || [])
       setSuppliersExisting(data.suppliersExisting || [])
-      // Decorate with default action
+      // Decorate with default action — mapping match.type to server action names
+      const mapAction = (t: "existing" | "new" | "skip"): "assign_existing" | "create_new" | "skip" => {
+        if (t === "existing") return "assign_existing"
+        if (t === "new") return "create_new"
+        return "skip"
+      }
       const decorated: DecoratedSuggestion[] = (data.suggestions as EnrichSuggestion[]).map((s) => ({
         ...s,
-        catAction: s.categoryMatch.type,
+        catAction: mapAction(s.categoryMatch.type),
         catSelectedId: s.categoryMatch.type === "existing" ? s.categoryMatch.id : null,
         catNewName: s.categoryMatch.type === "new" ? s.categoryMatch.name : "",
-        supAction: s.supplierMatch.type,
+        supAction: mapAction(s.supplierMatch.type),
         supSelectedId: s.supplierMatch.type === "existing" ? s.supplierMatch.id : null,
         supNewName: s.supplierMatch.type === "new" ? s.supplierMatch.name : "",
       }))
@@ -123,6 +128,7 @@ export function AIEnrichModal({
     }
 
     setApplying(true)
+    setError(null)
     try {
       const res = await fetch("/api/productos/apply-enrichment", {
         method: "POST",
@@ -131,7 +137,9 @@ export function AIEnrichModal({
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || "Error al aplicar")
+        const msg = data.error || `Error ${res.status}`
+        setError(msg)
+        toast.error(msg)
         setApplying(false)
         return
       }
@@ -140,8 +148,10 @@ export function AIEnrichModal({
       )
       onApplied()
       onClose()
-    } catch {
-      toast.error("Error de red")
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error de red"
+      setError(msg)
+      toast.error(msg)
     } finally {
       setApplying(false)
     }
@@ -357,7 +367,14 @@ export function AIEnrichModal({
 
         {/* Footer */}
         {hasAnalyzed && !loading && suggestions.length > 0 && (
-          <div className="p-4 border-t border-gray-800 flex items-center justify-between gap-3 flex-wrap">
+          <div className="p-4 border-t border-gray-800 space-y-3">
+            {error && (
+              <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-3 text-sm text-red-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span><strong>Error al aplicar:</strong> {error}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-xs text-gray-500">
               {countApply} producto{countApply !== 1 ? "s" : ""} se van a actualizar.
               {countCatNew > 0 && ` ${countCatNew} categoría${countCatNew !== 1 ? "s" : ""} nueva${countCatNew !== 1 ? "s" : ""}.`}
@@ -379,6 +396,7 @@ export function AIEnrichModal({
                 {applying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                 {applying ? "Aplicando..." : `Aplicar ${countApply} cambios`}
               </button>
+            </div>
             </div>
           </div>
         )}
@@ -422,16 +440,14 @@ function EnrichCell({
 }) {
   if (action === "skip") {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <span className="text-gray-600 text-xs italic">Saltar</span>
-        {suggestedRaw && (
-          <button
-            onClick={() => onChangeAction("create_new")}
-            className="text-[10px] text-accent hover:underline"
-          >
-            → usar "{suggestedRaw}"
-          </button>
-        )}
+        <button
+          onClick={() => suggestedRaw ? onChangeAction("create_new") : null}
+          className="text-[10px] text-accent hover:underline"
+        >
+          {suggestedRaw ? `→ usar "${suggestedRaw}"` : ""}
+        </button>
       </div>
     )
   }
