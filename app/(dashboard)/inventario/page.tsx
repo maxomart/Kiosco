@@ -10,6 +10,7 @@ import ImportModal from "@/components/inventario/ImportModal"
 import { CategoryManagerModal } from "@/components/inventario/CategoryManagerModal"
 import { StockBulkModal } from "@/components/inventario/StockBulkModal"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
+import toast from "react-hot-toast"
 
 interface Product {
   id: string
@@ -249,10 +250,54 @@ export default function InventarioPage() {
 
       {/* Bulk actions */}
       {selected.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-purple-600/10 border border-purple-500/30 rounded-lg">
-          <span className="text-purple-300 text-sm">{selected.length} seleccionados</span>
-          <button onClick={handleBulkDelete} className="text-red-400 hover:text-red-300 text-sm transition-colors">Eliminar seleccionados</button>
-          <button onClick={() => setSelected([])} className="text-gray-400 hover:text-gray-300 text-sm ml-auto transition-colors">Cancelar</button>
+        <div className="flex items-center gap-3 px-4 py-2 bg-purple-600/10 border border-purple-500/30 rounded-lg flex-wrap">
+          <span className="text-purple-300 text-sm font-medium">
+            {selected.length} seleccionado{selected.length !== 1 ? "s" : ""}
+          </span>
+
+          {/* Assign category */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-400">Mover a:</span>
+            <select
+              value=""
+              onChange={async (e) => {
+                const value = e.target.value
+                if (!value) return
+                const categoryId = value === "__none__" ? null : value
+                const catName = categoryId
+                  ? categories.find(c => c.id === categoryId)?.name ?? "categoría"
+                  : "Sin categoría"
+                const res = await fetch("/api/productos/bulk-category", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ productIds: selected, categoryId }),
+                })
+                if (res.ok) {
+                  const data = await res.json()
+                  toast.success(`${data.updated} productos movidos a ${catName}`)
+                  setSelected([])
+                  load()
+                } else {
+                  const data = await res.json()
+                  toast.error(data.error || "Error al mover productos")
+                }
+              }}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-purple-500"
+            >
+              <option value="">— Elegí categoría —</option>
+              <option value="__none__">Sin categoría</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <button onClick={handleBulkDelete} className="text-red-400 hover:text-red-300 text-sm transition-colors">
+            Eliminar seleccionados
+          </button>
+          <button onClick={() => setSelected([])} className="text-gray-400 hover:text-gray-300 text-sm ml-auto transition-colors">
+            Cancelar
+          </button>
         </div>
       )}
 

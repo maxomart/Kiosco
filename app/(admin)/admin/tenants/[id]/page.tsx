@@ -13,7 +13,9 @@ import {
   Ban,
   CheckCircle,
   ExternalLink,
+  Trash2,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
 import { formatCurrency, formatDate, formatDateTime, PLAN_LABELS, PLAN_LIMITS, type Plan } from "@/lib/utils"
 import Breadcrumbs from "@/components/admin/Breadcrumbs"
@@ -80,6 +82,10 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("resumen")
   const [busy, setBusy] = useState(false)
+  const [showHardDelete, setShowHardDelete] = useState(false)
+  const [hardDeleteConfirm, setHardDeleteConfirm] = useState("")
+  const [hardDeleting, setHardDeleting] = useState(false)
+  const router = useRouter()
   const [editingName, setEditingName] = useState(false)
   const [name, setName] = useState("")
   const [passwordReveal, setPasswordReveal] = useState<{ email: string; password: string } | null>(null)
@@ -247,8 +253,119 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
             {data.active ? <Ban size={14} /> : <CheckCircle size={14} />}
             {data.active ? "Desactivar" : "Activar"}
           </button>
+
+          <button
+            onClick={() => setShowHardDelete(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-red-900/30 text-red-300 border border-red-700/40 hover:bg-red-900/60 transition-colors"
+            title="Eliminar completamente el tenant y todos sus datos"
+          >
+            <Trash2 size={14} />
+            Eliminar cuenta
+          </button>
         </div>
       </div>
+
+      {/* Hard Delete Modal */}
+      {showHardDelete && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !hardDeleting && setShowHardDelete(false)}
+        >
+          <div
+            className="bg-gray-900 border border-red-700/50 rounded-2xl w-full max-w-md shadow-2xl shadow-red-900/30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-800">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-900/40 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-red-300">Eliminar cuenta completa</h2>
+                  <p className="text-sm text-gray-400 mt-0.5">
+                    Esta acción NO se puede deshacer
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="bg-red-900/20 border border-red-700/40 rounded-lg p-3">
+                <p className="text-xs text-red-200 font-semibold uppercase tracking-wider mb-2">
+                  Se van a eliminar PERMANENTEMENTE:
+                </p>
+                <ul className="text-xs text-red-200/90 space-y-0.5 list-disc list-inside">
+                  <li>{data._count.users} usuario{data._count.users !== 1 ? "s" : ""} y sus contraseñas</li>
+                  <li>{data._count.products} producto{data._count.products !== 1 ? "s" : ""} e inventario</li>
+                  <li>{data._count.sales} venta{data._count.sales !== 1 ? "s" : ""} y su histórico</li>
+                  <li>Categorías, proveedores, clientes, gastos, cargas</li>
+                  <li>Suscripción, API keys, configuración del tenant</li>
+                  <li>Auditoría, sesiones de caja y todos los registros relacionados</li>
+                </ul>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1.5">
+                  Para confirmar, escribí el nombre exacto del negocio:
+                </label>
+                <p className="text-sm text-gray-200 font-mono bg-gray-800 px-2 py-1 rounded mb-2 select-all">
+                  {data.name}
+                </p>
+                <input
+                  type="text"
+                  value={hardDeleteConfirm}
+                  onChange={(e) => setHardDeleteConfirm(e.target.value)}
+                  placeholder="Escribí el nombre del negocio..."
+                  disabled={hardDeleting}
+                  autoFocus
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-red-500"
+                />
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-gray-800 flex gap-2 justify-end">
+              <button
+                onClick={() => { setShowHardDelete(false); setHardDeleteConfirm("") }}
+                disabled={hardDeleting}
+                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  if (hardDeleteConfirm.trim() !== data.name) {
+                    toast.error("El nombre no coincide")
+                    return
+                  }
+                  setHardDeleting(true)
+                  try {
+                    const res = await fetch(
+                      `/api/admin/tenants/${data.id}?mode=hard&confirm=${encodeURIComponent(hardDeleteConfirm)}`,
+                      { method: "DELETE" }
+                    )
+                    const result = await res.json()
+                    if (res.ok) {
+                      toast.success(`"${data.name}" eliminado completamente`)
+                      router.push("/admin/tenants")
+                    } else {
+                      toast.error(result.error || "Error al eliminar")
+                      setHardDeleting(false)
+                    }
+                  } catch (e) {
+                    toast.error("Error de red")
+                    setHardDeleting(false)
+                  }
+                }}
+                disabled={hardDeleting || hardDeleteConfirm.trim() !== data.name}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium flex items-center gap-1.5"
+              >
+                {hardDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                {hardDeleting ? "Eliminando..." : "Eliminar para siempre"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-800 flex gap-1">
