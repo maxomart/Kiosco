@@ -27,11 +27,15 @@ interface Props {
   suppliers: { id: string; name: string }[]
   onClose: () => void
   onSaved: () => void
+  /** If true, preload form from `product` but always create a new one on save. */
+  duplicate?: boolean
+  /** Pre-fills barcode on a brand-new product (e.g. from barcode scanner). */
+  defaultBarcode?: string
 }
 
-export default function ProductModal({ product, categories, suppliers, onClose, onSaved }: Props) {
+export default function ProductModal({ product, categories, suppliers, onClose, onSaved, duplicate = false, defaultBarcode }: Props) {
   const [form, setForm] = useState({
-    name: "", barcode: "", sku: "", description: "", salePrice: "", costPrice: "",
+    name: "", barcode: defaultBarcode ?? "", sku: "", description: "", salePrice: "", costPrice: "",
     stock: "", minStock: "5", soldByWeight: false, active: true, categoryId: "", supplierId: "",
   })
   const [saving, setSaving] = useState(false)
@@ -40,13 +44,13 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
   useEffect(() => {
     if (product) {
       setForm({
-        name: product.name,
-        barcode: product.barcode || "",
-        sku: product.sku || "",
+        name: duplicate ? `${product.name} (copia)` : product.name,
+        barcode: duplicate ? "" : (product.barcode || ""),  // barcode must be unique — blank for duplicates
+        sku: duplicate ? "" : (product.sku || ""),           // sku unique too
         description: product.description || "",
         salePrice: String(product.salePrice),
         costPrice: String(product.costPrice),
-        stock: String(product.stock),
+        stock: duplicate ? "0" : String(product.stock),      // duplicated starts at 0 stock
         minStock: String(product.minStock),
         soldByWeight: product.soldByWeight ?? false,
         active: product.active,
@@ -54,7 +58,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
         supplierId: product.supplier?.id || product.supplierId || "",
       })
     }
-  }, [product])
+  }, [product, duplicate])
 
   const set = (key: string, val: string | boolean) =>
     setForm(f => ({ ...f, [key]: val }))
@@ -86,8 +90,10 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
       categoryId: form.categoryId || null,
       supplierId: form.supplierId || null,
     }
-    const res = await fetch(product ? `/api/productos/${product.id}` : "/api/productos", {
-      method: product ? "PUT" : "POST",
+    // duplicate mode → always POST (new product). edit mode → PUT with id.
+    const isEdit = product && !duplicate
+    const res = await fetch(isEdit ? `/api/productos/${product!.id}` : "/api/productos", {
+      method: isEdit ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
@@ -107,7 +113,9 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
-          <h2 className="text-white font-semibold text-lg">{product ? "Editar producto" : "Nuevo producto"}</h2>
+          <h2 className="text-white font-semibold text-lg">
+            {duplicate ? "Duplicar producto" : product ? "Editar producto" : "Nuevo producto"}
+          </h2>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors">
             <X size={18} />
           </button>

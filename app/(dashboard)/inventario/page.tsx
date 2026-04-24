@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag, PackagePlus, Lock, Sparkles } from "lucide-react"
+import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag, PackagePlus, Lock, Sparkles, Copy, Percent, Camera, GitMerge } from "lucide-react"
 import { formatCurrency, PLAN_LIMITS, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
 import ProductModal from "@/components/inventario/ProductModal"
 import ImportModal from "@/components/inventario/ImportModal"
 import { CategoryManagerModal } from "@/components/inventario/CategoryManagerModal"
 import { AIEnrichModal } from "@/components/inventario/AIEnrichModal"
+import { BulkPriceModal } from "@/components/inventario/BulkPriceModal"
+import { DuplicatesModal } from "@/components/inventario/DuplicatesModal"
+import { BarcodeScannerModal } from "@/components/inventario/BarcodeScannerModal"
 import { StockBulkModal } from "@/components/inventario/StockBulkModal"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
 import toast from "react-hot-toast"
@@ -52,6 +55,11 @@ export default function InventarioPage() {
   const [showStockBulk, setShowStockBulk] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [showAIEnrich, setShowAIEnrich] = useState(false)
+  const [duplicateProduct, setDuplicateProduct] = useState<Product | null>(null)
+  const [showBulkPrice, setShowBulkPrice] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
+  const [showDuplicates, setShowDuplicates] = useState(false)
+  const [newFromBarcode, setNewFromBarcode] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [plan, setPlan] = useState<Plan>("STARTER")
   const confirm = useConfirm()
@@ -183,8 +191,14 @@ export default function InventarioPage() {
               </button>
             )
           })()}
+          <button onClick={() => setShowScanner(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="Escanear producto">
+            <Camera size={16} /> Escanear
+          </button>
           <button onClick={() => setShowCategories(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
             <Tag size={16} /> Categorías
+          </button>
+          <button onClick={() => setShowDuplicates(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="Detectar productos duplicados">
+            <GitMerge size={16} /> Duplicados
           </button>
           <button
             onClick={() => setShowAIEnrich(true)}
@@ -329,6 +343,13 @@ export default function InventarioPage() {
             </select>
           </div>
 
+          <button
+            onClick={() => setShowBulkPrice(true)}
+            className="flex items-center gap-1 text-accent hover:text-accent-hover text-sm transition-colors"
+            title="Ajustar precios en masa"
+          >
+            <Percent size={14} /> Ajustar precios
+          </button>
           <button onClick={handleBulkDelete} className="text-red-400 hover:text-red-300 text-sm transition-colors">
             Eliminar seleccionados
           </button>
@@ -420,11 +441,18 @@ export default function InventarioPage() {
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => { setEditProduct(p); setShowModal(true) }}
-                          className="p-1.5 rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors">
+                          className="p-1.5 rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                          title="Editar">
                           <Edit2 size={15} />
                         </button>
+                        <button onClick={() => { setDuplicateProduct(p) }}
+                          className="p-1.5 rounded-lg hover:bg-gray-700 text-gray-400 hover:text-accent transition-colors"
+                          title="Duplicar producto">
+                          <Copy size={15} />
+                        </button>
                         <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id}
-                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50">
+                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                          title="Eliminar">
                           <Trash2 size={15} />
                         </button>
                       </div>
@@ -474,6 +502,16 @@ export default function InventarioPage() {
           onSaved={() => { setShowModal(false); load() }}
         />
       )}
+      {duplicateProduct && (
+        <ProductModal
+          product={duplicateProduct as any}
+          categories={categories}
+          suppliers={suppliers}
+          duplicate
+          onClose={() => setDuplicateProduct(null)}
+          onSaved={() => { setDuplicateProduct(null); load() }}
+        />
+      )}
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onDone={() => { setShowImport(false); load() }} />
       )}
@@ -493,6 +531,45 @@ export default function InventarioPage() {
         onClose={() => setShowAIEnrich(false)}
         onApplied={() => load()}
       />
+
+      <BulkPriceModal
+        open={showBulkPrice}
+        selectedIds={selected}
+        products={products as any}
+        onClose={() => setShowBulkPrice(false)}
+        onApplied={() => { setSelected([]); load() }}
+      />
+
+      <DuplicatesModal
+        open={showDuplicates}
+        onClose={() => setShowDuplicates(false)}
+        onApplied={() => load()}
+      />
+
+      <BarcodeScannerModal
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onCreateProduct={(barcode) => {
+          setShowScanner(false)
+          setNewFromBarcode(barcode)
+        }}
+        onEditProduct={(product) => {
+          setShowScanner(false)
+          setEditProduct(product as any)
+          setShowModal(true)
+        }}
+      />
+
+      {newFromBarcode !== null && (
+        <ProductModal
+          product={null}
+          defaultBarcode={newFromBarcode}
+          categories={categories}
+          suppliers={suppliers}
+          onClose={() => setNewFromBarcode(null)}
+          onSaved={() => { setNewFromBarcode(null); load() }}
+        />
+      )}
     </div>
   )
 }
