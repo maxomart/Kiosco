@@ -29,7 +29,7 @@ async function run(req: NextRequest) {
   if (!isWhatsAppConfigured()) {
     return NextResponse.json({
       ok: false,
-      reason: "Twilio (WhatsApp) no está configurado",
+      reason: "Meta WhatsApp no está configurado",
       sent: 0, skipped: 0, errored: 0,
     }, { status: 503 })
   }

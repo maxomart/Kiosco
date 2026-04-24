@@ -15,14 +15,14 @@ export async function POST() {
     where: { tenantId: tenantId! },
     select: { plan: true },
   })
-  const plan = (sub?.plan as Plan) ?? "FREE"
+  const plan = (sub?.plan as Plan) ?? "STARTER"
   if (!hasFeature(plan, "feature:whatsapp")) {
     return NextResponse.json({ error: "Esta función requiere plan Professional o superior." }, { status: 403 })
   }
 
   if (!isWhatsAppConfigured()) {
     return NextResponse.json({
-      error: "UltraMsg no está configurado en Railway. Pedile al admin que agregue ULTRAMSG_INSTANCE_ID y ULTRAMSG_TOKEN.",
+      error: "Meta WhatsApp no está configurado en Railway. Pedile al admin que agregue META_WHATSAPP_ACCESS_TOKEN y META_WHATSAPP_PHONE_NUMBER_ID.",
     }, { status: 503 })
   }
 

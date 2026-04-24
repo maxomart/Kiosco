@@ -1,13 +1,15 @@
 /**
- * WhatsApp sending via UltraMsg API.
+ * WhatsApp sending via Meta Cloud API.
  *
- * Setup:
- *   1. Creá una cuenta en https://ultramsg.com
- *   2. Creá una instancia y escaneá el QR con tu WhatsApp Business
- *   3. Copiá el Instance ID y el Token desde el panel
- *   4. Agregá en Railway:
- *      - ULTRAMSG_INSTANCE_ID   (ej: "instance12345")
- *      - ULTRAMSG_TOKEN         (token de la instancia)
+ * Setup (Meta Developer Console):
+ *   1. Ve a https://developers.facebook.com
+ *   2. Creá una app con "WhatsApp Business" o "Messaging" como categoría
+ *   3. Agregá el "WhatsApp" producto a la app
+ *   4. Configura tu número de WhatsApp Business (obtiene Phone Number ID)
+ *   5. Generá un access token long-lived (con permisos whatsapp_business_messaging)
+ *   6. Agregá en Railway:
+ *      - META_WHATSAPP_ACCESS_TOKEN    (access token long-lived)
+ *      - META_WHATSAPP_PHONE_NUMBER_ID (número de teléfono ID)
  *
  * Si las vars no están configuradas, sendWhatsApp() devuelve { ok: false }
  * sin tirar error — los callers degradan graciosamente.
@@ -21,8 +23,8 @@ interface SendResult {
 
 export function isWhatsAppConfigured(): boolean {
   return !!(
-    process.env.ULTRAMSG_INSTANCE_ID &&
-    process.env.ULTRAMSG_TOKEN
+    process.env.META_WHATSAPP_ACCESS_TOKEN &&
+    process.env.META_WHATSAPP_PHONE_NUMBER_ID
   )
 }
 
@@ -36,7 +38,7 @@ export function normalizePhone(phone: string): string | null {
 
 export async function sendWhatsApp(toRaw: string, body: string): Promise<SendResult> {
   if (!isWhatsAppConfigured()) {
-    return { ok: false, error: "UltraMsg no está configurado en Railway" }
+    return { ok: false, error: "Meta WhatsApp no está configurado en Railway" }
   }
 
   const to = normalizePhone(toRaw)
@@ -44,30 +46,39 @@ export async function sendWhatsApp(toRaw: string, body: string): Promise<SendRes
     return { ok: false, error: "Número inválido (debe estar en formato +5491112345678)" }
   }
 
-  const instanceId = process.env.ULTRAMSG_INSTANCE_ID!
-  const token = process.env.ULTRAMSG_TOKEN!
+  const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN!
+  const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID!
 
   try {
-    // UltraMsg requires token as a query parameter
-    const url = `https://api.ultramsg.com/${instanceId}/messages/chat?token=${encodeURIComponent(token)}`
-    const params = new URLSearchParams({ to, body })
+    const url = `https://graph.instagram.com/v19.0/${phoneNumberId}/messages`
+
+    const payload = {
+      messaging_product: "whatsapp",
+      to: to,
+      type: "text",
+      text: {
+        preview_url: false,
+        body: body,
+      },
+    }
 
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
     })
 
     const data = await res.json().catch(() => ({}))
 
-    if (!res.ok || data?.sent === "false" || data?.error) {
-      return {
-        ok: false,
-        error: data?.error ?? `UltraMsg respondió ${res.status}`,
-      }
+    if (!res.ok) {
+      const errorMsg = data?.error?.message ?? `Meta respondió ${res.status}`
+      return { ok: false, error: errorMsg }
     }
 
-    return { ok: true, sid: data?.id }
+    return { ok: true, sid: data?.messages?.[0]?.id }
   } catch (err: any) {
     return { ok: false, error: err?.message ?? "Error de red al enviar WhatsApp" }
   }

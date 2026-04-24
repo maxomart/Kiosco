@@ -270,10 +270,10 @@ export default function ConfiguracionPage() {
                   </div>
 
                   <p className="text-[11px] text-gray-600 leading-relaxed">
-                    Asegurate de haber escaneado el QR en UltraMsg para vincular tu número.
+                    Usamos Meta WhatsApp Business Cloud API para enviar notificaciones.
                     Si los mensajes no llegan, verificá que estén configurados{" "}
-                    <code className="bg-gray-800 px-1 rounded">ULTRAMSG_INSTANCE_ID</code> y{" "}
-                    <code className="bg-gray-800 px-1 rounded">ULTRAMSG_TOKEN</code> en Railway.
+                    <code className="bg-gray-800 px-1 rounded">META_WHATSAPP_ACCESS_TOKEN</code> y{" "}
+                    <code className="bg-gray-800 px-1 rounded">META_WHATSAPP_PHONE_NUMBER_ID</code> en Railway.
                   </p>
                 </>
               )}
