@@ -20,6 +20,7 @@ import { formatCurrency } from "@/lib/utils"
 import StatCard from "@/components/shared/StatCard"
 import WeeklySalesChart from "@/components/shared/WeeklySalesChart"
 import { AnimatedStagger, AnimatedItem } from "@/components/shared/AnimatedStagger"
+import { OnboardingChecklist } from "@/components/shared/OnboardingChecklist"
 import { Progress } from "@/components/ui/progress"
 
 // ---------------------------------------------------------------------------
@@ -355,6 +356,11 @@ export default async function DashboardPage() {
             year: "numeric",
           })}
         </p>
+      </AnimatedItem>
+
+      {/* Onboarding checklist — only shows if tenant hasn't dismissed it */}
+      <AnimatedItem>
+        <OnboardingChecklist />
       </AnimatedItem>
 
       {/* Low stock alert (full-width if present) */}

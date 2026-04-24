@@ -428,6 +428,9 @@ model TenantConfig {
   whatsappLowStockAlerts  Boolean  @default(false)
   whatsappDailySummary    Boolean  @default(false)
 
+  // Onboarding / first-time user experience
+  onboardingDismissed     Boolean  @default(false)
+
   // Loyalty program settings (PROFESSIONAL+ feature)
   loyaltyEnabled          Boolean  @default(false)
   loyaltyPointsPerPeso    Decimal  @default(1)    @db.Decimal(8, 4)  // 1 = 1 point per ARS spent
