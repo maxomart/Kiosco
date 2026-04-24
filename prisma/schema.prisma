@@ -117,6 +117,7 @@ model Product {
   comboItems     ComboItem[]
   losses         ProductLoss[]
   priceHistory   PriceHistory[]
+  rechargeItems  RechargeItem[]
 
   @@unique([barcode, tenantId])
   @@unique([sku, tenantId])
@@ -352,6 +353,8 @@ model Recharge {
   supplierId String
   supplier   Supplier @relation(fields: [supplierId], references: [id])
 
+  items      RechargeItem[]
+
   @@unique([number, tenantId])
   @@index([tenantId])
 }
@@ -567,6 +570,23 @@ model PromoRedemption {
   @@unique([promoCodeId, tenantId])
   @@index([promoCodeId])
   @@index([email])
+}
+
+// ============= PURCHASE ITEMS (cargas) =============
+model RechargeItem {
+  id          String  @id @default(cuid())
+  quantity    Int
+  unitCost    Decimal @db.Decimal(10, 2)
+  totalCost   Decimal @db.Decimal(12, 2)
+  productName String
+
+  rechargeId String
+  recharge   Recharge @relation(fields: [rechargeId], references: [id], onDelete: Cascade)
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id])
+
+  @@index([rechargeId])
+  @@index([productId])
 }
 
 // ============= ANALYTICS & LOSSES =============
