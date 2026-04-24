@@ -465,25 +465,30 @@ function EnrichCell({
   onChangeNewName: (name: string) => void
 }) {
   if (action === "skip") {
+    // Clean "ninguno" look with an inline edit affordance
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2 group">
+        <span className="flex-1 min-w-0 text-gray-500 italic text-xs py-1 px-2 bg-gray-900/40 border border-dashed border-gray-800 rounded">
+          — ninguno —
+        </span>
         <select
-          value="__skip__"
+          value=""
           onChange={(e) => {
             const val = e.target.value
-            if (val === "__skip__") return
+            if (!val) return
             if (val === "__create__" && suggestedRaw) {
               onChangeAction("create_new")
-            } else if (val) {
+            } else {
               onChangeExisting(val)
               onChangeAction("assign_existing")
             }
           }}
-          className="flex-1 min-w-0 bg-gray-800/50 border border-gray-700/50 rounded px-2 py-1 text-xs text-gray-500 italic focus:outline-none focus:border-accent focus:text-white"
+          className="text-[10px] bg-transparent border border-gray-700 rounded px-1.5 py-1 text-gray-500 hover:text-gray-200 hover:border-gray-600 focus:outline-none cursor-pointer"
+          title="Asignar manualmente"
         >
-          <option value="__skip__">— Sin sugerencia (no asignar) —</option>
+          <option value="">Asignar</option>
           {existing.map(c => (
-            <option key={c.id} value={c.id}>Asignar: {c.name}</option>
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
           {suggestedRaw && (
             <option value="__create__">+ Crear "{suggestedRaw}"</option>

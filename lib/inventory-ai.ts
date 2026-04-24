@@ -1,5 +1,6 @@
 import { getOpenAI } from "@/lib/openai"
 import { similarity } from "@/lib/fuzzy-match"
+import { lookupKnownBrand } from "@/lib/known-brands-ar"
 
 export interface ProductToEnrich {
   id: string
@@ -33,19 +34,39 @@ export interface EnrichSuggestion {
 const SYSTEM_PROMPT = `Sos un experto en productos de kioscos, almacenes y supermercados argentinos.
 Tu tarea: para cada producto, sugerir la CATEGORÍA apropiada y el PROVEEDOR/FABRICANTE más probable.
 
-Reglas:
-- Usá categorías genéricas que agrupen productos similares: "Bebidas", "Golosinas", "Galletitas", "Lácteos", "Snacks", "Limpieza", "Almacén", "Higiene", "Cigarrillos", "Panificados", etc.
-- Para el proveedor, usá el nombre del fabricante argentino conocido: Coca-Cola Argentina, Arcor, Molinos, Unilever, Mondelez, PepsiCo, Quilmes, Danone, Mastellone, Bagley, Terrabusi, Felfort, etc.
-- Si el nombre del producto no te dice nada sobre el proveedor, poné supplier: null.
-- Confidence: "high" si estás muy seguro, "medium" si es razonable, "low" si es una inferencia débil.
+REGLAS CRÍTICAS SOBRE EL PROVEEDOR:
+- SOLO devolvé un supplier si estás SEGURO de cuál es el fabricante oficial argentino actual.
+- Si tenés la menor duda sobre el fabricante, devolvé supplier: null. Es PREFERIBLE null a equivocarse.
+- NO asumas que una marca es del mismo fabricante que una marca parecida.
+- Nombres de fabricantes argentinos válidos (completos):
+  * "Coca-Cola Argentina" (Coca-Cola, Sprite, Fanta, Aquarius, Schweppes, Powerade, Dasani, Cepita, Ades)
+  * "PepsiCo Argentina" (Pepsi, 7up, Mirinda, Gatorade, H2Oh, Paso de los Toros)
+  * "Arcor" (Bon o Bon, Cofler, Sugus, Topline, Menthoplus, Bagley, Chocolinas, La Campagnola)
+  * "Molinos Río de la Plata" (Matarazzo, Luchetti, Cruz de Malta, Don Vicente)
+  * "Unilever Argentina" (Ayudín, Cif, Ala, Dove, Rexona, Axe, Sedal)
+  * "Procter & Gamble" (Magistral, Ariel, Gillette, Pantene)
+  * "Mastellone Hermanos" (La Serenísima, Yogurísimo, Casancrem)
+  * "Mondelez Argentina" (Milka, Oreo, Beldent, Halls)
+  * "Danone Argentina" (Villa del Sur, Villavicencio, Actimel, Activia)
+  * "Cervecería y Maltería Quilmes" (Quilmes, Brahma, Stella Artois, Corona)
+  * "Felfort" (Águila Felfort, Jorgelín)
+
+REGLAS SOBRE LA CATEGORÍA:
+- Usá categorías genéricas: "Bebidas", "Golosinas", "Galletitas", "Lácteos", "Snacks", "Limpieza", "Almacén", "Higiene", "Cigarrillos", "Panificados", "Congelados", "Fiambres".
+- Si el producto es ambiguo, igual sugerí la categoría más probable.
+
+CONFIDENCE:
+- "high" → sabés con certeza (producto reconocible con nombre comercial claro)
+- "medium" → probable pero no 100% seguro
+- "low" → adivinando, usar solo para categoría (dejá supplier: null)
 
 Responde SOLO con JSON válido:
 {
   "items": [
     {
       "productId": "id tal como vino",
-      "category": "nombre de categoría",
-      "supplier": "nombre de proveedor" | null,
+      "category": "nombre de categoría" o null,
+      "supplier": "nombre de fabricante ARGENTINO exacto" o null,
       "confidence": "high" | "medium" | "low"
     }
   ]
@@ -96,19 +117,41 @@ export async function suggestEnrichment(
 ): Promise<EnrichSuggestion[]> {
   if (products.length === 0) return []
 
+  // FIRST PASS: lookup curated dictionary of Argentine brands
+  // Products matched here don't need to go through the AI (saves tokens +
+  // is deterministic + more accurate for known brands like Aquarius/Coca)
+  const dictHits = new Map<string, { category: string; supplier: string; confidence: "high" | "medium" }>()
+  const needsAI: ProductToEnrich[] = []
+
+  for (const p of products) {
+    const hit = lookupKnownBrand(p.name)
+    if (hit) {
+      dictHits.set(p.id, {
+        category: hit.category || "",
+        supplier: hit.supplier,
+        confidence: hit.confidence,
+      })
+    } else {
+      needsAI.push(p)
+    }
+  }
+
+  // SECOND PASS: only send unknown products to IA
   const BATCH_SIZE = 30
   const batches: ProductToEnrich[][] = []
-  for (let i = 0; i < products.length; i += BATCH_SIZE) {
-    batches.push(products.slice(i, i + BATCH_SIZE))
+  for (let i = 0; i < needsAI.length; i += BATCH_SIZE) {
+    batches.push(needsAI.slice(i, i + BATCH_SIZE))
   }
 
   // Run batches in parallel with concurrency limit of 3
   const results: AIResponseItem[] = []
-  const CONCURRENCY = 3
-  for (let i = 0; i < batches.length; i += CONCURRENCY) {
-    const slice = batches.slice(i, i + CONCURRENCY)
-    const batchResults = await Promise.all(slice.map(callAIForBatch))
-    for (const r of batchResults) results.push(...r)
+  if (batches.length > 0) {
+    const CONCURRENCY = 3
+    for (let i = 0; i < batches.length; i += CONCURRENCY) {
+      const slice = batches.slice(i, i + CONCURRENCY)
+      const batchResults = await Promise.all(slice.map(callAIForBatch))
+      for (const r of batchResults) results.push(...r)
+    }
   }
 
   const byId = new Map(results.map(r => [r.productId, r]))
@@ -145,6 +188,21 @@ export async function suggestEnrichment(
   }
 
   return products.map(p => {
+    // Priority 1: dictionary hit (deterministic, curated, highest accuracy)
+    const dict = dictHits.get(p.id)
+    if (dict) {
+      return {
+        productId: p.id,
+        productName: p.name,
+        categorySuggestedRaw: dict.category || null,
+        supplierSuggestedRaw: dict.supplier || null,
+        categoryMatch: matchOrNew(dict.category || null, existingCategories),
+        supplierMatch: matchOrNew(dict.supplier || null, existingSuppliers),
+        confidence: dict.confidence,
+      }
+    }
+
+    // Priority 2: AI-suggested
     const aiResult = byId.get(p.id)
     const catRaw = normalize(aiResult?.category ?? null)
     const supRaw = normalize(aiResult?.supplier ?? null)
