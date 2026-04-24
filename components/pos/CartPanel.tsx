@@ -121,9 +121,14 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
           onClick={onPay}
           disabled={cart.length === 0 || payDisabled}
           title={payDisabledReason}
-          className="w-full bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-accent-foreground font-semibold py-3 rounded-xl transition-all active:scale-95 text-sm mt-2"
+          className="w-full bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed text-accent-foreground font-semibold py-3 rounded-xl transition-all active:scale-95 text-sm mt-2 relative"
         >
           {payDisabled ? (payDisabledReason ?? "No disponible") : <>Cobrar {cart.length > 0 && formatCurrency(total())}</>}
+          {!payDisabled && cart.length > 0 && (
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:inline-flex bg-black/30 border border-white/20 rounded px-1.5 py-0.5 font-mono text-[10px] text-accent-foreground/80">
+              F5
+            </kbd>
+          )}
         </button>
       </div>
     </div>

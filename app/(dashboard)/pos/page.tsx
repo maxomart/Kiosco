@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { Search, Barcode, ShoppingCart, DollarSign, AlertTriangle, ArrowRight, Package } from "lucide-react"
+import { Search, Barcode, ShoppingCart, DollarSign, AlertTriangle, ArrowRight, Package, Keyboard } from "lucide-react"
+import { useShortcuts, useShortcutKey } from "@/hooks/useShortcuts"
+import { ShortcutsHelpModal } from "@/components/shared/ShortcutsHelpModal"
 import toast from "react-hot-toast"
 import { usePOSStore } from "@/store/posStore"
 import { CartPanel } from "@/components/pos/CartPanel"
@@ -35,7 +37,11 @@ export default function POSPage() {
   const [lastKeyTime, setLastKeyTime] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
   const debouncedQuery = useDebounce(query, 280)
-  const { addToCart, cart, setCashSession } = usePOSStore()
+  const { addToCart, cart, setCashSession, clearCart } = usePOSStore()
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const searchShortcutKey = useShortcutKey("pos:search")
+  const chargeShortcutKey = useShortcutKey("pos:charge")
+  const helpShortcutKey = useShortcutKey("global:help")
 
   // Initial catalog: loaded once on mount so the grid is never empty. Users
   // can click straight from the catalog without searching — much faster for
@@ -193,6 +199,29 @@ export default function POSPage() {
         ? initialCatalog.filter((p) => p.categoryId === activeCategoryId)
         : initialCatalog)
 
+  // Wire up configurable keyboard shortcuts
+  useShortcuts({
+    "pos:search": () => searchRef.current?.focus(),
+    "pos:charge": () => {
+      if (cart.length === 0) { toast.error("El carrito está vacío"); return }
+      if (!cashOpen) { toast.error("Abrí la caja primero"); return }
+      setShowPayment(true)
+    },
+    "pos:clear": () => {
+      if (cart.length === 0) return
+      if (confirm("¿Vaciar el carrito?")) clearCart()
+    },
+    "pos:focusFirst": () => {
+      const first = visibleProducts[0]
+      if (first) handleAddProduct(first)
+    },
+    "global:help": () => setShowShortcutsHelp(true),
+    "global:escape": () => {
+      if (showShortcutsHelp) setShowShortcutsHelp(false)
+      else if (showPayment) setShowPayment(false)
+    },
+  })
+
   return (
     // Negative margins counter the dashboard layout's `p-4 lg:p-6` wrapper
     // so the POS can use the full viewport height. This matters because the
@@ -237,11 +266,23 @@ export default function POSPage() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Buscar por nombre, código o barcode..."
-            className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-20 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-28 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-gray-500">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs text-gray-500">
+            <kbd className="hidden md:inline-flex bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 font-mono text-[10px]">
+              {searchShortcutKey}
+            </kbd>
             <Barcode size={13} />
-            <span className="hidden sm:inline">Scanner listo</span>
+            <button
+              onClick={() => setShowShortcutsHelp(true)}
+              className="hidden lg:flex items-center gap-1 text-gray-500 hover:text-accent transition-colors"
+              title={`Ayuda de atajos (${helpShortcutKey})`}
+            >
+              <Keyboard size={13} />
+              <kbd className="bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 font-mono text-[10px]">
+                {helpShortcutKey}
+              </kbd>
+            </button>
           </div>
         </div>
 
@@ -354,6 +395,11 @@ export default function POSPage() {
       </div>
 
       {showPayment && cashOpen && <PaymentModal onClose={() => setShowPayment(false)} />}
+
+      <ShortcutsHelpModal
+        open={showShortcutsHelp}
+        onClose={() => setShowShortcutsHelp(false)}
+      />
       </div>
     </div>
   )
