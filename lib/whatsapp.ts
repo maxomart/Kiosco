@@ -1,15 +1,14 @@
 /**
- * WhatsApp sending via Meta Cloud API.
+ * WhatsApp sending via Twilio.
  *
- * Setup (Meta Developer Console):
- *   1. Ve a https://developers.facebook.com
- *   2. Creá una app con "WhatsApp Business" o "Messaging" como categoría
- *   3. Agregá el "WhatsApp" producto a la app
- *   4. Configura tu número de WhatsApp Business (obtiene Phone Number ID)
- *   5. Generá un access token long-lived (con permisos whatsapp_business_messaging)
- *   6. Agregá en Railway:
- *      - META_WHATSAPP_ACCESS_TOKEN    (access token long-lived)
- *      - META_WHATSAPP_PHONE_NUMBER_ID (número de teléfono ID)
+ * Setup (Twilio Console):
+ *   1. Ve a https://console.twilio.com
+ *   2. Messaging → Try it out → WhatsApp
+ *   3. Configura el sandbox (escanea QR o confirma número)
+ *   4. Agregá en Railway:
+ *      - TWILIO_ACCOUNT_SID    (Account SID from Twilio Console)
+ *      - TWILIO_AUTH_TOKEN     (Auth Token from Twilio Console)
+ *      - TWILIO_WHATSAPP_FROM  (ej: whatsapp:+14155238886, el número sandbox)
  *
  * Si las vars no están configuradas, sendWhatsApp() devuelve { ok: false }
  * sin tirar error — los callers degradan graciosamente.
@@ -23,8 +22,9 @@ interface SendResult {
 
 export function isWhatsAppConfigured(): boolean {
   return !!(
-    process.env.META_WHATSAPP_ACCESS_TOKEN &&
-    process.env.META_WHATSAPP_PHONE_NUMBER_ID
+    process.env.TWILIO_ACCOUNT_SID &&
+    process.env.TWILIO_AUTH_TOKEN &&
+    process.env.TWILIO_WHATSAPP_FROM
   )
 }
 
@@ -38,7 +38,7 @@ export function normalizePhone(phone: string): string | null {
 
 export async function sendWhatsApp(toRaw: string, body: string): Promise<SendResult> {
   if (!isWhatsAppConfigured()) {
-    return { ok: false, error: "Meta WhatsApp no está configurado en Railway" }
+    return { ok: false, error: "Twilio WhatsApp no está configurado en Railway" }
   }
 
   const to = normalizePhone(toRaw)
@@ -46,40 +46,39 @@ export async function sendWhatsApp(toRaw: string, body: string): Promise<SendRes
     return { ok: false, error: "Número inválido (debe estar en formato +5491112345678)" }
   }
 
-  const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN!
-  const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID!
+  const accountSid = process.env.TWILIO_ACCOUNT_SID!
+  const authToken = process.env.TWILIO_AUTH_TOKEN!
+  const from = process.env.TWILIO_WHATSAPP_FROM!
 
   try {
-    const url = `https://graph.instagram.com/v25.0/${phoneNumberId}/messages`
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
 
-    const payload = {
-      messaging_product: "whatsapp",
-      to: to,
-      type: "text",
-      text: {
-        preview_url: false,
-        body: body,
-      },
-    }
+    const params = new URLSearchParams({
+      From: from,
+      To: `whatsapp:${to}`,
+      Body: body,
+    })
+
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64")
 
     const res = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: JSON.stringify(payload),
+      body: params.toString(),
     })
 
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      console.error("[whatsapp] Meta error:", { status: res.status, data })
-      const errorMsg = data?.error?.message ?? `Meta respondió ${res.status}`
+      console.error("[whatsapp] Twilio error:", { status: res.status, data })
+      const errorMsg = data?.message ?? `Twilio respondió ${res.status}`
       return { ok: false, error: errorMsg }
     }
 
-    return { ok: true, sid: data?.messages?.[0]?.id }
+    return { ok: true, sid: data?.sid }
   } catch (err: any) {
     return { ok: false, error: err?.message ?? "Error de red al enviar WhatsApp" }
   }

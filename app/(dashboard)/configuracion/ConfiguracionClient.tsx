@@ -270,10 +270,11 @@ export default function ConfiguracionPage() {
                   </div>
 
                   <p className="text-[11px] text-gray-600 leading-relaxed">
-                    Usamos Meta WhatsApp Business Cloud API para enviar notificaciones.
+                    Usamos Twilio para enviar notificaciones de WhatsApp.
                     Si los mensajes no llegan, verificá que estén configurados{" "}
-                    <code className="bg-gray-800 px-1 rounded">META_WHATSAPP_ACCESS_TOKEN</code> y{" "}
-                    <code className="bg-gray-800 px-1 rounded">META_WHATSAPP_PHONE_NUMBER_ID</code> en Railway.
+                    <code className="bg-gray-800 px-1 rounded">TWILIO_ACCOUNT_SID</code>,{" "}
+                    <code className="bg-gray-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> y{" "}
+                    <code className="bg-gray-800 px-1 rounded">TWILIO_WHATSAPP_FROM</code> en Railway.
                   </p>
                 </>
               )}

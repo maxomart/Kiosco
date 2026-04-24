@@ -22,7 +22,7 @@ export async function POST() {
 
   if (!isWhatsAppConfigured()) {
     return NextResponse.json({
-      error: "Meta WhatsApp no está configurado en Railway. Pedile al admin que agregue META_WHATSAPP_ACCESS_TOKEN y META_WHATSAPP_PHONE_NUMBER_ID.",
+      error: "Twilio WhatsApp no está configurado en Railway. Pedile al admin que agregue TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN y TWILIO_WHATSAPP_FROM.",
     }, { status: 503 })
   }
 
