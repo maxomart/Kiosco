@@ -74,6 +74,7 @@ export async function sendWhatsApp(toRaw: string, body: string): Promise<SendRes
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
+      console.error("[whatsapp] Meta error:", { status: res.status, data })
       const errorMsg = data?.error?.message ?? `Meta respondió ${res.status}`
       return { ok: false, error: errorMsg }
     }
