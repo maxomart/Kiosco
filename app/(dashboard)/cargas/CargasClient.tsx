@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { Plus, Trash2, Truck, Users, Info, Package, Search, X, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, Trash2, Truck, Users, Info, Package, Search, X, ChevronDown, ChevronUp, Sparkles, Upload, Loader2, CheckCircle2, AlertCircle, HelpCircle } from "lucide-react"
+import type { MatchResult } from "@/lib/fuzzy-match"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { SupplierManagerModal } from "@/components/shared/SupplierManagerModal"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
@@ -52,6 +53,25 @@ interface CartItem {
   totalInput?: number // only used when costMode === "total"
 }
 
+interface AIDetectedItem {
+  rawName: string
+  quantity: number
+  unitCost: number
+  totalCost: number
+  unit: string | null
+  match: MatchResult
+  // client-only: selected product override + include flag
+  selectedProductId?: string | null
+  include: boolean
+}
+
+interface AIAnalysis {
+  items: AIDetectedItem[]
+  supplierHint: string | null
+  supplierHintMatch: { id: string; name: string } | null
+  totalDetected: number
+}
+
 export default function CargasPage() {
   const [recharges, setRecharges] = useState<Recharge[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -69,6 +89,9 @@ export default function CargasPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [aiAnalyzing, setAiAnalyzing] = useState(false)
+  const [aiResult, setAiResult] = useState<AIAnalysis | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().split("T")[0] })
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0])
   const confirm = useConfirm()
@@ -174,6 +197,84 @@ export default function CargasPage() {
     setUpdateCostPrice(true)
     setProductSearch("")
     setError(null)
+    setAiResult(null)
+    setAiError(null)
+  }
+
+  const handleImageUpload = async (file: File) => {
+    setAiError(null)
+    setAiResult(null)
+    setAiAnalyzing(true)
+    try {
+      const fd = new FormData()
+      fd.append("image", file)
+      if (supplierId) fd.append("supplierId", supplierId)
+      const res = await fetch("/api/cargas/analyze-image", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) {
+        setAiError(data.error || "No se pudo analizar la imagen")
+        return
+      }
+      // Decorate detected items with defaults for UI
+      const decorated: AIDetectedItem[] = (data.items as any[]).map((it) => ({
+        ...it,
+        selectedProductId: it.match?.bestMatch?.id ?? null,
+        include: it.match?.status !== "UNKNOWN",
+      }))
+      setAiResult({
+        items: decorated,
+        supplierHint: data.supplierHint,
+        supplierHintMatch: data.supplierHintMatch,
+        totalDetected: data.totalDetected,
+      })
+      // Auto-apply supplier hint if we have a confident match
+      if (!supplierId && data.supplierHintMatch) {
+        setSupplierId(data.supplierHintMatch.id)
+      }
+    } catch (e) {
+      setAiError("Error de conexión. Intentalo de nuevo.")
+    } finally {
+      setAiAnalyzing(false)
+    }
+  }
+
+  const addDetectedToCart = () => {
+    if (!aiResult) return
+    const toAdd = aiResult.items.filter((it) => it.include && it.selectedProductId)
+    if (toAdd.length === 0) return
+    setCart((prev) => {
+      const next = [...prev]
+      for (const det of toAdd) {
+        const product = products.find((p) => p.id === det.selectedProductId)
+        if (!product) continue
+        const existing = next.findIndex((c) => c.productId === product.id)
+        const unitCost = det.unitCost > 0 ? det.unitCost : (det.totalCost > 0 && det.quantity > 0 ? det.totalCost / det.quantity : Number(product.costPrice))
+        if (existing >= 0) {
+          next[existing] = { ...next[existing], quantity: next[existing].quantity + det.quantity, unitCost }
+        } else {
+          next.push({
+            productId: product.id,
+            productName: product.name,
+            quantity: det.quantity,
+            unitCost,
+            salePrice: Number(product.salePrice) || 0,
+            currentStock: product.stock,
+            costMode: "unit",
+          })
+        }
+      }
+      return next
+    })
+    setAiResult(null) // close the panel after applying
+  }
+
+  const updateAIItem = (index: number, patch: Partial<AIDetectedItem>) => {
+    setAiResult((prev) => {
+      if (!prev) return prev
+      const next = [...prev.items]
+      next[index] = { ...next[index], ...patch }
+      return { ...prev, items: next }
+    })
   }
 
   const handleSave = async () => {
@@ -284,6 +385,207 @@ export default function CargasPage() {
               {error}
             </div>
           )}
+
+          {/* AI upload */}
+          <div className="bg-gradient-to-br from-accent-soft/40 to-accent-soft/10 border border-accent/30 rounded-lg p-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-accent" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-white text-sm">Cargar con foto del remito</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Sacá una foto o subí la imagen del remito/factura y la IA detecta los productos automáticamente.
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium cursor-pointer transition-colors flex-shrink-0">
+                {aiAnalyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Analizando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Subir imagen
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  disabled={aiAnalyzing}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleImageUpload(file)
+                    e.target.value = "" // allow re-upload of same file
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {aiError && (
+              <div className="mt-3 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{aiError}</span>
+              </div>
+            )}
+
+            {aiResult && (
+              <div className="mt-4 space-y-3">
+                {/* Summary */}
+                <div className="flex items-center gap-3 flex-wrap text-xs">
+                  <span className="px-2 py-0.5 rounded bg-gray-900 text-gray-300">
+                    {aiResult.totalDetected} productos detectados
+                  </span>
+                  {aiResult.supplierHint && (
+                    <span className="text-gray-400">
+                      Proveedor detectado: <strong className="text-gray-200">{aiResult.supplierHint}</strong>
+                      {aiResult.supplierHintMatch && " (aplicado)"}
+                    </span>
+                  )}
+                </div>
+
+                {/* Items table */}
+                <div className="border border-gray-800 rounded-lg overflow-hidden bg-gray-950/40">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-900/80 border-b border-gray-800">
+                        <tr>
+                          <th className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-gray-500 w-8">✓</th>
+                          <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-gray-500">Detectado</th>
+                          <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-gray-500">Tu producto</th>
+                          <th className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-gray-500 w-[90px]">Cant.</th>
+                          <th className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-gray-500 w-[110px]">Costo c/u</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {aiResult.items.map((it, idx) => {
+                          const status = it.match.status
+                          const statusClass =
+                            status === "EXACT" ? "bg-emerald-900/20 border-emerald-700/40" :
+                            status === "PROBABLE" ? "bg-sky-900/20 border-sky-700/40" :
+                            status === "SUGGESTIONS" ? "bg-amber-900/20 border-amber-700/40" :
+                            "bg-red-900/20 border-red-700/40"
+                          const StatusIcon =
+                            status === "EXACT" ? CheckCircle2 :
+                            status === "PROBABLE" ? CheckCircle2 :
+                            status === "SUGGESTIONS" ? HelpCircle :
+                            AlertCircle
+                          const statusColor =
+                            status === "EXACT" ? "text-emerald-400" :
+                            status === "PROBABLE" ? "text-sky-400" :
+                            status === "SUGGESTIONS" ? "text-amber-400" :
+                            "text-red-400"
+                          const allOptions = [
+                            ...(it.match.bestMatch ? [{ product: it.match.bestMatch, score: it.match.bestScore }] : []),
+                            ...it.match.suggestions.filter(s => s.product.id !== it.match.bestMatch?.id),
+                          ]
+                          return (
+                            <tr key={idx} className={`border-l-4 ${statusClass} border-l-current`}>
+                              <td className="px-2 py-2 text-center">
+                                <input type="checkbox"
+                                  checked={it.include}
+                                  onChange={(e) => updateAIItem(idx, { include: e.target.checked })}
+                                  disabled={status === "UNKNOWN" && !it.selectedProductId}
+                                  className="w-4 h-4 rounded border-gray-700 bg-gray-800"
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="flex items-start gap-1">
+                                  <StatusIcon className={`w-3.5 h-3.5 ${statusColor} flex-shrink-0 mt-0.5`} />
+                                  <div className="min-w-0">
+                                    <p className="text-gray-200 truncate max-w-[200px]">{it.rawName}</p>
+                                    {it.unit && <p className="text-[10px] text-gray-500">{it.unit}</p>}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-2 py-2">
+                                <select
+                                  value={it.selectedProductId ?? ""}
+                                  onChange={(e) => updateAIItem(idx, {
+                                    selectedProductId: e.target.value || null,
+                                    include: !!e.target.value,
+                                  })}
+                                  className="w-full max-w-[280px] px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-accent"
+                                >
+                                  <option value="">— No asignar —</option>
+                                  {allOptions.map(opt => (
+                                    <option key={opt.product.id} value={opt.product.id}>
+                                      {opt.product.name} ({Math.round(opt.score * 100)}%)
+                                    </option>
+                                  ))}
+                                  {/* Fallback: show all products as option */}
+                                  {products
+                                    .filter(p => !allOptions.some(o => o.product.id === p.id))
+                                    .slice(0, 50)
+                                    .map(p => (
+                                      <option key={p.id} value={p.id}>
+                                        {p.name}
+                                      </option>
+                                    ))}
+                                </select>
+                              </td>
+                              <td className="px-2 py-2">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={it.quantity}
+                                  onChange={(e) => updateAIItem(idx, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                                  className="w-16 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-accent"
+                                />
+                              </td>
+                              <td className="px-2 py-2">
+                                <div className="relative">
+                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={it.unitCost}
+                                    onChange={(e) => updateAIItem(idx, { unitCost: parseFloat(e.target.value) || 0 })}
+                                    className="w-full pl-4 pr-1 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs text-right focus:outline-none focus:border-accent"
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Legend + actions */}
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3 text-[10px]">
+                    <span className="flex items-center gap-1 text-emerald-400"><CheckCircle2 className="w-3 h-3" /> Match exacto</span>
+                    <span className="flex items-center gap-1 text-sky-400"><CheckCircle2 className="w-3 h-3" /> Match probable</span>
+                    <span className="flex items-center gap-1 text-amber-400"><HelpCircle className="w-3 h-3" /> Elegí opción</span>
+                    <span className="flex items-center gap-1 text-red-400"><AlertCircle className="w-3 h-3" /> Sin match</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setAiResult(null)}
+                      className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={addDetectedToCart}
+                      disabled={aiResult.items.filter(i => i.include && i.selectedProductId).length === 0}
+                      className="px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-xs font-medium"
+                    >
+                      Agregar {aiResult.items.filter(i => i.include && i.selectedProductId).length} al carrito
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Supplier */}
           <div>
