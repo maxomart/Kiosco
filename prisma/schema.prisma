@@ -30,6 +30,7 @@ model Tenant {
   apiKeys     ApiKey[]
   combos      Combo[]
   clientPayments ClientPayment[]
+  productLosses ProductLoss[]
 
   @@index([active])
   @@index([createdAt])
@@ -98,6 +99,7 @@ model Product {
   active       Boolean  @default(true)
   image        String?
   soldByWeight Boolean  @default(false)
+  expiryDate   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -111,6 +113,8 @@ model Product {
   saleItems      SaleItem[]
   stockMovements StockMovement[]
   comboItems     ComboItem[]
+  losses         ProductLoss[]
+  priceHistory   PriceHistory[]
 
   @@unique([barcode, tenantId])
   @@unique([sku, tenantId])
@@ -561,4 +565,38 @@ model PromoRedemption {
   @@unique([promoCodeId, tenantId])
   @@index([promoCodeId])
   @@index([email])
+}
+
+// ============= ANALYTICS & LOSSES =============
+model ProductLoss {
+  id             String   @id @default(cuid())
+  type           String   // "EXPIRED" | "DAMAGED" | "THEFT"
+  quantity       Int
+  estimatedValue Decimal  @db.Decimal(12, 2)
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([productId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  costPrice Decimal  @db.Decimal(10, 2)
+  salePrice Decimal  @db.Decimal(10, 2)
+  reason    String?  // "ADJUSTMENT" | "SUPPLIER" | "PROMO"
+  createdAt DateTime @default(now())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([createdAt])
 }
