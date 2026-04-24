@@ -123,6 +123,7 @@ export type PlanFeature =
   | "feature:multi_cash"      // Multiple simultaneous cash sessions
   | "feature:multi_store"     // Multiple stores under one account
   | "feature:priority_support" // Priority support channel
+  | "feature:analytics"       // Advanced analytics: margins, stock predictions, invisible losses, debtor alerts
 
 type PlanGate = Record<PlanFeature, Plan[]>
 
@@ -147,6 +148,7 @@ const PLAN_FEATURES: PlanGate = {
   "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multi_store":       ["BUSINESS", "ENTERPRISE"],
   "feature:priority_support":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:analytics":         ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 }
 
 /** Per-day AI message quota by plan (soft cap).
