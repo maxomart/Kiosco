@@ -132,7 +132,7 @@ export default async function LandingPage({
         "Reportes completos",
         "WhatsApp alertas de stock",
       ],
-      cta: "Probar 14 días",
+      cta: "Probar 7 días",
       href: starterHref,
       highlight: false,
     },
@@ -147,7 +147,7 @@ export default async function LandingPage({
         "Multi-caja simultánea",
         "IA 500 mensajes/día",
       ],
-      cta: activePromo && activePromo.planGranted === "PROFESSIONAL" ? "Reclamar promo" : "Probar 14 días",
+      cta: activePromo && activePromo.planGranted === "PROFESSIONAL" ? "Reclamar promo" : "Probar 7 días",
       href: professionalHref,
       highlight: true,
     },
@@ -162,7 +162,7 @@ export default async function LandingPage({
         "Multi-tienda",
         "Soporte por WhatsApp",
       ],
-      cta: "Probar 14 días",
+      cta: "Probar 7 días",
       href: businessHref,
       highlight: false,
     },
@@ -276,7 +276,7 @@ export default async function LandingPage({
           <p className="text-gray-500 text-sm mt-5">
             {activePromo
               ? `Promo activa · Quedan ${activePromo.remaining} de ${activePromo.maxUses} cupos · Sin tarjeta`
-              : "Sin tarjeta · 14 días de prueba · Cancelás cuando quieras"}
+              : "Sin tarjeta · 7 días de prueba · Cancelás cuando quieras"}
           </p>
         </div>
       </section>

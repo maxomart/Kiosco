@@ -43,6 +43,11 @@ export async function GET(req: NextRequest) {
       include: {
         subscription: { select: { plan: true, status: true, currentPeriodEnd: true } },
         config: { select: { businessType: true } },
+        users: {
+          where: { role: "OWNER" },
+          select: { phone: true, email: true, name: true },
+          take: 1,
+        },
         _count: { select: { users: true, products: true, sales: true } },
       },
     }),

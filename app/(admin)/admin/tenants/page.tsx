@@ -17,6 +17,7 @@ interface Tenant {
   createdAt: string
   config?: { businessType: string | null } | null
   subscription: { plan: string; status: string } | null
+  users?: { phone: string | null; email: string; name: string }[]
   _count: { users: number; products: number; sales: number }
 }
 
@@ -173,6 +174,7 @@ export default function AdminTenantsPage() {
           <thead>
             <tr className="border-b border-gray-800">
               <SortHeader label="Negocio" field="name" sort={sort} dir={dir} onSort={onSort} />
+              <th className="p-4 text-left text-gray-400 font-medium">Celular</th>
               <th className="p-4 text-left text-gray-400 font-medium">Plan</th>
               <SortHeader label="Usuarios" field="users" sort={sort} dir={dir} onSort={onSort} align="right" />
               <th className="p-4 text-right text-gray-400 font-medium">Productos</th>
@@ -186,14 +188,14 @@ export default function AdminTenantsPage() {
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i}>
-                  <td colSpan={8} className="p-4">
+                  <td colSpan={9} className="p-4">
                     <div className="h-4 bg-gray-800 rounded animate-pulse" />
                   </td>
                 </tr>
               ))
             ) : tenants.length === 0 ? (
               <tr>
-                <td colSpan={8} className="p-12 text-center text-gray-500">
+                <td colSpan={9} className="p-12 text-center text-gray-500">
                   No hay tenants que coincidan con los filtros.
                 </td>
               </tr>
@@ -205,6 +207,20 @@ export default function AdminTenantsPage() {
                       {t.name}
                     </Link>
                     <p className="text-gray-500 text-xs mt-0.5">{t.slug} · {t.config?.businessType ?? "—"}</p>
+                  </td>
+                  <td className="p-4">
+                    {t.users?.[0]?.phone ? (
+                      <a
+                        href={`https://wa.me/${t.users[0].phone.replace(/[^0-9]/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-emerald-400 hover:text-emerald-300"
+                      >
+                        {t.users[0].phone}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-600">—</span>
+                    )}
                   </td>
                   <td className="p-4">
                     <select

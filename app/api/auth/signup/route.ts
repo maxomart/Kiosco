@@ -34,9 +34,17 @@ const signupSchema = z.object({
     .string()
     .min(8, "La contraseña debe tener al menos 8 caracteres.")
     .max(128, "La contraseña es demasiado larga."),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9\s-]{7,20}$/, "Número de celular inválido. Usá formato +549XXXXXXXXXX"),
   plan: z.enum(VALID_PLANS).optional().default("FREE"),
   promoCode: z.string().trim().toLowerCase().max(64).optional(),
 })
+
+function normalizePhone(phone: string): string {
+  return phone.replace(/[\s-]/g, "")
+}
 
 function randomSuffix(len = 4): string {
   return Math.random()
@@ -127,9 +135,12 @@ export async function POST(req: Request) {
       ownerName,
       email,
       password,
+      phone: rawPhone,
       plan: requestedPlan,
       promoCode,
     } = parsed.data
+
+    const phone = normalizePhone(rawPhone)
 
     // Check if email already exists
     const existing = await db.user.findUnique({
@@ -140,6 +151,19 @@ export async function POST(req: Request) {
     if (existing) {
       return NextResponse.json(
         { message: "Este email ya está registrado." },
+        { status: 409 }
+      )
+    }
+
+    // Check if phone already exists (prevent multiple accounts per number)
+    const existingPhone = await db.user.findFirst({
+      where: { phone },
+      select: { id: true },
+    })
+
+    if (existingPhone) {
+      return NextResponse.json(
+        { message: "Este número de celular ya está registrado." },
         { status: 409 }
       )
     }
@@ -194,9 +218,9 @@ export async function POST(req: Request) {
       subscriptionStatus = "ACTIVE"
       periodEnd = new Date(now.getTime() + promoApplied.daysGranted * 24 * 60 * 60 * 1000)
     } else if (isPaidPlan) {
-      // Regular paid signup: 14-day trial.
+      // Regular paid signup: 7-day trial.
       subscriptionStatus = "TRIALING"
-      periodEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+      periodEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     } else {
       // FREE: permanent, no period end.
       subscriptionStatus = "ACTIVE"
@@ -219,6 +243,7 @@ export async function POST(req: Request) {
             name: ownerName,
             email,
             password: hashedPassword,
+            phone,
             role: "OWNER",
             tenantId: tenant.id,
           },

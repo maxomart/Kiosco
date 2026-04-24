@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Trash2, Truck, Users } from "lucide-react"
+import { Plus, Trash2, Truck, Users, Info, Phone, Zap, CreditCard } from "lucide-react"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { SupplierManagerModal } from "@/components/shared/SupplierManagerModal"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
@@ -105,10 +105,10 @@ export default function CargasPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Cargas</h1>
-          <p className="text-gray-400 text-sm mt-1">Cargas y recargas a proveedores (telefonía, servicios, etc.)</p>
+          <h1 className="text-2xl font-bold text-white">Cargas Virtuales</h1>
+          <p className="text-gray-400 text-sm mt-1">Registrá recargas (SUBE, celular, servicios) y seguí tu ganancia</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowSuppliers(true)}
@@ -122,10 +122,56 @@ export default function CargasPage() {
         </div>
       </div>
 
+      {/* Explicación contextual */}
+      {recharges.length === 0 && !showForm && !loading && (
+        <div className="bg-gradient-to-br from-accent-soft/50 to-accent-soft/10 border border-accent/30 rounded-xl p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+              <Info className="w-5 h-5 text-accent" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-white font-semibold mb-1">¿Qué son las cargas virtuales?</h3>
+              <p className="text-sm text-gray-300 mb-3">
+                Son los servicios que vendés sin stock físico: recargas de celular, SUBE, pagos de servicios, etc.
+                Registrás cuánto te cuesta al proveedor y cuánto le cobrás al cliente, el sistema calcula tu ganancia automáticamente.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-sky-400" />
+                  <div>
+                    <p className="text-xs text-gray-400">Recargas celular</p>
+                    <p className="text-[10px] text-gray-500">Claro, Movistar, Personal</p>
+                  </div>
+                </div>
+                <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-emerald-400" />
+                  <div>
+                    <p className="text-xs text-gray-400">SUBE / Tarjetas</p>
+                    <p className="text-[10px] text-gray-500">Transporte público</p>
+                  </div>
+                </div>
+                <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <p className="text-xs text-gray-400">Pago servicios</p>
+                    <p className="text-[10px] text-gray-500">Luz, gas, internet</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Form */}
       {showForm && (
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 space-y-4">
-          <h3 className="text-white font-medium">Registrar carga</h3>
+          <div>
+            <h3 className="text-white font-medium">Registrar nueva carga</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Ejemplo: cliente paga $1.000 de recarga de celular → tu proveedor te cobra $950 → ganás $50
+            </p>
+          </div>
           {error && (
             <div className="px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>
           )}
@@ -147,26 +193,41 @@ export default function CargasPage() {
               )}
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Costo *</label>
+              <label className="block text-xs text-gray-400 mb-1.5">
+                Lo que TE PAGA el proveedor *
+                <span className="block text-[10px] text-gray-500 font-normal mt-0.5">Costo sin comisión</span>
+              </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                 <input type="number" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))}
-                  min="0" step="0.01" placeholder="0.00"
+                  min="0" step="0.01" placeholder="950.00"
                   className="w-full pl-7 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Monto cobrado *</label>
+              <label className="block text-xs text-gray-400 mb-1.5">
+                Lo que PAGA el cliente *
+                <span className="block text-[10px] text-gray-500 font-normal mt-0.5">Monto total cobrado</span>
+              </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                 <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                  min="0" step="0.01" placeholder="0.00"
+                  min="0" step="0.01" placeholder="1000.00"
                   className="w-full pl-7 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
               </div>
               {profitPreview !== null && (
-                <p className={`text-xs mt-1 ${profitPreview >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  Ganancia: {formatCurrency(profitPreview)}
-                </p>
+                <div className={`mt-2 px-3 py-2 rounded-lg border text-xs ${
+                  profitPreview >= 0
+                    ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-300"
+                    : "bg-red-900/20 border-red-700/40 text-red-300"
+                }`}>
+                  <strong>Tu ganancia:</strong> {formatCurrency(profitPreview)}
+                  {form.amount && Number(form.amount) > 0 && (
+                    <span className="text-gray-400 ml-2">
+                      ({((profitPreview / Number(form.amount)) * 100).toFixed(1)}% margen)
+                    </span>
+                  )}
+                </div>
               )}
             </div>
             <div>
@@ -189,16 +250,21 @@ export default function CargasPage() {
       {/* Stats + filter */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gray-900 rounded-xl px-4 py-3 border border-gray-800">
-          <p className="text-xs text-gray-500">Costo período</p>
-          <p className="text-white font-semibold">{formatCurrency(totalCost)}</p>
-        </div>
-        <div className="bg-gray-900 rounded-xl px-4 py-3 border border-gray-800">
-          <p className="text-xs text-gray-500">Ingresos período</p>
+          <p className="text-xs text-gray-500">Total cobrado</p>
           <p className="text-white font-semibold">{formatCurrency(totalRevenue)}</p>
+          <p className="text-[10px] text-gray-600 mt-0.5">Dinero que entró</p>
         </div>
         <div className="bg-gray-900 rounded-xl px-4 py-3 border border-gray-800">
-          <p className="text-xs text-gray-500">Ganancia período</p>
-          <p className={`font-semibold ${totalProfit >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCurrency(totalProfit)}</p>
+          <p className="text-xs text-gray-500">Costo proveedor</p>
+          <p className="text-white font-semibold">{formatCurrency(totalCost)}</p>
+          <p className="text-[10px] text-gray-600 mt-0.5">Lo que pagaste</p>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-900/30 to-emerald-950/30 border border-emerald-800/40 rounded-xl px-4 py-3">
+          <p className="text-xs text-emerald-400 font-medium">Tu ganancia</p>
+          <p className={`font-bold text-lg ${totalProfit >= 0 ? "text-emerald-300" : "text-red-400"}`}>{formatCurrency(totalProfit)}</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            {totalRevenue > 0 ? `${((totalProfit / totalRevenue) * 100).toFixed(1)}% margen` : "Sin datos"}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap md:justify-end">
           <input type="date" value={from} onChange={e => setFrom(e.target.value)}

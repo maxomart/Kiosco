@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     allow_promotion_codes: true,
     subscription_data: {
       metadata: { tenantId: tenantId!, plan },
-      trial_period_days: 14,
+      trial_period_days: 7,
     },
   })
 

@@ -48,6 +48,7 @@ interface FormState {
   businessType: string
   ownerName: string
   email: string
+  phone: string
   password: string
   confirmPassword: string
 }
@@ -57,6 +58,7 @@ interface FormErrors {
   businessType?: string
   ownerName?: string
   email?: string
+  phone?: string
   password?: string
   confirmPassword?: string
 }
@@ -66,6 +68,7 @@ const INITIAL: FormState = {
   businessType: "",
   ownerName: "",
   email: "",
+  phone: "",
   password: "",
   confirmPassword: "",
 }
@@ -171,6 +174,7 @@ function SignupForm() {
   const idBusinessType = useId()
   const idOwnerName = useId()
   const idEmail = useId()
+  const idPhone = useId()
   const idPassword = useId()
   const idConfirmPassword = useId()
 
@@ -204,6 +208,9 @@ function SignupForm() {
     if (!form.email) next.email = "Requerido."
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       next.email = "Ingresá un email válido."
+    if (!form.phone.trim()) next.phone = "Requerido."
+    else if (!/^\+?[0-9\s-]{7,20}$/.test(form.phone.trim()))
+      next.phone = "Formato inválido. Ej: +5491112345678"
     if (!form.password) next.password = "Requerido."
     else if (form.password.length < 8) next.password = "Mínimo 8 caracteres."
     if (!form.confirmPassword) next.confirmPassword = "Confirmá tu contraseña."
@@ -228,6 +235,7 @@ function SignupForm() {
         businessType: form.businessType,
         ownerName: form.ownerName.trim(),
         email,
+        phone: form.phone.trim(),
         password: form.password,
         plan: selectedPlan,
       }
@@ -309,7 +317,7 @@ function SignupForm() {
     if (promoActive && !userOverrodePromoPlan.current && promo.status === "valid") {
       return `Reclamar ${pluralDias(promo.daysGranted)} gratis de ${PLAN_LABELS_AR[promo.planGranted]}`
     }
-    return `Empezar prueba de 14 días (${PLAN_LABELS_AR[selectedPlan]})`
+    return `Empezar prueba de 7 días (${PLAN_LABELS_AR[selectedPlan]})`
   })()
 
   return (
@@ -325,7 +333,7 @@ function SignupForm() {
             {promoActive && !userOverrodePromoPlan.current ? (
               <span className="text-white">Plan aplicado por la promo — podés cambiarlo si querés</span>
             ) : (
-              <>Elegí tu plan · <span className="text-white">14 días gratis sin tarjeta</span></>
+              <>Elegí tu plan · <span className="text-white">7 días gratis sin tarjeta</span></>
             )}
           </p>
         </div>
@@ -417,7 +425,7 @@ function SignupForm() {
           <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-1.5">
             {promoActive && !userOverrodePromoPlan.current && promo.status === "valid"
               ? `Plan ${PLAN_LABELS_AR[promo.planGranted]} · ${pluralDias(promo.daysGranted)} gratis por la promo`
-              : `Plan ${PLAN_LABELS_AR[selectedPlan]} · 14 días gratis`}
+              : `Plan ${PLAN_LABELS_AR[selectedPlan]} · 7 días gratis`}
           </p>
         </div>
 
@@ -495,25 +503,48 @@ function SignupForm() {
             )}
           </div>
 
-          <div>
-            <label
-              htmlFor={idEmail}
-              className="block text-xs font-medium text-gray-300 mb-1.5"
-            >
-              Email
-            </label>
-            <input
-              id={idEmail}
-              type="email"
-              autoComplete="email"
-              placeholder="tu@email.com"
-              value={form.email}
-              onChange={set("email")}
-              className={`${inputBase} ${errors.email ? inputErr : inputOk}`}
-            />
-            {errors.email && (
-              <p className="mt-1 text-[11px] text-red-400">{errors.email}</p>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label
+                htmlFor={idEmail}
+                className="block text-xs font-medium text-gray-300 mb-1.5"
+              >
+                Email
+              </label>
+              <input
+                id={idEmail}
+                type="email"
+                autoComplete="email"
+                placeholder="tu@email.com"
+                value={form.email}
+                onChange={set("email")}
+                className={`${inputBase} ${errors.email ? inputErr : inputOk}`}
+              />
+              {errors.email && (
+                <p className="mt-1 text-[11px] text-red-400">{errors.email}</p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor={idPhone}
+                className="block text-xs font-medium text-gray-300 mb-1.5"
+              >
+                Celular
+              </label>
+              <input
+                id={idPhone}
+                type="tel"
+                autoComplete="tel"
+                placeholder="+549 11 1234-5678"
+                value={form.phone}
+                onChange={set("phone")}
+                className={`${inputBase} ${errors.phone ? inputErr : inputOk}`}
+              />
+              {errors.phone && (
+                <p className="mt-1 text-[11px] text-red-400">{errors.phone}</p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

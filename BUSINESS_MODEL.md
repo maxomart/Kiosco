@@ -113,7 +113,7 @@ Asumiendo distribución 60% Básico / 30% Pro / 10% Business:
 - **Upgrade**: cuando un FREE pega 3 paywalls en una semana, mostrar oferta personalizada (-20% primer mes)
 
 ### Trial
-- Hoy: 14 días en planes pagos
+- Hoy: 7 días en planes pagos
 - Considerar 30 días en Business (ciclo de venta más largo)
 
 ## Revenue streams alternativos (futuro)

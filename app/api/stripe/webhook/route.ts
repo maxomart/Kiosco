@@ -43,13 +43,13 @@ export async function POST(req: NextRequest) {
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: session.subscription as string,
             status: "TRIALING",
-            currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+            currentPeriodEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           },
           update: {
             plan,
             stripeSubscriptionId: session.subscription as string,
             status: "TRIALING",
-            currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+            currentPeriodEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           },
         })
         break

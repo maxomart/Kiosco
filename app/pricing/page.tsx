@@ -173,7 +173,7 @@ const FAQ = [
   },
   {
     q: "¿Hay periodo de prueba?",
-    a: "Sí, todos los planes pagos incluyen 14 días de prueba sin tarjeta. Si te gusta, seguís; si no, cancelás sin cargo.",
+    a: "Sí, todos los planes pagos incluyen 7 días de prueba sin tarjeta. Si te gusta, seguís; si no, cancelás sin cargo.",
   },
   {
     q: "¿Qué pasa con mis datos si cancelo?",
@@ -391,7 +391,7 @@ export default function PricingPage() {
         <div className="max-w-4xl mx-auto bg-gradient-to-br from-purple-900/40 to-pink-900/30 rounded-3xl p-10 text-center border border-purple-700/30">
           <h2 className="text-3xl md:text-4xl font-bold mb-3">¿Listo para empezar?</h2>
           <p className="text-gray-300 mb-7 max-w-xl mx-auto">
-            Creá tu cuenta gratis ahora. Sin tarjeta de crédito. 14 días de prueba en planes pagos.
+            Creá tu cuenta gratis ahora. Sin tarjeta de crédito. 7 días de prueba en planes pagos.
           </p>
           <Link
             href="/signup"

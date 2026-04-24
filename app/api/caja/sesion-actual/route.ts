@@ -39,14 +39,45 @@ export async function GET() {
       return NextResponse.json({ session: null, multiCash, openSessions })
     }
 
-    const salesTotal = await db.sale.aggregate({
+    // Calcular ganancia bruta, margen y neta
+    const sales = await db.sale.findMany({
       where: { cashSessionId: cashSession.id, tenantId: tenantId!, status: "COMPLETED" },
-      _sum: { total: true },
+      select: {
+        total: true,
+        items: { select: { costPrice: true, quantity: true } },
+      },
     })
+
+    const totalRevenue = sales.reduce((acc, s) => acc + Number(s.total), 0)
+    const totalCost = sales.reduce(
+      (acc, s) =>
+        acc +
+        s.items.reduce((a, i) => a + Number(i.costPrice) * i.quantity, 0),
+      0
+    )
+    const grossProfit = totalRevenue - totalCost
+    const marginPct = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0
+
+    // Gastos desde la apertura de caja
+    const expensesAgg = await db.expense.aggregate({
+      where: {
+        tenantId: tenantId!,
+        createdAt: { gte: cashSession.createdAt },
+      },
+      _sum: { amount: true },
+    })
+    const expensesTotal = Number(expensesAgg._sum.amount ?? 0)
+    const netProfit = grossProfit - expensesTotal
 
     return NextResponse.json({
       session: cashSession,
-      salesTotal: salesTotal._sum.total ?? 0,
+      salesTotal: totalRevenue,
+      totalRevenue,
+      totalCost,
+      grossProfit,
+      marginPct: Math.round(marginPct * 10) / 10,
+      expensesTotal,
+      netProfit,
       multiCash,
       openSessions,
       ownedByCurrentUser: cashSession.userId === session.user.id,

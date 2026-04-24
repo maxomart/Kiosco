@@ -146,7 +146,7 @@ Esto es para que cada kiosquero (cada tenant) cobre a SUS clientes desde el POS 
 ## Roadmap MP
 
 - [ ] Soporte cuotas en suscripción (hoy es solo recurrente mensual)
-- [ ] Trial de 14 días via `free_trial` en preapproval
+- [ ] Trial de 7 días via `free_trial` en preapproval
 - [ ] Webhook signature en formato nuevo (MP cambió el formato en 2025)
 - [ ] Refunds desde el panel admin
 - [ ] Multi-país: Mercado Pago México, Brasil, etc.

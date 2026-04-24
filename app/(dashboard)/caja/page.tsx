@@ -22,6 +22,10 @@ interface CashSession {
 export default function CajaPage() {
   const [current, setCurrent] = useState<CashSession | null>(null)
   const [salesTotal, setSalesTotal] = useState(0)
+  const [grossProfit, setGrossProfit] = useState(0)
+  const [marginPct, setMarginPct] = useState(0)
+  const [expensesTotal, setExpensesTotal] = useState(0)
+  const [netProfit, setNetProfit] = useState(0)
   const [sessions, setSessions] = useState<CashSession[]>([])
   const [openSessions, setOpenSessions] = useState<CashSession[]>([])
   const [multiCash, setMultiCash] = useState(false)
@@ -43,6 +47,10 @@ export default function CajaPage() {
       const d = await curRes.json()
       setCurrent(d.session)
       setSalesTotal(Number(d.salesTotal ?? 0))
+      setGrossProfit(Number(d.grossProfit ?? 0))
+      setMarginPct(Number(d.marginPct ?? 0))
+      setExpensesTotal(Number(d.expensesTotal ?? 0))
+      setNetProfit(Number(d.netProfit ?? 0))
       setMultiCash(!!d.multiCash)
       setOpenSessions(d.openSessions ?? [])
     }
@@ -223,6 +231,35 @@ export default function CajaPage() {
                   <div className="bg-gray-800/50 rounded-lg p-4">
                     <p className="text-gray-500 text-xs mb-1">Ventas totales</p>
                     <p className="text-white text-xl font-bold">{current._count?.sales ?? 0}</p>
+                  </div>
+                </div>
+
+                {/* Ganancias y margen */}
+                <div className="mt-4 pt-4 border-t border-gray-800">
+                  <h3 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">
+                    Rendimiento de la caja
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-gradient-to-br from-sky-900/30 to-sky-950/30 border border-sky-800/40 rounded-lg p-4">
+                      <p className="text-sky-400 text-xs mb-1 font-medium">Ganancia bruta</p>
+                      <p className="text-white text-lg font-bold">{formatCurrency(grossProfit)}</p>
+                      <p className="text-gray-500 text-[10px] mt-1">Ventas − costo de productos</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-purple-900/30 to-purple-950/30 border border-purple-800/40 rounded-lg p-4">
+                      <p className="text-purple-400 text-xs mb-1 font-medium">Margen</p>
+                      <p className="text-white text-lg font-bold">{marginPct.toFixed(1)}%</p>
+                      <p className="text-gray-500 text-[10px] mt-1">Bruto / ventas</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-orange-900/30 to-orange-950/30 border border-orange-800/40 rounded-lg p-4">
+                      <p className="text-orange-400 text-xs mb-1 font-medium">Gastos</p>
+                      <p className="text-white text-lg font-bold">−{formatCurrency(expensesTotal)}</p>
+                      <p className="text-gray-500 text-[10px] mt-1">Desde la apertura</p>
+                    </div>
+                    <div className={`bg-gradient-to-br ${netProfit >= 0 ? "from-emerald-900/30 to-emerald-950/30 border-emerald-800/40" : "from-red-900/30 to-red-950/30 border-red-800/40"} border rounded-lg p-4`}>
+                      <p className={`text-xs mb-1 font-medium ${netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>Ganancia neta</p>
+                      <p className="text-white text-lg font-bold">{formatCurrency(netProfit)}</p>
+                      <p className="text-gray-500 text-[10px] mt-1">Bruto − gastos</p>
+                    </div>
                   </div>
                 </div>
               </div>
