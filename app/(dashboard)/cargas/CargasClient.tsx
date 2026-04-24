@@ -65,11 +65,23 @@ interface AIDetectedItem {
   include: boolean
 }
 
+interface InvoiceInfo {
+  type: "A" | "B" | "C" | "M" | "X" | null
+  subtotal: number
+  taxPercent: number | null
+  taxAmount: number
+  total: number
+  hasTax: boolean
+}
+
 interface AIAnalysis {
   items: AIDetectedItem[]
   supplierHint: string | null
   supplierHintMatch: { id: string; name: string } | null
   totalDetected: number
+  invoice?: InvoiceInfo
+  // client-only: whether to include VAT in the unit costs when adding to cart
+  includeTax?: boolean
 }
 
 export default function CargasPage() {
@@ -226,6 +238,8 @@ export default function CargasPage() {
         supplierHint: data.supplierHint,
         supplierHintMatch: data.supplierHintMatch,
         totalDetected: data.totalDetected,
+        invoice: data.invoice,
+        includeTax: data.invoice?.hasTax ?? false, // default: include VAT
       })
       // Auto-apply supplier hint if we have a confident match
       if (!supplierId && data.supplierHintMatch) {
@@ -242,13 +256,21 @@ export default function CargasPage() {
     if (!aiResult) return
     const toAdd = aiResult.items.filter((it) => it.include && it.selectedProductId)
     if (toAdd.length === 0) return
+
+    // If the invoice had VAT and the user wants to include it, apply the percentage to unit costs
+    const taxMultiplier =
+      aiResult.includeTax && aiResult.invoice?.hasTax && aiResult.invoice?.taxPercent
+        ? 1 + aiResult.invoice.taxPercent / 100
+        : 1
+
     setCart((prev) => {
       const next = [...prev]
       for (const det of toAdd) {
         const product = products.find((p) => p.id === det.selectedProductId)
         if (!product) continue
         const existing = next.findIndex((c) => c.productId === product.id)
-        const unitCost = det.unitCost > 0 ? det.unitCost : (det.totalCost > 0 && det.quantity > 0 ? det.totalCost / det.quantity : Number(product.costPrice))
+        const baseUnit = det.unitCost > 0 ? det.unitCost : (det.totalCost > 0 && det.quantity > 0 ? det.totalCost / det.quantity : Number(product.costPrice))
+        const unitCost = Math.round(baseUnit * taxMultiplier * 100) / 100
         if (existing >= 0) {
           next[existing] = { ...next[existing], quantity: next[existing].quantity + det.quantity, unitCost }
         } else {
@@ -443,11 +465,64 @@ export default function CargasPage() {
                   </span>
                   {aiResult.supplierHint && (
                     <span className="text-gray-400">
-                      Proveedor detectado: <strong className="text-gray-200">{aiResult.supplierHint}</strong>
-                      {aiResult.supplierHintMatch && " (aplicado)"}
+                      Proveedor: <strong className="text-gray-200">{aiResult.supplierHint}</strong>
+                      {aiResult.supplierHintMatch && " ✓"}
+                    </span>
+                  )}
+                  {aiResult.invoice?.type && (
+                    <span className="text-gray-400">
+                      Factura: <strong className="text-gray-200">{aiResult.invoice.type}</strong>
                     </span>
                   )}
                 </div>
+
+                {/* Resumen fiscal */}
+                {aiResult.invoice?.hasTax && (
+                  <div className="bg-gradient-to-br from-sky-900/20 to-sky-950/30 border border-sky-700/40 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[200px]">
+                        <p className="text-xs font-semibold text-sky-300 uppercase tracking-wider mb-2">
+                          Detectado: factura con IVA {aiResult.invoice.taxPercent}%
+                        </p>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase">Neto</p>
+                            <p className="text-white font-medium">{formatCurrency(aiResult.invoice.subtotal)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase">IVA</p>
+                            <p className="text-sky-300 font-medium">+{formatCurrency(aiResult.invoice.taxAmount)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase">Total</p>
+                            <p className="text-white font-bold">{formatCurrency(aiResult.invoice.total)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 w-full md:w-auto">
+                        <label className="flex items-start gap-2 cursor-pointer bg-gray-900/60 border border-gray-800 rounded-lg p-3">
+                          <input
+                            type="checkbox"
+                            checked={aiResult.includeTax ?? false}
+                            onChange={(e) => setAiResult(prev => prev ? { ...prev, includeTax: e.target.checked } : prev)}
+                            className="w-4 h-4 rounded border-gray-700 bg-gray-800 mt-0.5"
+                          />
+                          <div className="text-xs">
+                            <p className="font-medium text-white">Incluir IVA en el costo</p>
+                            <p className="text-gray-500 text-[10px] mt-0.5">
+                              {aiResult.includeTax
+                                ? `Sumará +${aiResult.invoice.taxPercent}% a cada costo unitario`
+                                : "Los precios se cargarán como netos (sin IVA)"}
+                            </p>
+                            <p className="text-[10px] text-gray-500 mt-1">
+                              💡 Si sos <strong>monotributista</strong>, activalo. Si sos <strong>responsable inscripto</strong>, no.
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Items table */}
                 <div className="border border-gray-800 rounded-lg overflow-hidden bg-gray-950/40">
@@ -580,6 +655,7 @@ export default function CargasPage() {
                       className="px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-xs font-medium"
                     >
                       Agregar {aiResult.items.filter(i => i.include && i.selectedProductId).length} al carrito
+                      {aiResult.includeTax && aiResult.invoice?.hasTax && " (con IVA)"}
                     </button>
                   </div>
                 </div>

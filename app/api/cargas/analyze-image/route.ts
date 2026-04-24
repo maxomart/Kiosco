@@ -61,35 +61,45 @@ async function getPlan(tenantId: string): Promise<Plan> {
 
 const PROMPT = `Sos un asistente que lee remitos, facturas o listas de proveedores argentinos (bebidas, kioscos, almacenes).
 
-Tu tarea: extraer cada línea de producto de la imagen.
+Tu tarea: extraer cada línea de producto de la imagen y detectar si la factura tiene IVA.
 
 Devolvé SOLO un JSON válido con esta estructura exacta:
 {
   "supplierHint": "Nombre del proveedor si aparece visible (logo o encabezado), o null",
+  "invoiceType": "A" | "B" | "C" | "M" | "X" | null (según la letra visible en el recuadro),
+  "subtotalRaw": "Base imponible o subtotal sin IVA como aparece (ej: '$ 277.800,00'), o null",
+  "taxPercent": número del porcentaje de IVA (ej: 21, 10.5), o null si no hay IVA,
+  "taxAmountRaw": "Monto total del IVA como aparece (ej: '$ 58.338,00'), o null",
+  "totalRaw": "Total final de la factura (con IVA si corresponde) como aparece (ej: '$ 336.138,00'), o null",
   "items": [
     {
       "rawName": "nombre del producto tal como aparece",
       "quantity": número entero de cantidad (default 1 si no aparece),
-      "unitCostRaw": "precio unitario EXACTAMENTE como aparece en la imagen, con su símbolo y separadores (ej: '$ 1.250,00')",
+      "unitCostRaw": "precio unitario EXACTAMENTE como aparece en la imagen (ej: '$ 1.250,00')",
       "totalCostRaw": "precio total de la línea EXACTAMENTE como aparece (ej: '$ 30.000,00')",
       "unit": "unidad|pack|caja|kg|lt" o null
     }
   ]
 }
 
-REGLAS CRÍTICAS SOBRE NÚMEROS (LEER CON ATENCIÓN):
+REGLAS CRÍTICAS SOBRE NÚMEROS:
 - En Argentina el punto (.) separa MILES y la coma (,) separa DECIMALES.
-- "$1.250,00" significa mil doscientos cincuenta pesos (=1250 pesos), NO 1.25 dólares.
-- "$ 900,00" = 900 pesos, NO 9 pesos.
+- "$1.250,00" = 1250 pesos, NO 1.25 dólares.
 - "$30.000,00" = treinta mil pesos, NO 30 pesos.
-- NUNCA interpretes el punto como separador decimal en estos remitos.
-- Por eso copiá el valor TAL COMO ESTÁ en la imagen, como string, en unitCostRaw y totalCostRaw. El sistema se encarga del parseo.
+- NUNCA interpretes el punto como decimal en precios argentinos.
+- Por eso copiá los valores COMO ESTÁN en la imagen (como strings).
+
+REGLAS SOBRE IVA:
+- Si la factura es tipo A o M, los precios unitarios suelen ser NETOS (sin IVA) y el IVA se suma abajo.
+- Si es tipo B o C, suelen ser FINALES (con IVA incluido).
+- Extraé el porcentaje de IVA (21% es el general, 10.5% reducido).
+- Si no hay IVA visible, dejá taxPercent y taxAmountRaw en null.
 
 OTRAS REGLAS:
-- Ignorá totales, subtotales, IVA, base imponible, descuentos globales, fechas, números de factura, códigos de referencia (CC-001, etc).
-- Solo extraé líneas de productos con su cantidad y precio.
-- Si no se puede leer una línea completa, no la incluyas.
-- Si la imagen no es un remito/factura/lista de precios válido, devolvé items: [].`
+- Ignorá códigos de referencia (CC-001), fechas, números de factura, dirección, CUIT, CBU.
+- Solo extraé líneas de productos reales con cantidad y precio.
+- Si no se puede leer una línea, no la incluyas.
+- Si la imagen no es un remito/factura/lista válido, devolvé items: [].`
 
 export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
@@ -162,6 +172,11 @@ export async function POST(req: NextRequest) {
   // Call OpenAI with vision
   let parsed: {
     supplierHint: string | null
+    invoiceType?: "A" | "B" | "C" | "M" | "X" | null
+    subtotalRaw?: string | null
+    taxPercent?: number | null
+    taxAmountRaw?: string | null
+    totalRaw?: string | null
     items: Array<{
       rawName: string
       quantity: number | string
@@ -265,11 +280,31 @@ export async function POST(req: NextRequest) {
     // non-fatal
   }
 
+  // Invoice-level fiscal info
+  const invoiceSubtotal = parseARS(parsed.subtotalRaw ?? 0)
+  const invoiceTaxAmount = parseARS(parsed.taxAmountRaw ?? 0)
+  const invoiceTotal = parseARS(parsed.totalRaw ?? 0)
+  const computedItemsSum = matched.reduce((s, i) => s + i.totalCost, 0)
+
+  // If AI gave us a subtotal but items don't sum up, prefer the items (they're line-level truth)
+  const finalSubtotal = invoiceSubtotal > 0 ? invoiceSubtotal : computedItemsSum
+  const hasTax = (parsed.taxPercent ?? 0) > 0 || invoiceTaxAmount > 0
+  const taxPercent = parsed.taxPercent ?? (hasTax && finalSubtotal > 0 ? Math.round((invoiceTaxAmount / finalSubtotal) * 100) : null)
+  const finalTotal = invoiceTotal > 0 ? invoiceTotal : finalSubtotal + invoiceTaxAmount
+
   return NextResponse.json({
     items: matched,
     supplierHint: parsed.supplierHint,
     supplierHintMatch,
     totalDetected: matched.length,
+    invoice: {
+      type: parsed.invoiceType ?? null,
+      subtotal: finalSubtotal,
+      taxPercent,
+      taxAmount: invoiceTaxAmount,
+      total: finalTotal,
+      hasTax,
+    },
   })
 }
 
