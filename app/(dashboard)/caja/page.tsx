@@ -118,7 +118,7 @@ export default function CajaPage() {
   const expectedCash = current ? Number(current.openingBalance) + salesTotal : 0
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Caja</h1>
@@ -137,7 +137,7 @@ export default function CajaPage() {
       </div>
 
       {view === "current" ? (
-        <div className="max-w-2xl space-y-6">
+        <div className="space-y-6">
           {multiCash && openSessions.length > 0 && (
             <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-3">
@@ -169,8 +169,8 @@ export default function CajaPage() {
             </div>
           )}
           {!current ? (
-            /* Open cash session */
-            <div className="bg-gradient-to-br from-gray-900 to-gray-900/60 rounded-xl p-6 border border-amber-700/30 relative overflow-hidden">
+            /* Open cash session - centered with max-width */
+            <div className="bg-gradient-to-br from-gray-900 to-gray-900/60 rounded-xl p-6 border border-amber-700/30 relative overflow-hidden max-w-2xl mx-auto">
               <div
                 className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-30 pointer-events-none bg-amber-500"
                 aria-hidden
@@ -225,9 +225,9 @@ export default function CajaPage() {
               </div>
             </div>
           ) : (
-            <>
-              {/* Current session status */}
-              <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Current session status - left column (2/3) */}
+              <div className="lg:col-span-2 bg-gray-900 rounded-xl p-6 border border-gray-800">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
@@ -290,8 +290,8 @@ export default function CajaPage() {
                 </div>
               </div>
 
-              {/* Close session */}
-              <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              {/* Close session - right column (1/3) sticky */}
+              <div className="lg:col-span-1 bg-gray-900 rounded-xl p-6 border border-gray-800 lg:sticky lg:top-6 lg:self-start">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
                     <Lock size={20} className="text-red-400" />
@@ -342,7 +342,7 @@ export default function CajaPage() {
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       ) : (
