@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag, PackagePlus, Lock } from "lucide-react"
+import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag, PackagePlus, Lock, Sparkles } from "lucide-react"
 import { formatCurrency, PLAN_LIMITS, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
 import ProductModal from "@/components/inventario/ProductModal"
 import ImportModal from "@/components/inventario/ImportModal"
 import { CategoryManagerModal } from "@/components/inventario/CategoryManagerModal"
+import { AIEnrichModal } from "@/components/inventario/AIEnrichModal"
 import { StockBulkModal } from "@/components/inventario/StockBulkModal"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
 import toast from "react-hot-toast"
@@ -50,6 +51,7 @@ export default function InventarioPage() {
   const [showImport, setShowImport] = useState(false)
   const [showStockBulk, setShowStockBulk] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
+  const [showAIEnrich, setShowAIEnrich] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [plan, setPlan] = useState<Plan>("STARTER")
   const confirm = useConfirm()
@@ -183,6 +185,13 @@ export default function InventarioPage() {
           })()}
           <button onClick={() => setShowCategories(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
             <Tag size={16} /> Categorías
+          </button>
+          <button
+            onClick={() => setShowAIEnrich(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-accent/20 to-accent-soft text-accent border border-accent/40 hover:from-accent/30 text-sm font-medium transition-colors"
+            title="Auto-asignar categoría y proveedor a productos con IA"
+          >
+            <Sparkles size={16} /> Auto-organizar con IA
           </button>
           {(() => {
             const productLimit = PLAN_LIMITS[plan].products
@@ -477,6 +486,12 @@ export default function InventarioPage() {
         open={showCategories}
         onClose={() => setShowCategories(false)}
         onChanged={() => load()}
+      />
+
+      <AIEnrichModal
+        open={showAIEnrich}
+        onClose={() => setShowAIEnrich(false)}
+        onApplied={() => load()}
       />
     </div>
   )
