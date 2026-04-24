@@ -41,6 +41,8 @@ export default function ConfiguracionPage() {
   const [saving, setSaving] = useState(false)
   const [testingWa, setTestingWa] = useState(false)
   const [plan, setPlan] = useState<string>("STARTER")
+  const [themeAutoSaving, setThemeAutoSaving] = useState(false)
+  const [themeJustSaved, setThemeJustSaved] = useState(false)
   const { accent, mode } = useTheme()
 
   useEffect(() => {
@@ -71,6 +73,51 @@ export default function ConfiguracionPage() {
       .then(r => r.json())
       .then(d => { setConfig(d.config); setLoading(false) })
   }, [])
+
+  // Auto-save theme changes (color + mode) with debounce
+  // Skip the initial render so we don't fire a save before the user touches anything.
+  const initialThemeRef = (typeof window !== "undefined" ? (window as any).__themeInitial : null) as { accent: string; mode: string } | null
+  useEffect(() => {
+    if (loading || !config) return
+    // Snapshot initial values once we have them, to compare against later changes
+    if (!initialThemeRef) {
+      ;(window as any).__themeInitial = { accent, mode }
+      return
+    }
+    if (initialThemeRef.accent === accent && initialThemeRef.mode === mode) return
+
+    let cancelled = false
+    setThemeAutoSaving(true)
+    setThemeJustSaved(false)
+
+    const timeoutId = window.setTimeout(async () => {
+      if (cancelled) return
+      try {
+        const res = await fetch("/api/configuracion", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...config, themeColor: accent, themeMode: mode }),
+        })
+        if (res.ok) {
+          ;(window as any).__themeInitial = { accent, mode }
+          setThemeJustSaved(true)
+          window.setTimeout(() => setThemeJustSaved(false), 2000)
+        } else {
+          toast.error("No se pudo guardar el tema")
+        }
+      } catch {
+        toast.error("Error de red guardando tema")
+      } finally {
+        if (!cancelled) setThemeAutoSaving(false)
+      }
+    }, 600)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accent, mode, loading])
 
   const set = (key: keyof TenantConfig, val: any) =>
     setConfig(c => c ? { ...c, [key]: val } : c)
@@ -420,6 +467,28 @@ export default function ConfiguracionPage() {
 
         {/* ── Right column: personalization (sticky on large screens) ── */}
         <div className="space-y-6 lg:sticky lg:top-20">
+          {/* Auto-save indicator */}
+          {(themeAutoSaving || themeJustSaved) && (
+            <div
+              className={`text-[11px] px-3 py-1.5 rounded-lg border flex items-center gap-1.5 transition-all ${
+                themeAutoSaving
+                  ? "bg-accent-soft/40 border-accent/30 text-accent"
+                  : "bg-emerald-900/30 border-emerald-700/40 text-emerald-300"
+              }`}
+            >
+              {themeAutoSaving ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                  Guardando tema...
+                </>
+              ) : (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Tema guardado ✓
+                </>
+              )}
+            </div>
+          )}
           <ThemePicker />
           <SurfacePicker />
         </div>

@@ -33,7 +33,7 @@ export function ThemePicker() {
         <div>
           <p className="text-sm text-gray-200 font-medium">Color de marca</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            Se aplica al instante. Recordá guardar para que persista.
+            Se aplica al instante y se guarda automáticamente.
           </p>
         </div>
 
