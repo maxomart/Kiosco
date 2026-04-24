@@ -414,178 +414,221 @@ export default function CargasPage() {
             )}
           </div>
 
-          {/* Cart */}
+          {/* Resumen sticky siempre visible */}
+          {cart.length > 0 && (
+            <div className="sticky top-2 z-10 bg-gray-950/95 backdrop-blur border border-accent/30 rounded-lg p-3 shadow-lg shadow-black/50 -mx-1 grid grid-cols-3 gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">Productos</p>
+                <p className="text-lg font-bold text-white">
+                  {cart.length}
+                  <span className="text-xs font-normal text-gray-400 ml-1">
+                    ({cart.reduce((s, i) => s + i.quantity, 0)} unid.)
+                  </span>
+                </p>
+              </div>
+              <div className="text-center border-l border-r border-gray-800">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">Pagás</p>
+                <p className="text-lg font-bold text-white">{formatCurrency(total)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-400">Ganancia proyectada</p>
+                <p className={`text-lg font-bold ${projectedProfit >= 0 ? "text-emerald-300" : "text-red-400"}`}>
+                  {projectedProfit >= 0 ? "+" : ""}{formatCurrency(projectedProfit)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Cart - Tabla compacta */}
           {cart.length > 0 && (
             <div className="border border-gray-800 rounded-lg overflow-hidden">
-              <div className="bg-gray-800/50 px-3 py-2 text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
-                Productos en esta carga ({cart.length})
+              <div className="bg-gray-800/50 px-3 py-2 text-[11px] uppercase tracking-wider text-gray-400 font-semibold flex justify-between items-center">
+                <span>Productos en esta carga ({cart.length})</span>
+                <span className="text-[10px] text-gray-500 normal-case">
+                  Tip: Tab para saltar de input en input
+                </span>
               </div>
-              <div className="divide-y divide-gray-800">
-                {cart.map(item => {
-                  const subtotal = item.unitCost * item.quantity
-                  const profitPerUnit = item.salePrice - item.unitCost
-                  const profitTotal = profitPerUnit * item.quantity
-                  return (
-                    <div key={item.productId} className="p-4 space-y-3">
-                      {/* Header: name + stock preview + remove */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white">{item.productName}</p>
-                          <p className="text-[11px] text-gray-500 mt-0.5">
-                            Stock: <span className="text-gray-300">{item.currentStock}</span>
-                            {" → "}
-                            <span className="text-emerald-400 font-semibold">{item.currentStock + item.quantity}</span>
-                          </p>
-                        </div>
-                        <button onClick={() => removeCartItem(item.productId)}
-                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400">
-                          <X size={15} />
-                        </button>
-                      </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {/* Cantidad */}
-                        <div>
-                          <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Cantidad</label>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => {
-                                const nextQty = Math.max(1, item.quantity - 1)
-                                const patched = { ...item, quantity: nextQty }
-                                updateCartItem(item.productId, recalcUnit(patched))
-                              }}
-                              className="w-8 h-8 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold"
-                            >−</button>
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={e => {
-                                const nextQty = Math.max(1, parseInt(e.target.value) || 1)
-                                const patched = { ...item, quantity: nextQty }
-                                updateCartItem(item.productId, recalcUnit(patched))
-                              }}
-                              className="flex-1 min-w-0 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-center font-semibold"
-                            />
-                            <button
-                              onClick={() => {
-                                const nextQty = item.quantity + 1
-                                const patched = { ...item, quantity: nextQty }
-                                updateCartItem(item.productId, recalcUnit(patched))
-                              }}
-                              className="w-8 h-8 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold"
-                            >+</button>
-                          </div>
-                          <div className="flex gap-1 mt-1">
-                            {[6, 12, 24].map(n => (
-                              <button
-                                key={n}
-                                onClick={() => {
-                                  const patched = { ...item, quantity: item.quantity + n }
-                                  updateCartItem(item.productId, recalcUnit(patched))
-                                }}
-                                className="flex-1 text-[10px] py-0.5 rounded bg-gray-800/50 hover:bg-accent-soft text-gray-400 hover:text-accent"
-                              >+{n}</button>
-                            ))}
-                          </div>
-                        </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-900/80 border-b border-gray-800">
+                    <tr>
+                      <th className="px-2 py-2 text-left text-[10px] uppercase tracking-wider text-gray-500 font-medium">Producto</th>
+                      <th className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-gray-500 font-medium w-[120px]">Cant.</th>
+                      <th className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-gray-500 font-medium w-[110px]">Costo c/u</th>
+                      <th className="px-2 py-2 text-center text-[10px] uppercase tracking-wider text-gray-500 font-medium w-[110px]">Venta</th>
+                      <th className="px-2 py-2 text-right text-[10px] uppercase tracking-wider text-gray-500 font-medium w-[100px]">Pagás</th>
+                      <th className="px-2 py-2 text-right text-[10px] uppercase tracking-wider text-emerald-400 font-medium w-[110px]">Ganancia</th>
+                      <th className="w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {cart.map((item) => {
+                      const subtotal = item.unitCost * item.quantity
+                      const profitPerUnit = item.salePrice - item.unitCost
+                      const profitTotal = profitPerUnit * item.quantity
+                      const isLoss = profitTotal < 0
 
-                        {/* Costo */}
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="block text-[10px] text-gray-500 uppercase tracking-wider">
-                              {item.costMode === "total" ? "Total pagaste" : "Costo c/u"}
-                            </label>
-                            <button
-                              onClick={() => {
-                                const newMode = item.costMode === "unit" ? "total" : "unit"
-                                if (newMode === "total") {
-                                  updateCartItem(item.productId, {
-                                    costMode: newMode,
-                                    totalInput: item.unitCost * item.quantity,
-                                  })
-                                } else {
-                                  updateCartItem(item.productId, {
-                                    costMode: newMode,
-                                    totalInput: undefined,
-                                  })
-                                }
-                              }}
-                              className="text-[9px] text-accent hover:underline"
-                            >
-                              {item.costMode === "total" ? "→ por unidad" : "→ por total"}
-                            </button>
-                          </div>
-                          <div className="relative">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.costMode === "total" ? (item.totalInput ?? 0) : item.unitCost}
-                              onChange={e => {
-                                const val = parseFloat(e.target.value) || 0
-                                if (item.costMode === "total") {
-                                  updateCartItem(item.productId, {
-                                    totalInput: val,
-                                    unitCost: item.quantity > 0 ? val / item.quantity : 0,
-                                  })
-                                } else {
-                                  updateCartItem(item.productId, { unitCost: val })
-                                }
-                              }}
-                              className="w-full pl-5 pr-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm font-semibold"
-                            />
-                          </div>
-                          {item.costMode === "total" && (
-                            <p className="text-[10px] text-gray-500 mt-0.5">
-                              = {formatCurrency(item.unitCost)} c/u
+                      return (
+                        <tr key={item.productId} className="hover:bg-gray-900/40">
+                          {/* Producto + stock preview */}
+                          <td className="px-2 py-1.5">
+                            <p className="text-white text-sm truncate max-w-[260px]">{item.productName}</p>
+                            <p className="text-[10px] text-gray-500">
+                              Stock: {item.currentStock}
+                              <span className="text-emerald-400 font-medium"> → {item.currentStock + item.quantity}</span>
                             </p>
-                          )}
-                        </div>
+                          </td>
 
-                        {/* Precio venta */}
-                        <div>
-                          <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">
-                            Vendés a
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.salePrice}
-                              onChange={e => updateCartItem(item.productId, { salePrice: parseFloat(e.target.value) || 0 })}
-                              className="w-full pl-5 pr-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 text-sm"
-                            />
-                          </div>
-                          <p className="text-[10px] text-gray-600 mt-0.5">precio actual</p>
-                        </div>
-                      </div>
+                          {/* Cantidad con +/- */}
+                          <td className="px-2 py-1.5">
+                            <div className="flex items-center justify-center gap-0.5">
+                              <button
+                                onClick={() => {
+                                  const nextQty = Math.max(1, item.quantity - 1)
+                                  updateCartItem(item.productId, recalcUnit({ ...item, quantity: nextQty }))
+                                }}
+                                className="w-6 h-7 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 text-sm font-bold"
+                                tabIndex={-1}
+                              >−</button>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={e => {
+                                  const nextQty = Math.max(1, parseInt(e.target.value) || 1)
+                                  updateCartItem(item.productId, recalcUnit({ ...item, quantity: nextQty }))
+                                }}
+                                className="w-14 h-7 px-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-center font-semibold focus:outline-none focus:border-accent"
+                              />
+                              <button
+                                onClick={() => {
+                                  updateCartItem(item.productId, recalcUnit({ ...item, quantity: item.quantity + 1 }))
+                                }}
+                                className="w-6 h-7 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 text-sm font-bold"
+                                tabIndex={-1}
+                              >+</button>
+                            </div>
+                          </td>
 
-                      {/* Row de ganancia calculada */}
-                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-800/80">
-                        <div className="text-center py-1.5 bg-gray-800/40 rounded">
-                          <p className="text-[9px] uppercase tracking-wider text-gray-500">Pagás</p>
-                          <p className="text-sm font-bold text-white">{formatCurrency(subtotal)}</p>
-                        </div>
-                        <div className="text-center py-1.5 bg-sky-900/20 border border-sky-700/30 rounded">
-                          <p className="text-[9px] uppercase tracking-wider text-sky-400">Por unidad</p>
-                          <p className={`text-sm font-bold ${profitPerUnit >= 0 ? "text-sky-300" : "text-red-400"}`}>
-                            {profitPerUnit >= 0 ? "+" : ""}{formatCurrency(profitPerUnit)}
-                          </p>
-                        </div>
-                        <div className="text-center py-1.5 bg-emerald-900/20 border border-emerald-700/30 rounded">
-                          <p className="text-[9px] uppercase tracking-wider text-emerald-400">Si vendés todo</p>
-                          <p className={`text-sm font-bold ${profitTotal >= 0 ? "text-emerald-300" : "text-red-400"}`}>
-                            {profitTotal >= 0 ? "+" : ""}{formatCurrency(profitTotal)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
+                          {/* Costo c/u — doble click activa modo total */}
+                          <td className="px-2 py-1.5">
+                            <div className="flex items-center justify-center">
+                              <div className="relative w-full max-w-[100px]">
+                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">$</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={item.costMode === "total" ? (item.totalInput ?? 0) : item.unitCost}
+                                  onChange={e => {
+                                    const val = parseFloat(e.target.value) || 0
+                                    if (item.costMode === "total") {
+                                      updateCartItem(item.productId, {
+                                        totalInput: val,
+                                        unitCost: item.quantity > 0 ? val / item.quantity : 0,
+                                      })
+                                    } else {
+                                      updateCartItem(item.productId, { unitCost: val })
+                                    }
+                                  }}
+                                  title={item.costMode === "total" ? `Total pagaste (= ${formatCurrency(item.unitCost)} c/u)` : "Costo por unidad"}
+                                  className={`w-full h-7 pl-4 pr-1 border rounded text-white text-sm text-right focus:outline-none focus:border-accent ${
+                                    item.costMode === "total" ? "bg-amber-900/20 border-amber-700/50" : "bg-gray-800 border-gray-700"
+                                  }`}
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const newMode = item.costMode === "unit" ? "total" : "unit"
+                                  if (newMode === "total") {
+                                    updateCartItem(item.productId, {
+                                      costMode: newMode,
+                                      totalInput: item.unitCost * item.quantity,
+                                    })
+                                  } else {
+                                    updateCartItem(item.productId, {
+                                      costMode: newMode,
+                                      totalInput: undefined,
+                                    })
+                                  }
+                                }}
+                                title={item.costMode === "total" ? "Cambiar a costo por unidad" : "Cambiar a total pagado"}
+                                className="ml-1 text-[9px] text-accent hover:bg-accent-soft px-1 py-0.5 rounded whitespace-nowrap"
+                                tabIndex={-1}
+                              >
+                                {item.costMode === "total" ? "TOT" : "U"}
+                              </button>
+                            </div>
+                            {item.costMode === "total" && (
+                              <p className="text-[9px] text-amber-400 text-center mt-0.5">
+                                = {formatCurrency(item.unitCost)} c/u
+                              </p>
+                            )}
+                          </td>
+
+                          {/* Precio venta */}
+                          <td className="px-2 py-1.5">
+                            <div className="relative">
+                              <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.salePrice}
+                                onChange={e => updateCartItem(item.productId, { salePrice: parseFloat(e.target.value) || 0 })}
+                                className="w-full h-7 pl-4 pr-1 bg-gray-800 border border-gray-700 rounded text-gray-300 text-sm text-right focus:outline-none focus:border-accent"
+                              />
+                            </div>
+                          </td>
+
+                          {/* Pagás */}
+                          <td className="px-2 py-1.5 text-right">
+                            <p className="text-white font-semibold">{formatCurrency(subtotal)}</p>
+                          </td>
+
+                          {/* Ganancia total */}
+                          <td className="px-2 py-1.5 text-right">
+                            <p className={`font-bold ${isLoss ? "text-red-400" : "text-emerald-400"}`}>
+                              {profitTotal >= 0 ? "+" : ""}{formatCurrency(profitTotal)}
+                            </p>
+                            <p className={`text-[10px] ${isLoss ? "text-red-500" : "text-gray-500"}`}>
+                              {profitPerUnit >= 0 ? "+" : ""}{formatCurrency(profitPerUnit)} c/u
+                            </p>
+                          </td>
+
+                          <td className="px-1 py-1.5">
+                            <button onClick={() => removeCartItem(item.productId)}
+                              className="p-1 rounded hover:bg-red-500/10 text-gray-600 hover:text-red-400"
+                              tabIndex={-1}>
+                              <X size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Atajos pack */}
+              <div className="bg-gray-900/50 border-t border-gray-800 px-3 py-2 flex items-center gap-2 text-[11px]">
+                <span className="text-gray-500">Atajos:</span>
+                {[6, 12, 24].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => {
+                      // Apply to last added item (the last in cart)
+                      if (cart.length === 0) return
+                      const last = cart[cart.length - 1]
+                      updateCartItem(last.productId, recalcUnit({ ...last, quantity: last.quantity + n }))
+                    }}
+                    className="px-2 py-0.5 rounded bg-gray-800 hover:bg-accent-soft text-gray-400 hover:text-accent"
+                    title={`Sumar ${n} al último producto agregado`}
+                  >
+                    +{n} al último
+                  </button>
+                ))}
               </div>
             </div>
           )}
