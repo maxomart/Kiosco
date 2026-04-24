@@ -1,17 +1,8 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Badge } from "@/components/ui/Badge"
+import { Card } from "@/components/ui/Card"
 import type { StockPrediction } from "@/types"
-import { AlertTriangle, Zap } from "lucide-react"
 
 interface StockWarningListProps {
   predictions: StockPrediction[]
@@ -21,8 +12,7 @@ export function StockWarningList({ predictions }: StockWarningListProps) {
   if (predictions.length === 0) {
     return (
       <Card className="p-8 text-center">
-        <Zap className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-        <p className="text-muted-foreground">
+        <p className="text-gray-500">
           Stock en niveles normales para todos los productos
         </p>
       </Card>
@@ -32,17 +22,13 @@ export function StockWarningList({ predictions }: StockWarningListProps) {
   const getUrgencyBadge = (urgency: string) => {
     switch (urgency) {
       case "CRITICAL":
-        return (
-          <Badge variant="destructive" className="flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> CRÍTICO
-          </Badge>
-        )
+        return <Badge className="bg-red-600 text-white">CRÍTICO</Badge>
       case "HIGH":
         return <Badge className="bg-orange-100 text-orange-800">ALTO</Badge>
       case "NORMAL":
-        return <Badge variant="outline">Normal</Badge>
+        return <Badge className="bg-yellow-100 text-yellow-800">Normal</Badge>
       default:
-        return <Badge variant="secondary">Bajo</Badge>
+        return <Badge className="bg-gray-100 text-gray-800">Bajo</Badge>
     }
   }
 
@@ -57,41 +43,29 @@ export function StockWarningList({ predictions }: StockWarningListProps) {
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Producto</TableHead>
-              <TableHead className="text-right">Stock actual</TableHead>
-              <TableHead className="text-right">Vende/día</TableHead>
-              <TableHead className="text-right">Se agota en</TableHead>
-              <TableHead className="text-right">Comprar</TableHead>
-              <TableHead className="text-right">Costo</TableHead>
-              <TableHead className="w-24">Urgencia</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {predictions.map((p) => (
-              <TableRow key={p.productId}>
-                <TableCell className="font-medium">{p.productName}</TableCell>
-                <TableCell className="text-right">{p.currentStock}</TableCell>
-                <TableCell className="text-right">
-                  {p.avgDailySales.toFixed(1)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {p.daysUntilStockout} días
-                </TableCell>
-                <TableCell className="text-right font-semibold">
-                  {p.recommendedQuantity}
-                </TableCell>
-                <TableCell className="text-right">
+      <div className="space-y-2">
+        {predictions.map((p) => (
+          <div
+            key={p.productId}
+            className="border rounded-lg p-3 flex justify-between items-center"
+          >
+            <div className="flex-1">
+              <p className="font-medium">{p.productName}</p>
+              <p className="text-xs text-gray-500">
+                Stock: {p.currentStock} | Vende: {p.avgDailySales.toFixed(1)}/día | Se agota: {p.daysUntilStockout}d
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-sm font-semibold">Comprar {p.recommendedQuantity}</p>
+                <p className="text-xs text-gray-500">
                   ${p.estimatedCost.toLocaleString("es-AR")}
-                </TableCell>
-                <TableCell>{getUrgencyBadge(p.urgency)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </p>
+              </div>
+              {getUrgencyBadge(p.urgency)}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

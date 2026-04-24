@@ -1,9 +1,8 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/Badge"
+import { Card } from "@/components/ui/Card"
 import type { ProductMarginAnalysis } from "@/types"
-import { TrendingDown, TrendingUp } from "lucide-react"
 
 interface MarginCardProps {
   product: ProductMarginAnalysis
@@ -41,7 +40,7 @@ export function MarginCard({ product }: MarginCardProps) {
           <h3 className="font-semibold text-sm truncate">
             {product.productName}
           </h3>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-500">
             Stock: {product.currentStock} | {product.avgDailySales}/día
           </p>
         </div>
@@ -52,7 +51,7 @@ export function MarginCard({ product }: MarginCardProps) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Margen actual</p>
+          <p className="text-xs text-gray-500 mb-1">Margen actual</p>
           <p className={`text-lg font-bold ${getMarginColor(product.currentMarginPct)}`}>
             {product.currentMarginPct.toFixed(1)}%
           </p>
@@ -60,25 +59,19 @@ export function MarginCard({ product }: MarginCardProps) {
 
         {potentialGain > 0 && (
           <div className="bg-blue-50 rounded p-2">
-            <p className="text-xs text-muted-foreground mb-1">Posible</p>
-            <div className="flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 text-blue-600" />
-              <p className="text-sm font-semibold text-blue-600">
-                +{potentialGain.toFixed(1)}%
-              </p>
-            </div>
+            <p className="text-xs text-gray-500 mb-1">Posible</p>
+            <p className="text-sm font-semibold text-blue-600">
+              +{potentialGain.toFixed(1)}%
+            </p>
           </div>
         )}
       </div>
 
       {product.daysToStockout < 30 && (
         <div className="mt-3 pt-3 border-t border-dashed">
-          <div className="flex items-center gap-2 text-xs">
-            <TrendingDown className="w-3 h-3 text-orange-600" />
-            <span className="text-orange-600 font-medium">
-              Se agota en {product.daysToStockout} días
-            </span>
-          </div>
+          <span className="text-orange-600 font-medium text-xs">
+            Se agota en {product.daysToStockout} días
+          </span>
         </div>
       )}
     </Card>

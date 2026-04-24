@@ -1,17 +1,8 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Badge } from "@/components/ui/Badge"
+import { Card } from "@/components/ui/Card"
 import type { InvisibleLoss } from "@/types"
-import { AlertCircle, Droplets, Zap } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -21,19 +12,6 @@ interface InvisibleLossesListProps {
 
 export function InvisibleLossesList({ losses }: InvisibleLossesListProps) {
   const total = losses.reduce((sum, loss) => sum + loss.estimatedValue, 0)
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "EXPIRED":
-        return <AlertCircle className="w-4 h-4" />
-      case "CASH_DIFF":
-        return <Droplets className="w-4 h-4" />
-      case "DAMAGED":
-        return <Zap className="w-4 h-4" />
-      default:
-        return <AlertCircle className="w-4 h-4" />
-    }
-  }
 
   const getTypeLabel = (type: string) => {
     switch (type) {
@@ -68,8 +46,7 @@ export function InvisibleLossesList({ losses }: InvisibleLossesListProps) {
   if (losses.length === 0) {
     return (
       <Card className="p-8 text-center">
-        <Zap className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-        <p className="text-muted-foreground">
+        <p className="text-gray-500">
           Sin pérdidas detectadas en este período
         </p>
       </Card>
@@ -87,40 +64,28 @@ export function InvisibleLossesList({ losses }: InvisibleLossesListProps) {
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Descripción</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead className="text-right">Fecha</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {losses.map((loss) => (
-              <TableRow key={loss.id}>
-                <TableCell>
-                  <Badge className={`flex items-center gap-1 w-fit ${getTypeBadgeColor(loss.type)}`}>
-                    {getTypeIcon(loss.type)}
-                    {getTypeLabel(loss.type)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="font-medium">
-                  {loss.description}
-                </TableCell>
-                <TableCell className="text-right font-semibold text-red-600">
-                  ${loss.estimatedValue.toLocaleString("es-AR")}
-                </TableCell>
-                <TableCell className="text-right text-sm text-muted-foreground">
-                  {format(new Date(loss.detectedAt), "dd MMM yyyy", {
-                    locale: es,
-                  })}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="space-y-2">
+        {losses.map((loss) => (
+          <div
+            key={loss.id}
+            className="border rounded-lg p-3 flex justify-between items-center"
+          >
+            <div className="flex-1">
+              <Badge className={getTypeBadgeColor(loss.type)}>
+                {getTypeLabel(loss.type)}
+              </Badge>
+              <p className="font-medium mt-2">{loss.description}</p>
+              <p className="text-xs text-gray-500">
+                {format(new Date(loss.detectedAt), "dd MMM yyyy", {
+                  locale: es,
+                })}
+              </p>
+            </div>
+            <p className="font-semibold text-red-600">
+              ${loss.estimatedValue.toLocaleString("es-AR")}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   )

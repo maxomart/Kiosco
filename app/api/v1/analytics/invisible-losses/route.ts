@@ -1,4 +1,4 @@
-import { auth } from "@/app/api/auth/[...nextauth]/auth"
+import { auth } from "@/lib/auth"
 import { detectInvisibleLosses } from "@/lib/analytics/losses"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
