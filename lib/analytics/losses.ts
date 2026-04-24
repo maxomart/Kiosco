@@ -69,9 +69,9 @@ export async function detectInvisibleLosses(
   // Stock movements marked as LOSS
   const stockMovements = await db.stockMovement.findMany({
     where: {
-      tenantId,
       type: "LOSS",
       createdAt: { gte: startDate },
+      product: { tenantId },
     },
     select: {
       id: true,
