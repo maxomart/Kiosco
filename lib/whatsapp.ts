@@ -50,7 +50,7 @@ export async function sendWhatsApp(toRaw: string, body: string): Promise<SendRes
   const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID!
 
   try {
-    const url = `https://graph.instagram.com/v19.0/${phoneNumberId}/messages`
+    const url = `https://graph.instagram.com/v25.0/${phoneNumberId}/messages`
 
     const payload = {
       messaging_product: "whatsapp",
