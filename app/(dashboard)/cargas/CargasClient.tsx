@@ -35,6 +35,8 @@ interface Product {
   stock: number
   costPrice: number
   barcode: string | null
+  supplier?: { id: string; name: string } | null
+  supplierId?: string | null
 }
 
 interface CartItem {
@@ -72,26 +74,49 @@ export default function CargasPage() {
     const [rRes, sRes, pRes] = await Promise.all([
       fetch(`/api/cargas?${params}`),
       fetch("/api/proveedores"),
-      fetch("/api/v1/products?limit=500"),
+      fetch("/api/productos?limit=500"),
     ])
     if (rRes.ok) { const d = await rRes.json(); setRecharges(d.recharges || []) }
     if (sRes.ok) { const d = await sRes.json(); setSuppliers(d.suppliers || []) }
-    if (pRes.ok) { const d = await pRes.json(); setProducts(d.products || d.data || []) }
+    if (pRes.ok) { const d = await pRes.json(); setProducts(d.products || []) }
     setLoading(false)
   }, [from, to])
 
   useEffect(() => { load() }, [load])
 
+  // When supplier changes, reset cart if it has items from another supplier
+  useEffect(() => {
+    if (supplierId && cart.length > 0) {
+      // Verify cart items belong to selected supplier
+      const cartProductIds = new Set(cart.map(i => i.productId))
+      const mismatched = products
+        .filter(p => cartProductIds.has(p.id))
+        .some(p => p.supplier?.id && p.supplier.id !== supplierId)
+      if (mismatched) {
+        setCart([])
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supplierId])
+
+  // Products of the selected supplier (sin filtro de búsqueda)
+  const supplierProducts = useMemo(() => {
+    if (!supplierId) return []
+    return products.filter(p => p.supplier?.id === supplierId || p.supplierId === supplierId)
+  }, [products, supplierId])
+
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase()
-    if (!q) return products.slice(0, 12)
-    return products
+    // Si hay proveedor elegido, siempre filtrar por él
+    const base = supplierId ? supplierProducts : products
+    if (!q) return base.slice(0, 20)
+    return base
       .filter(p =>
         p.name.toLowerCase().includes(q) ||
         (p.barcode && p.barcode.includes(q))
       )
-      .slice(0, 12)
-  }, [products, productSearch])
+      .slice(0, 20)
+  }, [products, supplierProducts, supplierId, productSearch])
 
   const subtotal = cart.reduce((sum, i) => sum + i.unitCost * i.quantity, 0)
   const discountNum = parseFloat(discount) || 0
@@ -263,38 +288,112 @@ export default function CargasPage() {
 
           {/* Product Search */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Agregar productos *</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-              <input
-                value={productSearch}
-                onChange={e => setProductSearch(e.target.value)}
-                placeholder="Buscar por nombre o código de barras..."
-                className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
-              />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs text-gray-400">Agregar productos *</label>
+              {supplierId && (
+                <span className="text-[10px] text-accent">
+                  {supplierProducts.length === 0
+                    ? "Este proveedor no tiene productos asignados"
+                    : `${supplierProducts.length} producto${supplierProducts.length === 1 ? "" : "s"} de este proveedor`}
+                </span>
+              )}
             </div>
 
-            {productSearch && filteredProducts.length > 0 && (
-              <div className="mt-2 border border-gray-800 rounded-lg overflow-hidden bg-gray-950 max-h-60 overflow-y-auto">
-                {filteredProducts.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => addProduct(p)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-800 border-b border-gray-800 last:border-0 transition-colors flex justify-between items-center gap-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-white truncate">{p.name}</p>
-                      <p className="text-[10px] text-gray-500">
-                        Stock actual: {p.stock} · Costo: {formatCurrency(Number(p.costPrice))}
-                      </p>
-                    </div>
-                    <Plus className="w-4 h-4 text-accent flex-shrink-0" />
-                  </button>
-                ))}
+            {!supplierId ? (
+              <div className="bg-gray-800/30 border border-dashed border-gray-700 rounded-lg p-4 text-center">
+                <p className="text-xs text-gray-500">Seleccioná un proveedor primero para ver sus productos</p>
               </div>
-            )}
-            {productSearch && filteredProducts.length === 0 && (
-              <p className="text-xs text-gray-500 mt-2">Ningún producto coincide con "{productSearch}"</p>
+            ) : supplierProducts.length === 0 ? (
+              <div className="bg-amber-900/20 border border-amber-700/40 rounded-lg p-4">
+                <p className="text-sm text-amber-300 mb-1">Sin productos con este proveedor</p>
+                <p className="text-xs text-gray-400">
+                  Andá a <a href="/inventario" className="text-accent underline">Inventario</a> y asignale este proveedor a los productos que corresponden.
+                  Mientras tanto podés buscar cualquier producto abajo.
+                </p>
+                <div className="relative mt-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  <input
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                    placeholder="Buscar producto..."
+                    className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                {productSearch && (
+                  <div className="mt-2 border border-gray-800 rounded-lg overflow-hidden bg-gray-950 max-h-60 overflow-y-auto">
+                    {products
+                      .filter(p =>
+                        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                        (p.barcode && p.barcode.includes(productSearch))
+                      )
+                      .slice(0, 20)
+                      .map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => addProduct(p)}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-800 border-b border-gray-800 last:border-0 flex justify-between items-center gap-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-white truncate">{p.name}</p>
+                            <p className="text-[10px] text-gray-500">
+                              Stock: {p.stock} · Costo: {formatCurrency(Number(p.costPrice))}
+                              {p.supplier?.name && ` · ${p.supplier.name}`}
+                            </p>
+                          </div>
+                          <Plus className="w-4 h-4 text-accent flex-shrink-0" />
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="relative mb-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  <input
+                    value={productSearch}
+                    onChange={e => setProductSearch(e.target.value)}
+                    placeholder="Filtrar por nombre o código..."
+                    className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div className="border border-gray-800 rounded-lg overflow-hidden bg-gray-950 max-h-72 overflow-y-auto">
+                  {filteredProducts.length === 0 ? (
+                    <p className="text-xs text-gray-500 p-4 text-center">
+                      Ningún producto coincide con "{productSearch}"
+                    </p>
+                  ) : (
+                    filteredProducts.map(p => {
+                      const inCart = cart.find(c => c.productId === p.id)
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => addProduct(p)}
+                          className={`w-full text-left px-3 py-2 hover:bg-gray-800 border-b border-gray-800 last:border-0 transition-colors flex justify-between items-center gap-2 ${
+                            inCart ? "bg-accent-soft/30" : ""
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-white truncate">{p.name}</p>
+                            <p className="text-[10px] text-gray-500">
+                              Stock: {p.stock} · Costo: {formatCurrency(Number(p.costPrice))}
+                              {p.barcode && ` · ${p.barcode}`}
+                            </p>
+                          </div>
+                          {inCart ? (
+                            <span className="text-[10px] font-bold text-accent bg-accent-soft px-2 py-0.5 rounded-full whitespace-nowrap">
+                              ×{inCart.quantity}
+                            </span>
+                          ) : (
+                            <Plus className="w-4 h-4 text-accent flex-shrink-0" />
+                          )}
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </>
             )}
           </div>
 

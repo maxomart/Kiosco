@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const q = searchParams.get("q") ?? ""
   const categoryId = searchParams.get("categoryId")
+  const supplierId = searchParams.get("supplierId")
   const page = parseInt(searchParams.get("page") ?? "1")
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50"), 200)
   const lowStock = searchParams.get("lowStock") === "true"
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
     { sku: { contains: q, mode: "insensitive" } },
   ]
   if (categoryId) where.categoryId = categoryId
+  if (supplierId) where.supplierId = supplierId
 
   try {
     const [products, total] = await Promise.all([
