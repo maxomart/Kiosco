@@ -34,6 +34,7 @@ interface Product {
   name: string
   stock: number
   costPrice: number
+  salePrice: number
   barcode: string | null
   supplier?: { id: string; name: string } | null
   supplierId?: string | null
@@ -44,7 +45,11 @@ interface CartItem {
   productName: string
   quantity: number
   unitCost: number
+  salePrice: number
   currentStock: number
+  // How the user entered the cost: per unit (default) or per total
+  costMode: "unit" | "total"
+  totalInput?: number // only used when costMode === "total"
 }
 
 export default function CargasPage() {
@@ -121,6 +126,8 @@ export default function CargasPage() {
   const subtotal = cart.reduce((sum, i) => sum + i.unitCost * i.quantity, 0)
   const discountNum = parseFloat(discount) || 0
   const total = Math.max(0, subtotal - discountNum)
+  const projectedRevenue = cart.reduce((sum, i) => sum + i.salePrice * i.quantity, 0)
+  const projectedProfit = projectedRevenue - total
 
   const addProduct = (product: Product) => {
     setCart(prev => {
@@ -135,10 +142,20 @@ export default function CargasPage() {
         productName: product.name,
         quantity: 1,
         unitCost: Number(product.costPrice) || 0,
+        salePrice: Number(product.salePrice) || 0,
         currentStock: product.stock,
+        costMode: "unit",
       }]
     })
     setProductSearch("")
+  }
+
+  // Re-calculate unitCost when switching modes or changing total
+  const recalcUnit = (item: CartItem): CartItem => {
+    if (item.costMode === "total" && item.totalInput !== undefined && item.quantity > 0) {
+      return { ...item, unitCost: item.totalInput / item.quantity }
+    }
+    return item
   }
 
   const updateCartItem = (productId: string, patch: Partial<CartItem>) => {
@@ -404,48 +421,171 @@ export default function CargasPage() {
                 Productos en esta carga ({cart.length})
               </div>
               <div className="divide-y divide-gray-800">
-                {cart.map(item => (
-                  <div key={item.productId} className="p-3 flex items-center gap-3 flex-wrap">
-                    <div className="flex-1 min-w-[160px]">
-                      <p className="text-sm text-white">{item.productName}</p>
-                      <p className="text-[10px] text-gray-500">
-                        Stock: {item.currentStock} → {item.currentStock + item.quantity}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-gray-500 mb-0.5">Cantidad</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={e => updateCartItem(item.productId, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
-                        className="w-20 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-right"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-gray-500 mb-0.5">Costo unit.</label>
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.unitCost}
-                          onChange={e => updateCartItem(item.productId, { unitCost: parseFloat(e.target.value) || 0 })}
-                          className="w-24 pl-5 pr-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-right"
-                        />
+                {cart.map(item => {
+                  const subtotal = item.unitCost * item.quantity
+                  const profitPerUnit = item.salePrice - item.unitCost
+                  const profitTotal = profitPerUnit * item.quantity
+                  return (
+                    <div key={item.productId} className="p-4 space-y-3">
+                      {/* Header: name + stock preview + remove */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white">{item.productName}</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            Stock: <span className="text-gray-300">{item.currentStock}</span>
+                            {" → "}
+                            <span className="text-emerald-400 font-semibold">{item.currentStock + item.quantity}</span>
+                          </p>
+                        </div>
+                        <button onClick={() => removeCartItem(item.productId)}
+                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400">
+                          <X size={15} />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* Cantidad */}
+                        <div>
+                          <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Cantidad</label>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                const nextQty = Math.max(1, item.quantity - 1)
+                                const patched = { ...item, quantity: nextQty }
+                                updateCartItem(item.productId, recalcUnit(patched))
+                              }}
+                              className="w-8 h-8 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold"
+                            >−</button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={e => {
+                                const nextQty = Math.max(1, parseInt(e.target.value) || 1)
+                                const patched = { ...item, quantity: nextQty }
+                                updateCartItem(item.productId, recalcUnit(patched))
+                              }}
+                              className="flex-1 min-w-0 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm text-center font-semibold"
+                            />
+                            <button
+                              onClick={() => {
+                                const nextQty = item.quantity + 1
+                                const patched = { ...item, quantity: nextQty }
+                                updateCartItem(item.productId, recalcUnit(patched))
+                              }}
+                              className="w-8 h-8 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold"
+                            >+</button>
+                          </div>
+                          <div className="flex gap-1 mt-1">
+                            {[6, 12, 24].map(n => (
+                              <button
+                                key={n}
+                                onClick={() => {
+                                  const patched = { ...item, quantity: item.quantity + n }
+                                  updateCartItem(item.productId, recalcUnit(patched))
+                                }}
+                                className="flex-1 text-[10px] py-0.5 rounded bg-gray-800/50 hover:bg-accent-soft text-gray-400 hover:text-accent"
+                              >+{n}</button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Costo */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-[10px] text-gray-500 uppercase tracking-wider">
+                              {item.costMode === "total" ? "Total pagaste" : "Costo c/u"}
+                            </label>
+                            <button
+                              onClick={() => {
+                                const newMode = item.costMode === "unit" ? "total" : "unit"
+                                if (newMode === "total") {
+                                  updateCartItem(item.productId, {
+                                    costMode: newMode,
+                                    totalInput: item.unitCost * item.quantity,
+                                  })
+                                } else {
+                                  updateCartItem(item.productId, {
+                                    costMode: newMode,
+                                    totalInput: undefined,
+                                  })
+                                }
+                              }}
+                              className="text-[9px] text-accent hover:underline"
+                            >
+                              {item.costMode === "total" ? "→ por unidad" : "→ por total"}
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.costMode === "total" ? (item.totalInput ?? 0) : item.unitCost}
+                              onChange={e => {
+                                const val = parseFloat(e.target.value) || 0
+                                if (item.costMode === "total") {
+                                  updateCartItem(item.productId, {
+                                    totalInput: val,
+                                    unitCost: item.quantity > 0 ? val / item.quantity : 0,
+                                  })
+                                } else {
+                                  updateCartItem(item.productId, { unitCost: val })
+                                }
+                              }}
+                              className="w-full pl-5 pr-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-sm font-semibold"
+                            />
+                          </div>
+                          {item.costMode === "total" && (
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                              = {formatCurrency(item.unitCost)} c/u
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Precio venta */}
+                        <div>
+                          <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                            Vendés a
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.salePrice}
+                              onChange={e => updateCartItem(item.productId, { salePrice: parseFloat(e.target.value) || 0 })}
+                              className="w-full pl-5 pr-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 text-sm"
+                            />
+                          </div>
+                          <p className="text-[10px] text-gray-600 mt-0.5">precio actual</p>
+                        </div>
+                      </div>
+
+                      {/* Row de ganancia calculada */}
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-800/80">
+                        <div className="text-center py-1.5 bg-gray-800/40 rounded">
+                          <p className="text-[9px] uppercase tracking-wider text-gray-500">Pagás</p>
+                          <p className="text-sm font-bold text-white">{formatCurrency(subtotal)}</p>
+                        </div>
+                        <div className="text-center py-1.5 bg-sky-900/20 border border-sky-700/30 rounded">
+                          <p className="text-[9px] uppercase tracking-wider text-sky-400">Por unidad</p>
+                          <p className={`text-sm font-bold ${profitPerUnit >= 0 ? "text-sky-300" : "text-red-400"}`}>
+                            {profitPerUnit >= 0 ? "+" : ""}{formatCurrency(profitPerUnit)}
+                          </p>
+                        </div>
+                        <div className="text-center py-1.5 bg-emerald-900/20 border border-emerald-700/30 rounded">
+                          <p className="text-[9px] uppercase tracking-wider text-emerald-400">Si vendés todo</p>
+                          <p className={`text-sm font-bold ${profitTotal >= 0 ? "text-emerald-300" : "text-red-400"}`}>
+                            {profitTotal >= 0 ? "+" : ""}{formatCurrency(profitTotal)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right min-w-[90px]">
-                      <p className="text-[10px] text-gray-500">Subtotal</p>
-                      <p className="text-sm text-white font-medium">{formatCurrency(item.unitCost * item.quantity)}</p>
-                    </div>
-                    <button onClick={() => removeCartItem(item.productId)}
-                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400">
-                      <X size={15} />
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
@@ -470,20 +610,46 @@ export default function CargasPage() {
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
               </div>
 
-              <div className="md:col-span-2 bg-gray-800/50 rounded-lg p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Subtotal</span>
-                  <span className="text-white">{formatCurrency(subtotal)}</span>
-                </div>
-                {discountNum > 0 && (
+              <div className="md:col-span-2 space-y-3">
+                <div className="bg-gray-800/50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Descuento</span>
-                    <span className="text-emerald-400">-{formatCurrency(discountNum)}</span>
+                    <span className="text-gray-400">Subtotal</span>
+                    <span className="text-white">{formatCurrency(subtotal)}</span>
                   </div>
-                )}
-                <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-700">
-                  <span className="text-white">Total a pagar</span>
-                  <span className="text-accent">{formatCurrency(total)}</span>
+                  {discountNum > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Descuento</span>
+                      <span className="text-emerald-400">−{formatCurrency(discountNum)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-700">
+                    <span className="text-white">Total a pagar</span>
+                    <span className="text-accent">{formatCurrency(total)}</span>
+                  </div>
+                </div>
+
+                {/* Ganancia proyectada total */}
+                <div className="bg-gradient-to-br from-emerald-900/30 to-emerald-950/40 border border-emerald-700/40 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">
+                        Ganancia si vendés toda esta carga
+                      </p>
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Basado en el precio de venta actual de cada producto
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-2xl font-bold ${projectedProfit >= 0 ? "text-emerald-300" : "text-red-400"}`}>
+                        {projectedProfit >= 0 ? "+" : ""}{formatCurrency(projectedProfit)}
+                      </p>
+                      {total > 0 && (
+                        <p className="text-[11px] text-gray-500">
+                          {((projectedProfit / total) * 100).toFixed(1)}% de margen
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
