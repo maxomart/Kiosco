@@ -1,6 +1,5 @@
 "use client"
 
-import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Card } from "@/components/ui/Card"
 import type { DebtorAlert } from "@/types"
@@ -15,20 +14,40 @@ export function DebtorsList({ debtors }: DebtorsListProps) {
   const total = debtors.reduce((sum, d) => sum + d.totalOwed, 0)
 
   const getAlertBadge = (level: string) => {
+    const base =
+      "px-2 py-1 rounded text-xs font-medium whitespace-nowrap"
     switch (level) {
       case "CRITICAL":
-        return <Badge className="bg-red-600 text-white">CRÍTICO</Badge>
+        return (
+          <span
+            className={`${base} bg-red-900/40 text-red-300 border border-red-700/50`}
+          >
+            CRÍTICO
+          </span>
+        )
       case "WARNING":
-        return <Badge className="bg-yellow-100 text-yellow-800">ALERTA</Badge>
+        return (
+          <span
+            className={`${base} bg-amber-900/40 text-amber-300 border border-amber-700/50`}
+          >
+            ALERTA
+          </span>
+        )
       default:
-        return <Badge className="bg-gray-100 text-gray-800">Normal</Badge>
+        return (
+          <span
+            className={`${base} bg-gray-800 text-gray-400 border border-gray-700`}
+          >
+            Normal
+          </span>
+        )
     }
   }
 
   if (debtors.length === 0) {
     return (
-      <Card className="p-8 text-center">
-        <p className="text-gray-500">
+      <Card padding="lg">
+        <p className="text-gray-400 text-center">
           ¡Excelente! No hay deudores pendientes
         </p>
       </Card>
@@ -36,49 +55,44 @@ export function DebtorsList({ debtors }: DebtorsListProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-        <p className="text-sm font-semibold text-orange-900">
+    <div className="space-y-3">
+      <div className="bg-orange-900/30 border border-orange-700/40 rounded-lg p-4">
+        <p className="text-sm font-semibold text-orange-300">
           Dinero por cobrar: ${total.toLocaleString("es-AR")}
         </p>
-        <p className="text-xs text-orange-700 mt-1">
+        <p className="text-xs text-orange-400 mt-1">
           De {debtors.length} cliente{debtors.length > 1 ? "s" : ""}
         </p>
       </div>
 
       <div className="space-y-2">
         {debtors.map((debtor) => (
-          <div
-            key={debtor.clientId}
-            className="border rounded-lg p-3 flex justify-between items-start"
-          >
-            <div className="flex-1">
-              <p className="font-medium">{debtor.clientName}</p>
-              <p className="text-xs text-gray-500">
-                Vencido: {debtor.daysOverdue} días | Última venta:{" "}
-                {debtor.lastSaleDate ? (
-                  format(new Date(debtor.lastSaleDate), "dd MMM yyyy", {
-                    locale: es,
-                  })
-                ) : (
-                  "Sin ventas"
-                )}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="text-right">
-                <p className="font-semibold text-orange-600">
-                  ${debtor.totalOwed.toLocaleString("es-AR")}
+          <Card key={debtor.clientId} padding="sm">
+            <div className="flex justify-between items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-100">{debtor.clientName}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Vencido: {debtor.daysOverdue} días | Última venta:{" "}
+                  {debtor.lastSaleDate
+                    ? format(new Date(debtor.lastSaleDate), "dd MMM yyyy", {
+                        locale: es,
+                      })
+                    : "Sin ventas"}
                 </p>
               </div>
-              <div className="flex flex-col gap-2">
-                {getAlertBadge(debtor.alertLevel)}
-                <Button size="sm" variant="outline" disabled className="text-xs">
-                  Recordar
-                </Button>
+              <div className="flex items-center gap-3">
+                <p className="font-semibold text-orange-400 whitespace-nowrap">
+                  ${debtor.totalOwed.toLocaleString("es-AR")}
+                </p>
+                <div className="flex flex-col gap-2 items-end">
+                  {getAlertBadge(debtor.alertLevel)}
+                  <Button size="sm" variant="secondary" disabled className="text-xs">
+                    Recordar
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
