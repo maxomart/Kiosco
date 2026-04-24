@@ -5,6 +5,7 @@ import { DollarSign, Lock, Unlock, AlertCircle, CheckCircle, History, TrendingUp
 import toast from "react-hot-toast"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
+import { CurrencyInput } from "@/components/ui/CurrencyInput"
 
 interface CashSession {
   id: string
@@ -169,33 +170,58 @@ export default function CajaPage() {
           )}
           {!current ? (
             /* Open cash session */
-            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                  <Unlock size={20} className="text-yellow-400" />
-                </div>
-                <div>
-                  <h2 className="text-white font-semibold">Abrir caja</h2>
-                  <p className="text-gray-500 text-sm">Ingresá el monto inicial en efectivo</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1.5">Monto inicial</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                    <input
-                      type="number" value={openAmount} onChange={e => setOpenAmount(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && handleOpen()}
-                      placeholder="0.00" min="0" step="0.01"
-                      className="w-full pl-7 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white text-lg font-medium focus:outline-none focus:border-purple-500"
-                    />
+            <div className="bg-gradient-to-br from-gray-900 to-gray-900/60 rounded-xl p-6 border border-amber-700/30 relative overflow-hidden">
+              <div
+                className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-30 pointer-events-none bg-amber-500"
+                aria-hidden
+              />
+              <div className="relative">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-amber-900/40 border border-amber-700/30 flex items-center justify-center">
+                      <Unlock size={22} className="text-amber-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-white font-bold text-lg">Abrir caja</h2>
+                      <p className="text-gray-400 text-sm">Empezá la jornada declarando el efectivo</p>
+                    </div>
                   </div>
                 </div>
-                <button onClick={handleOpen} disabled={working || !openAmount}
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors">
-                  {working ? "Abriendo..." : "Abrir Caja"}
-                </button>
+
+                <div className="bg-amber-900/10 border border-amber-700/20 rounded-lg p-3 mb-5">
+                  <p className="text-xs text-amber-300/90 flex items-start gap-2">
+                    <span className="flex-shrink-0">💡</span>
+                    <span>Contá el efectivo que tenés en el cajón al abrir. Esto te va a permitir detectar diferencias al cerrar.</span>
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Monto inicial</label>
+                    <CurrencyInput
+                      value={parseFloat(openAmount) || 0}
+                      onValueChange={(n) => setOpenAmount(String(n))}
+                      onKeyDown={e => e.key === "Enter" && handleOpen()}
+                      placeholder="0"
+                      className="text-xl font-semibold py-4"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1000, 5000, 10000, 20000, 50000, 100000].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setOpenAmount(String((parseFloat(openAmount) || 0) + n))}
+                        className="text-xs py-1.5 rounded-lg bg-gray-800 hover:bg-amber-900/40 hover:text-amber-300 text-gray-400 transition-colors"
+                      >
+                        +${n.toLocaleString("es-AR")}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={handleOpen} disabled={working || !openAmount || parseFloat(openAmount) < 0}
+                    className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                    {working ? "Abriendo..." : "Abrir Caja"}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -277,20 +303,29 @@ export default function CajaPage() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1.5">Monto de cierre</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                      <input
-                        type="number" value={closeAmount} onChange={e => setCloseAmount(e.target.value)}
-                        placeholder={String(expectedCash)} min="0" step="0.01"
-                        className="w-full pl-7 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white text-lg font-medium focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
+                    <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">Monto real en caja al cerrar</label>
+                    <CurrencyInput
+                      value={parseFloat(closeAmount) || 0}
+                      onValueChange={(n) => setCloseAmount(String(n))}
+                      placeholder={String(expectedCash)}
+                      className="text-xl font-semibold py-4"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">Esperado: {formatCurrency(expectedCash)}</p>
                     {closeAmount && !isNaN(parseFloat(closeAmount)) && (
-                      <div className={`mt-2 text-sm ${parseFloat(closeAmount) - expectedCash >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        Diferencia: {formatCurrency(parseFloat(closeAmount) - expectedCash)}
-                        {Math.abs(parseFloat(closeAmount) - expectedCash) > 0 && (
-                          <span className="ml-1">{parseFloat(closeAmount) > expectedCash ? "(sobrante)" : "(faltante)"}</span>
+                      <div className={`mt-2 text-sm px-3 py-2 rounded-lg ${
+                        parseFloat(closeAmount) - expectedCash === 0
+                          ? "bg-emerald-900/20 border border-emerald-700/40 text-emerald-300"
+                          : parseFloat(closeAmount) - expectedCash > 0
+                          ? "bg-sky-900/20 border border-sky-700/40 text-sky-300"
+                          : "bg-red-900/20 border border-red-700/40 text-red-300"
+                      }`}>
+                        {parseFloat(closeAmount) - expectedCash === 0 ? (
+                          <>✓ Coincide con lo esperado</>
+                        ) : (
+                          <>
+                            <strong>Diferencia:</strong> {formatCurrency(parseFloat(closeAmount) - expectedCash)}
+                            {" "}{parseFloat(closeAmount) > expectedCash ? "(sobrante)" : "(faltante)"}
+                          </>
                         )}
                       </div>
                     )}

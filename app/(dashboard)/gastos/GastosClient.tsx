@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Trash2, TrendingDown } from "lucide-react"
+import { Plus, Trash2, TrendingDown, Zap, Phone, CreditCard, Wrench, Receipt } from "lucide-react"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
+import { CurrencyInput } from "@/components/ui/CurrencyInput"
 
 interface Expense {
   id: string
@@ -15,7 +16,15 @@ interface Expense {
 
 const EXPENSE_CATEGORIES = [
   "Alquiler", "Servicios", "Sueldos", "Mercadería", "Limpieza", "Impuestos",
-  "Mantenimiento", "Publicidad", "Transporte", "Otros",
+  "Mantenimiento", "Publicidad", "Transporte", "Recargas", "Otros",
+]
+
+// Quick shortcuts that pre-fill the form with common expense types
+const QUICK_SHORTCUTS = [
+  { label: "Luz / Gas / Agua", category: "Servicios", icon: Zap, color: "text-amber-400", bg: "bg-amber-900/30" },
+  { label: "Recarga celular", category: "Recargas", icon: Phone, color: "text-sky-400", bg: "bg-sky-900/30" },
+  { label: "Alquiler", category: "Alquiler", icon: Receipt, color: "text-purple-400", bg: "bg-purple-900/30" },
+  { label: "Mantenimiento", category: "Mantenimiento", icon: Wrench, color: "text-emerald-400", bg: "bg-emerald-900/30" },
 ]
 
 export default function GastosPage() {
@@ -92,88 +101,187 @@ export default function GastosPage() {
   }, {} as Record<string, number>)
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Gastos</h1>
-          <p className="text-gray-400 text-sm mt-1">Registro de egresos del negocio</p>
+          <p className="text-gray-400 text-sm mt-1">Registrá lo que sale de caja — servicios, sueldos, alquiler, recargas…</p>
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors">
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium transition-colors">
           <Plus size={16} /> Nuevo gasto
         </button>
       </div>
 
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-red-900/30 to-red-950/30 border border-red-700/40 rounded-xl p-4">
+          <p className="text-xs text-red-400 uppercase tracking-wider font-medium">Total período</p>
+          <p className="text-2xl font-bold text-white mt-2">{formatCurrency(total)}</p>
+          <p className="text-[10px] text-gray-500 mt-1">
+            {filteredExpenses.length} gasto{filteredExpenses.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Promedio</p>
+          <p className="text-2xl font-bold text-white mt-2">
+            {filteredExpenses.length > 0 ? formatCurrency(total / filteredExpenses.length) : "$0"}
+          </p>
+          <p className="text-[10px] text-gray-500 mt-1">Por gasto</p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Top categoría</p>
+          {Object.entries(byCat).length > 0 ? (
+            <>
+              <p className="text-lg font-bold text-white mt-2 truncate">
+                {Object.entries(byCat).sort((a, b) => b[1] - a[1])[0][0]}
+              </p>
+              <p className="text-[10px] text-red-400 mt-1">
+                {formatCurrency(Object.entries(byCat).sort((a, b) => b[1] - a[1])[0][1])}
+              </p>
+            </>
+          ) : (
+            <p className="text-lg text-gray-600 mt-2">—</p>
+          )}
+        </div>
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+          <p className="text-xs text-gray-400 uppercase tracking-wider">Último gasto</p>
+          {filteredExpenses[0] ? (
+            <>
+              <p className="text-sm font-semibold text-white mt-2 truncate">
+                {filteredExpenses[0].notes || filteredExpenses[0].category}
+              </p>
+              <p className="text-[10px] text-gray-500 mt-1">
+                {formatDateTime(filteredExpenses[0].createdAt)}
+              </p>
+            </>
+          ) : (
+            <p className="text-lg text-gray-600 mt-2">—</p>
+          )}
+        </div>
+      </div>
+
+      {/* Quick shortcuts — only shown when form is closed */}
+      {!showForm && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {QUICK_SHORTCUTS.map((s) => {
+            const Icon = s.icon
+            return (
+              <button
+                key={s.label}
+                onClick={() => {
+                  setForm({ description: s.label, amount: "", category: s.category })
+                  setShowForm(true)
+                }}
+                className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-xl p-3 text-left transition-colors"
+              >
+                <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center flex-shrink-0`}>
+                  <Icon className={`w-4 h-4 ${s.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{s.label}</p>
+                  <p className="text-[10px] text-gray-500">{s.category}</p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* New expense form */}
       {showForm && (
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 space-y-4">
-          <h3 className="text-white font-medium">Registrar gasto</h3>
+          <div>
+            <h3 className="text-white font-semibold">Registrar nuevo gasto</h3>
+            <p className="text-xs text-gray-500 mt-1">Todo lo que pagaste — se suma al cálculo de ganancia neta en Caja</p>
+          </div>
           {error && (
             <div className="px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>
           )}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2">
-              <label className="block text-xs text-gray-400 mb-1.5">Descripción</label>
+              <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">Descripción</label>
               <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Ej: Pago de luz"
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
+                placeholder="Ej: Luz de enero, alquiler, recarga celular…"
+                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent transition-colors" />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Monto *</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                  min="0" step="0.01" placeholder="0.00"
-                  className="w-full pl-7 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Categoría</label>
+              <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">Categoría</label>
               <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500">
+                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent">
                 {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+            <div className="md:col-span-3">
+              <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1.5">Monto pagado *</label>
+              <CurrencyInput
+                value={parseFloat(form.amount) || 0}
+                onValueChange={(n) => setForm(f => ({ ...f, amount: String(n) }))}
+                placeholder="0"
+                className="text-xl font-semibold py-3.5"
+              />
+              <div className="flex gap-2 mt-2 flex-wrap">
+                {[1000, 5000, 10000, 50000, 100000].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, amount: String((parseFloat(f.amount) || 0) + n) }))}
+                    className="text-xs px-2 py-1 rounded bg-gray-800 hover:bg-accent-soft hover:text-accent text-gray-400 transition-colors"
+                  >
+                    +${n.toLocaleString("es-AR")}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button onClick={() => { setShowForm(false); setError(null) }} className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">Cancelar</button>
-            <button onClick={handleSave} disabled={saving || !form.amount}
-              className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium transition-colors">
-              {saving ? "Guardando..." : "Guardar gasto"}
+          <div className="flex gap-3 justify-end pt-2 border-t border-gray-800">
+            <button onClick={() => { setShowForm(false); setError(null); setForm({ description: "", amount: "", category: "Otros" }) }}
+              className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
+              Cancelar
+            </button>
+            <button onClick={handleSave} disabled={saving || !form.amount || parseFloat(form.amount) <= 0}
+              className="px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-sm font-medium transition-colors">
+              {saving ? "Guardando..." : `Guardar ${form.amount ? formatCurrency(parseFloat(form.amount)) : "gasto"}`}
             </button>
           </div>
         </div>
       )}
 
-      {/* Summary + Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 md:col-span-1">
-          <p className="text-gray-500 text-sm">Total período</p>
-          <p className="text-2xl font-bold text-red-400 mt-1">{formatCurrency(total)}</p>
-          <p className="text-gray-600 text-xs mt-1">{filteredExpenses.length} gastos</p>
-        </div>
-        <div className="md:col-span-3 bg-gray-900 rounded-xl p-4 border border-gray-800">
-          <div className="flex flex-wrap gap-2 mb-3">
-            {Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([cat, amt]) => (
-              <div key={cat} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-800 rounded-full">
-                <span className="text-gray-300 text-xs">{cat}</span>
-                <span className="text-red-400 text-xs font-medium">{formatCurrency(amt)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-              className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500" />
-            <input type="date" value={to} onChange={e => setTo(e.target.value)}
-              className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500" />
-            <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-              className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500">
-              <option value="">Todas las categorías</option>
-              {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
+      {/* Filters bar */}
+      <div className="bg-gray-900 rounded-xl p-3 border border-gray-800 flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-gray-500 uppercase tracking-wider">Filtros:</span>
+        <input type="date" value={from} onChange={e => setFrom(e.target.value)}
+          className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-accent" />
+        <span className="text-xs text-gray-600">—</span>
+        <input type="date" value={to} onChange={e => setTo(e.target.value)}
+          className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-accent" />
+        <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
+          className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-accent">
+          <option value="">Todas las categorías</option>
+          {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
+
+      {/* Desglose por categoría */}
+      {Object.entries(byCat).length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+            <button
+              key={cat}
+              onClick={() => setCatFilter(catFilter === cat ? "" : cat)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                catFilter === cat
+                  ? "bg-red-900/40 border-red-700/50 text-red-200"
+                  : "bg-gray-900 border-gray-800 text-gray-300 hover:border-gray-700"
+              }`}
+            >
+              <span>{cat}</span>
+              <span className="font-semibold text-red-400">{formatCurrency(amt)}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">

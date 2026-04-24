@@ -269,7 +269,15 @@ function SignupForm() {
           return
         }
         if (res.status === 409) {
-          setErrors({ email: "Este email ya está registrado." })
+          // Server sends specific message — detect whether it's email or phone
+          const message = String(data?.message ?? "").toLowerCase()
+          if (message.includes("celular") || message.includes("teléfono") || message.includes("telefono")) {
+            setErrors({ phone: data.message })
+          } else if (message.includes("email")) {
+            setErrors({ email: data.message })
+          } else {
+            toast.error(data?.message ?? "Ya existe una cuenta con estos datos.")
+          }
         } else if (data?.errors) {
           const fieldErrors: FormErrors = {}
           for (const err of data.errors as { path: string[]; message: string }[]) {

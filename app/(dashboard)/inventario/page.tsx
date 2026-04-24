@@ -248,6 +248,34 @@ export default function InventarioPage() {
         )}
       </div>
 
+      {/* Discoverability hint: only shows when many products are uncategorized AND nothing selected */}
+      {selected.length === 0 && products.length > 5 && products.filter(p => !p.category).length >= Math.max(3, Math.floor(products.length / 2)) && (
+        <div className="bg-gradient-to-r from-accent-soft/40 to-accent-soft/10 border border-accent/30 rounded-lg px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+              <Tag className="w-4 h-4 text-accent" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm text-white font-medium">
+                Tenés {products.filter(p => !p.category).length} producto{products.filter(p => !p.category).length !== 1 ? "s" : ""} sin categoría
+              </p>
+              <p className="text-xs text-gray-400">
+                💡 Tildá varios productos con el checkbox de la izquierda para moverlos de golpe a una categoría.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const ids = products.filter(p => !p.category).map(p => p.id)
+              setSelected(ids)
+            }}
+            className="text-xs px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground font-medium whitespace-nowrap"
+          >
+            Seleccionar sin categoría
+          </button>
+        </div>
+      )}
+
       {/* Bulk actions */}
       {selected.length > 0 && (
         <div className="flex items-center gap-3 px-4 py-2 bg-purple-600/10 border border-purple-500/30 rounded-lg flex-wrap">
