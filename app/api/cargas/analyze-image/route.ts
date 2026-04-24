@@ -6,6 +6,51 @@ import type { Plan } from "@/lib/utils"
 import { getOpenAI } from "@/lib/openai"
 import { matchProduct, type ProductCandidate } from "@/lib/fuzzy-match"
 
+/**
+ * Parse Argentine number format.
+ * Handles:
+ *   "$ 1.250,00" → 1250
+ *   "$1.250"     → 1250  (miles sin decimales)
+ *   "900,00"     → 900
+ *   "1250"       → 1250
+ *   "30.000,00"  → 30000
+ *   1250 (number) → 1250
+ */
+function parseARS(raw: unknown): number {
+  if (typeof raw === "number") return isFinite(raw) ? raw : 0
+  if (!raw) return 0
+  let str = String(raw).trim()
+  // Strip currency symbols and spaces
+  str = str.replace(/[$\s]/g, "")
+  if (!str) return 0
+
+  // If comma is present, it's Argentine format: remove thousand dots, replace comma with dot
+  if (str.includes(",")) {
+    const normalized = str.replace(/\./g, "").replace(",", ".")
+    const n = parseFloat(normalized)
+    return isFinite(n) ? n : 0
+  }
+
+  // Only dots: could be argentine thousand separator OR english decimal
+  const parts = str.split(".")
+  if (parts.length === 1) {
+    const n = parseFloat(str)
+    return isFinite(n) ? n : 0
+  }
+
+  // If any dot-separated segment after the first has exactly 3 digits, treat as thousands
+  // e.g. "1.250" or "30.000" or "1.250.000"
+  const isThousandsFormat = parts.slice(1).every((seg) => seg.length === 3)
+  if (isThousandsFormat) {
+    const n = parseFloat(str.replace(/\./g, ""))
+    return isFinite(n) ? n : 0
+  }
+
+  // Otherwise assume english decimal "1250.50"
+  const n = parseFloat(str)
+  return isFinite(n) ? n : 0
+}
+
 async function getPlan(tenantId: string): Promise<Plan> {
   const sub = await db.subscription.findUnique({
     where: { tenantId },
@@ -16,7 +61,7 @@ async function getPlan(tenantId: string): Promise<Plan> {
 
 const PROMPT = `Sos un asistente que lee remitos, facturas o listas de proveedores argentinos (bebidas, kioscos, almacenes).
 
-Tu tarea: extraer cada línea de producto de la imagen con los siguientes campos.
+Tu tarea: extraer cada línea de producto de la imagen.
 
 Devolvé SOLO un JSON válido con esta estructura exacta:
 {
@@ -25,20 +70,26 @@ Devolvé SOLO un JSON válido con esta estructura exacta:
     {
       "rawName": "nombre del producto tal como aparece",
       "quantity": número entero de cantidad (default 1 si no aparece),
-      "unitCost": precio unitario como número (0 si no aparece),
-      "totalCost": precio total de la línea como número (0 si no aparece),
+      "unitCostRaw": "precio unitario EXACTAMENTE como aparece en la imagen, con su símbolo y separadores (ej: '$ 1.250,00')",
+      "totalCostRaw": "precio total de la línea EXACTAMENTE como aparece (ej: '$ 30.000,00')",
       "unit": "unidad|pack|caja|kg|lt" o null
     }
   ]
 }
 
-Reglas:
-- Si hay cantidad y total pero no precio unitario, calculá unitario = total / cantidad.
-- Si hay unitario y cantidad pero no total, calculá total = unitario × cantidad.
-- Los números son SIN símbolo $ ni comas de miles (ej: 1250.50, no "$1.250,50").
-- Ignorá totales, subtotales, IVA, descuentos globales, fechas, números de factura.
-- Si no se puede leer una línea, no la incluyas.
-- Si la imagen no es una planilla/remito válido, devolvé items: [].`
+REGLAS CRÍTICAS SOBRE NÚMEROS (LEER CON ATENCIÓN):
+- En Argentina el punto (.) separa MILES y la coma (,) separa DECIMALES.
+- "$1.250,00" significa mil doscientos cincuenta pesos (=1250 pesos), NO 1.25 dólares.
+- "$ 900,00" = 900 pesos, NO 9 pesos.
+- "$30.000,00" = treinta mil pesos, NO 30 pesos.
+- NUNCA interpretes el punto como separador decimal en estos remitos.
+- Por eso copiá el valor TAL COMO ESTÁ en la imagen, como string, en unitCostRaw y totalCostRaw. El sistema se encarga del parseo.
+
+OTRAS REGLAS:
+- Ignorá totales, subtotales, IVA, base imponible, descuentos globales, fechas, números de factura, códigos de referencia (CC-001, etc).
+- Solo extraé líneas de productos con su cantidad y precio.
+- Si no se puede leer una línea completa, no la incluyas.
+- Si la imagen no es un remito/factura/lista de precios válido, devolvé items: [].`
 
 export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
@@ -113,9 +164,11 @@ export async function POST(req: NextRequest) {
     supplierHint: string | null
     items: Array<{
       rawName: string
-      quantity: number
-      unitCost: number
-      totalCost: number
+      quantity: number | string
+      unitCost?: number | string
+      totalCost?: number | string
+      unitCostRaw?: string
+      totalCostRaw?: string
       unit: string | null
     }>
   }
@@ -150,14 +203,34 @@ export async function POST(req: NextRequest) {
   }
 
   // Fuzzy match each detected item to product catalog
-  const matched = parsed.items.map((item) => ({
-    rawName: item.rawName || "Sin nombre",
-    quantity: Math.max(1, Math.round(Number(item.quantity) || 1)),
-    unitCost: Math.max(0, Number(item.unitCost) || 0),
-    totalCost: Math.max(0, Number(item.totalCost) || 0),
-    unit: item.unit,
-    match: matchProduct(item.rawName || "", candidates),
-  }))
+  const matched = parsed.items.map((item) => {
+    const quantity = Math.max(1, Math.round(parseARS(item.quantity) || 1))
+    // Prefer raw strings with Argentine format; fallback to legacy numeric fields
+    const unitCost = Math.max(0, parseARS(item.unitCostRaw ?? item.unitCost ?? 0))
+    const totalCost = Math.max(0, parseARS(item.totalCostRaw ?? item.totalCost ?? 0))
+
+    // If unit cost is suspiciously small but total is large, derive from total
+    // (handles AI misreads like "$1.25" when total is "$30.000")
+    let finalUnitCost = unitCost
+    if (totalCost > 0 && quantity > 0) {
+      const derived = totalCost / quantity
+      // If the derived value is >10× the AI-reported unitCost, trust the total
+      if (unitCost > 0 && derived / unitCost > 10) {
+        finalUnitCost = derived
+      } else if (unitCost === 0) {
+        finalUnitCost = derived
+      }
+    }
+
+    return {
+      rawName: item.rawName || "Sin nombre",
+      quantity,
+      unitCost: finalUnitCost,
+      totalCost: totalCost > 0 ? totalCost : finalUnitCost * quantity,
+      unit: item.unit,
+      match: matchProduct(item.rawName || "", candidates),
+    }
+  })
 
   // Try supplier hint matching if not explicitly passed
   let supplierHintMatch: { id: string; name: string } | null = null
