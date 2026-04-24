@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag, PackagePlus, Lock, Sparkles, Copy, Percent, Camera, GitMerge } from "lucide-react"
+import { Plus, Search, Edit2, Trash2, Upload, Download, Package, AlertTriangle, X, Tag, PackagePlus, Lock, Sparkles, Copy, Percent, Camera, GitMerge, MoreHorizontal } from "lucide-react"
 import { formatCurrency, PLAN_LIMITS, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
 import ProductModal from "@/components/inventario/ProductModal"
@@ -62,6 +62,7 @@ export default function InventarioPage() {
   const [showScanner, setShowScanner] = useState(false)
   const [showDuplicates, setShowDuplicates] = useState(false)
   const [newFromBarcode, setNewFromBarcode] = useState<string | null>(null)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [plan, setPlan] = useState<Plan>("STARTER")
   const confirm = useConfirm()
@@ -186,42 +187,81 @@ export default function InventarioPage() {
           <h1 className="text-2xl font-bold text-white">Inventario</h1>
           <p className="text-gray-400 text-sm mt-1">{total} productos · {lowStockCount} stock bajo · {outOfStockCount} sin stock</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
-            <Download size={16} /> Exportar
-          </button>
-          <button onClick={() => setShowImport(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
-            <Upload size={16} /> Importar
-          </button>
-          {(() => {
-            const bulkUnlocked = hasFeature(plan, "feature:csv_import")
-            return (
-              <button
-                onClick={() => bulkUnlocked ? setShowStockBulk(true) : (window.location.href = "/configuracion/suscripcion")}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-700/30 hover:bg-emerald-700/50 text-emerald-300 text-sm transition-colors border border-emerald-700/40"
-                title={bulkUnlocked ? "Editar stock de varios productos rápido" : "Disponible desde Plan Básico"}
-              >
-                <PackagePlus size={16} /> Editar stock
-                {!bulkUnlocked && <Lock size={12} className="text-amber-400" />}
-              </button>
-            )
-          })()}
-          <button onClick={() => setShowScanner(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="Escanear producto">
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* Acciones principales siempre visibles */}
+          <button
+            onClick={() => setShowScanner(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors"
+            title="Escanear código de barras"
+          >
             <Camera size={16} /> Escanear
           </button>
-          <button onClick={() => setShowCategories(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
-            <Tag size={16} /> Categorías
-          </button>
-          <button onClick={() => setShowDuplicates(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="Detectar productos duplicados">
-            <GitMerge size={16} /> Duplicados
-          </button>
+
           <button
             onClick={() => setShowAIEnrich(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-accent/20 to-accent-soft text-accent border border-accent/40 hover:from-accent/30 text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-accent/20 to-accent-soft text-accent border border-accent/40 hover:from-accent/30 text-sm font-medium transition-colors whitespace-nowrap"
             title="Auto-asignar categoría y proveedor a productos con IA"
           >
-            <Sparkles size={16} /> Auto-organizar con IA
+            <Sparkles size={16} /> Auto-organizar IA
           </button>
+
+          {/* Más acciones: dropdown con Importar / Exportar / Stock masivo / Categorías / Duplicados */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              onBlur={() => setTimeout(() => setShowMoreMenu(false), 150)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors"
+              title="Más acciones"
+            >
+              <MoreHorizontal size={16} /> Más
+            </button>
+            {showMoreMenu && (
+              <div className="absolute right-0 top-full mt-1 w-60 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-20">
+                <button
+                  onMouseDown={() => { setShowMoreMenu(false); setShowCategories(true) }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 text-left text-sm text-gray-200 transition-colors"
+                >
+                  <Tag size={14} className="text-sky-400" /> Gestionar categorías
+                </button>
+                <button
+                  onMouseDown={() => { setShowMoreMenu(false); setShowImport(true) }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 text-left text-sm text-gray-200 transition-colors"
+                >
+                  <Upload size={14} className="text-emerald-400" /> Importar CSV / Excel
+                </button>
+                <button
+                  onMouseDown={() => { setShowMoreMenu(false); handleExport() }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 text-left text-sm text-gray-200 transition-colors"
+                >
+                  <Download size={14} className="text-gray-400" /> Exportar CSV
+                </button>
+                {(() => {
+                  const bulkUnlocked = hasFeature(plan, "feature:csv_import")
+                  return (
+                    <button
+                      onMouseDown={() => {
+                        setShowMoreMenu(false)
+                        if (bulkUnlocked) setShowStockBulk(true)
+                        else window.location.href = "/configuracion/suscripcion"
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 text-left text-sm text-gray-200 transition-colors"
+                    >
+                      <PackagePlus size={14} className="text-emerald-400" /> Editar stock en masa
+                      {!bulkUnlocked && <Lock size={10} className="text-amber-400 ml-auto" />}
+                    </button>
+                  )
+                })()}
+                <button
+                  onMouseDown={() => { setShowMoreMenu(false); setShowDuplicates(true) }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 text-left text-sm text-gray-200 transition-colors border-t border-gray-800"
+                >
+                  <GitMerge size={14} className="text-amber-400" /> Detectar duplicados
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Botón principal */}
           {(() => {
             const productLimit = PLAN_LIMITS[plan].products
             const isUnlimited = !isFinite(productLimit)
