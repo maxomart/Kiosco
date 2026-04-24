@@ -75,11 +75,13 @@ export function InvisibleLossesList({ losses }: InvisibleLossesListProps) {
                 {getTypeLabel(loss.type)}
               </Badge>
               <p className="font-medium mt-2">{loss.description}</p>
-              <p className="text-xs text-gray-500">
-                {format(new Date(loss.detectedAt), "dd MMM yyyy", {
-                  locale: es,
-                })}
-              </p>
+              {loss.detectedAt && (
+                <p className="text-xs text-gray-500">
+                  {format(new Date(loss.detectedAt), "dd MMM yyyy", {
+                    locale: es,
+                  })}
+                </p>
+              )}
             </div>
             <p className="font-semibold text-red-600">
               ${loss.estimatedValue.toLocaleString("es-AR")}

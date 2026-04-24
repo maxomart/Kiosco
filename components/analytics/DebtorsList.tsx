@@ -56,11 +56,13 @@ export function DebtorsList({ debtors }: DebtorsListProps) {
               <p className="font-medium">{debtor.clientName}</p>
               <p className="text-xs text-gray-500">
                 Vencido: {debtor.daysOverdue} días | Última venta:{" "}
-                {debtor.lastSaleDate
-                  ? format(new Date(debtor.lastSaleDate), "dd MMM yyyy", {
-                      locale: es,
-                    })
-                  : "Sin ventas"}
+                {debtor.lastSaleDate ? (
+                  format(new Date(debtor.lastSaleDate), "dd MMM yyyy", {
+                    locale: es,
+                  })
+                ) : (
+                  "Sin ventas"
+                )}
               </p>
             </div>
             <div className="flex items-center gap-2">
