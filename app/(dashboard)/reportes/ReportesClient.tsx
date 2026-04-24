@@ -5,6 +5,10 @@ import Link from "next/link"
 import { TrendingUp, DollarSign, ShoppingBag, BarChart2, Download, Calendar, Lock, Sparkles, ArrowRight } from "lucide-react"
 import { formatCurrency, formatDate, type Plan } from "@/lib/utils"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts"
+import { AIInsightsPanel } from "@/components/reportes/AIInsightsPanel"
+import { SalesHeatmap } from "@/components/reportes/SalesHeatmap"
+import { TopCategoriesPanel } from "@/components/reportes/TopCategoriesPanel"
+import { PageTip } from "@/components/shared/PageTip"
 
 interface ReportData {
   plan?: Plan
@@ -131,7 +135,12 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <PageTip id="reportes:ai-tip" tone="accent">
+        <strong>✨ Nuevo:</strong> click en <strong>"Generar análisis con IA"</strong> abajo para que la IA te
+        cuente en lenguaje natural cómo viene tu negocio, qué destacar y qué mejorar.
+      </PageTip>
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -179,6 +188,30 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
             <StatBox label="Margen" value={`${data.profitMargin.toFixed(1)}%`} color={data.profitMargin >= 20 ? "green" : "yellow"} />
             <StatBox label="Ticket promedio" value={formatCurrency(data.avgTicket)} color="purple" />
           </div>
+
+          {/* AI Insights + comparison vs previous period (only for paid plans) */}
+          {!isLimited && (
+            <AIInsightsPanel
+              from={`${from}T00:00:00`}
+              to={`${to}T23:59:59`}
+            />
+          )}
+
+          {/* Top categories + most profitable (paid plans) */}
+          {!isLimited && (
+            <TopCategoriesPanel
+              from={`${from}T00:00:00`}
+              to={`${to}T23:59:59`}
+            />
+          )}
+
+          {/* Heatmap (paid plans) */}
+          {!isLimited && (
+            <SalesHeatmap
+              from={`${from}T00:00:00`}
+              to={`${to}T23:59:59`}
+            />
+          )}
 
           {/* FREE plan banner */}
           {isLimited && (
