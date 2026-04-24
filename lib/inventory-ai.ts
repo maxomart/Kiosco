@@ -113,6 +113,16 @@ export async function suggestEnrichment(
 
   const byId = new Map(results.map(r => [r.productId, r]))
 
+  // Normalize AI-returned values: strip whitespace, treat "null"/"-"/"" as null
+  const normalize = (val: string | null | undefined): string | null => {
+    if (!val) return null
+    const trimmed = String(val).trim()
+    if (!trimmed) return null
+    const low = trimmed.toLowerCase()
+    if (low === "null" || low === "none" || low === "n/a" || low === "-" || low === "undefined") return null
+    return trimmed
+  }
+
   // Helper to find best match in an existing list
   const matchOrNew = (raw: string | null, list: Array<{ id: string; name: string }>) => {
     if (!raw) return { type: "skip" as const, id: null, name: "", score: 0 }
@@ -136,8 +146,8 @@ export async function suggestEnrichment(
 
   return products.map(p => {
     const aiResult = byId.get(p.id)
-    const catRaw = aiResult?.category ?? null
-    const supRaw = aiResult?.supplier ?? null
+    const catRaw = normalize(aiResult?.category ?? null)
+    const supRaw = normalize(aiResult?.supplier ?? null)
 
     return {
       productId: p.id,

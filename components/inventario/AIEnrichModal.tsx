@@ -157,8 +157,15 @@ export function AIEnrichModal({
     }
   }
 
-  const countCatNew = suggestions.filter(s => s.catAction === "create_new").length
-  const countSupNew = suggestions.filter(s => s.supAction === "create_new").length
+  // Count UNIQUE new categories/suppliers (not rows)
+  const uniqueCatNew = new Set(
+    suggestions.filter(s => s.catAction === "create_new" && s.catNewName.trim()).map(s => s.catNewName.trim().toLowerCase())
+  )
+  const uniqueSupNew = new Set(
+    suggestions.filter(s => s.supAction === "create_new" && s.supNewName.trim()).map(s => s.supNewName.trim().toLowerCase())
+  )
+  const countCatNew = uniqueCatNew.size
+  const countSupNew = uniqueSupNew.size
   const countSkip = suggestions.filter(s => s.catAction === "skip" && s.supAction === "skip").length
   const countApply = suggestions.length - countSkip
 
@@ -294,10 +301,29 @@ export function AIEnrichModal({
                 <div className="bg-sky-900/20 border border-sky-700/30 rounded-lg p-3">
                   <p className="text-[10px] uppercase tracking-wider text-sky-400">Categorías nuevas</p>
                   <p className="text-xl font-bold text-sky-300 mt-1">{countCatNew}</p>
+                  <p className="text-[9px] text-gray-500 mt-0.5">únicas (se crean 1 vez)</p>
                 </div>
                 <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg p-3">
                   <p className="text-[10px] uppercase tracking-wider text-amber-400">Proveedores nuevos</p>
                   <p className="text-xl font-bold text-amber-300 mt-1">{countSupNew}</p>
+                  <p className="text-[9px] text-gray-500 mt-0.5">únicos (se crean 1 vez)</p>
+                </div>
+              </div>
+
+              {/* Leyenda de colores */}
+              <div className="flex flex-wrap items-center gap-3 text-xs bg-gray-950/40 border border-gray-800 rounded-lg px-3 py-2">
+                <span className="text-gray-500 uppercase tracking-wider text-[10px] font-semibold">Leyenda:</span>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  <span className="text-gray-400">Ya existe (se reutiliza)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Plus className="w-3 h-3 text-amber-400" />
+                  <span className="text-gray-400">Se crea nuevo</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-500 italic">—</span>
+                  <span className="text-gray-400">Sin sugerencia (no asigna)</span>
                 </div>
               </div>
 
@@ -440,14 +466,29 @@ function EnrichCell({
 }) {
   if (action === "skip") {
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-gray-600 text-xs italic">Saltar</span>
-        <button
-          onClick={() => suggestedRaw ? onChangeAction("create_new") : null}
-          className="text-[10px] text-accent hover:underline"
+      <div className="flex items-center gap-1">
+        <select
+          value="__skip__"
+          onChange={(e) => {
+            const val = e.target.value
+            if (val === "__skip__") return
+            if (val === "__create__" && suggestedRaw) {
+              onChangeAction("create_new")
+            } else if (val) {
+              onChangeExisting(val)
+              onChangeAction("assign_existing")
+            }
+          }}
+          className="flex-1 min-w-0 bg-gray-800/50 border border-gray-700/50 rounded px-2 py-1 text-xs text-gray-500 italic focus:outline-none focus:border-accent focus:text-white"
         >
-          {suggestedRaw ? `→ usar "${suggestedRaw}"` : ""}
-        </button>
+          <option value="__skip__">— Sin sugerencia (no asignar) —</option>
+          {existing.map(c => (
+            <option key={c.id} value={c.id}>Asignar: {c.name}</option>
+          ))}
+          {suggestedRaw && (
+            <option value="__create__">+ Crear "{suggestedRaw}"</option>
+          )}
+        </select>
       </div>
     )
   }
