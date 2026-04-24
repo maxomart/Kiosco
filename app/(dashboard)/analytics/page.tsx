@@ -57,33 +57,33 @@ export default async function AnalyticsPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <p className="text-sm text-gray-500">Margen promedio</p>
-            <p className="text-2xl font-bold mt-1">{avgMargin.toFixed(1)}%</p>
+          <Card padding="md">
+            <p className="text-sm text-gray-400">Margen promedio</p>
+            <p className="text-2xl font-bold mt-2 text-blue-400">{avgMargin.toFixed(1)}%</p>
             <p className="text-xs text-gray-500 mt-2">
               En {margins.length} productos
             </p>
           </Card>
 
-          <Card className="p-4">
-            <p className="text-sm text-gray-500">Stock crítico</p>
-            <p className="text-2xl font-bold mt-1 text-red-600">
+          <Card padding="md">
+            <p className="text-sm text-gray-400">Stock crítico</p>
+            <p className="text-2xl font-bold mt-2 text-red-500">
               {criticalStock}
             </p>
             <p className="text-xs text-gray-500 mt-2">Productos por agotar</p>
           </Card>
 
-          <Card className="p-4">
-            <p className="text-sm text-gray-500">Pérdidas invisibles</p>
-            <p className="text-2xl font-bold mt-1 text-orange-600">
+          <Card padding="md">
+            <p className="text-sm text-gray-400">Pérdidas invisibles</p>
+            <p className="text-2xl font-bold mt-2 text-orange-500">
               ${totalLosses.toLocaleString("es-AR")}
             </p>
             <p className="text-xs text-gray-500 mt-2">Este mes</p>
           </Card>
 
-          <Card className="p-4">
-            <p className="text-sm text-gray-500">Por cobrar</p>
-            <p className="text-2xl font-bold mt-1 text-amber-600">
+          <Card padding="md">
+            <p className="text-sm text-gray-400">Por cobrar</p>
+            <p className="text-2xl font-bold mt-2 text-amber-500">
               ${totalOwed.toLocaleString("es-AR")}
             </p>
             <p className="text-xs text-gray-500 mt-2">
