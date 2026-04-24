@@ -273,7 +273,7 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
-                    {data.salesByMethod.sort((a, b) => b.total - a.total).map((m, i) => (
+                    {[...data.salesByMethod].sort((a, b) => b.total - a.total).map((m, i) => (
                       <tr key={m.method} className="hover:bg-gray-800/30 transition-colors">
                         <td className="py-3 flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
