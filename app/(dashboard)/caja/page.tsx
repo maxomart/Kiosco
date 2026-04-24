@@ -6,6 +6,7 @@ import toast from "react-hot-toast"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
 import { CurrencyInput } from "@/components/ui/CurrencyInput"
+import { PageTip } from "@/components/shared/PageTip"
 
 interface CashSession {
   id: string
@@ -119,6 +120,12 @@ export default function CajaPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <PageTip id="caja:intro" tone="amber">
+        La <strong>caja</strong> te ayuda a controlar el efectivo: <strong>abrís</strong> contando lo que tenés al arrancar,
+        durante el día se suman las ventas en efectivo, y al <strong>cerrar</strong> comparás contra lo real para detectar diferencias.
+        Vas a ver también <strong>ganancia bruta, margen y neta</strong> en vivo.
+      </PageTip>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Caja</h1>

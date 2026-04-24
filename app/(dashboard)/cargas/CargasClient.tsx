@@ -6,6 +6,7 @@ import type { MatchResult } from "@/lib/fuzzy-match"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { SupplierManagerModal } from "@/components/shared/SupplierManagerModal"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
+import { PageTip } from "@/components/shared/PageTip"
 
 interface RechargeItem {
   id: string
@@ -353,7 +354,13 @@ export default function CargasPage() {
   const totalItems = recharges.reduce((acc, r) => acc + (r.items?.reduce((s, i) => s + i.quantity, 0) || 0), 0)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <PageTip id="cargas:how-it-works" tone="accent">
+        <strong>¿Primera carga?</strong> Lo más rápido es sacar una <strong>foto del remito</strong> con el botón{" "}
+        <strong>✨ Subir imagen</strong> — la IA detecta los productos, cantidades y precios por vos.
+        El stock se suma automáticamente al guardar.
+      </PageTip>
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Compras a Proveedor</h1>

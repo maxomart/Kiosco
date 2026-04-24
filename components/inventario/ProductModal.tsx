@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { X, Loader2 } from "lucide-react"
+import { HelpTip } from "@/components/ui/HelpTip"
 
 interface Product {
   id: string
@@ -137,7 +138,13 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
           {/* Barcode + SKU */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Código de barras</label>
+              <label className="flex items-center gap-1.5 text-sm text-gray-400 mb-1.5">
+                Código de barras
+                <HelpTip
+                  text="El número que trae cada producto en su empaque. Sirve para escanear rápido en el POS."
+                  example="Mayoría de productos: 13 dígitos (EAN-13). Podés escanear con la cámara desde el botón Escanear."
+                />
+              </label>
               <input value={form.barcode} onChange={e => set("barcode", e.target.value)}
                 placeholder="7891234567890"
                 className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 font-mono" />
@@ -162,8 +169,12 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
               {errors.salePrice && <p className="text-red-400 text-xs mt-1">{errors.salePrice}</p>}
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">
+              <label className="flex items-center gap-1.5 text-sm text-gray-400 mb-1.5">
                 Costo
+                <HelpTip
+                  text="Lo que te sale comprarlo al proveedor. Se usa para calcular tu ganancia y el margen."
+                  example="Si lo comprás a $1.000 y lo vendés a $1.500, tu margen es 33%."
+                />
                 {margin !== null && <span className={`ml-2 text-xs ${parseFloat(margin) >= 20 ? "text-green-400" : parseFloat(margin) >= 10 ? "text-yellow-400" : "text-red-400"}`}>margen {margin}%</span>}
               </label>
               <div className="relative">
@@ -184,13 +195,25 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
                 className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Stock mínimo</label>
+              <label className="flex items-center gap-1.5 text-sm text-gray-400 mb-1.5">
+                Stock mínimo
+                <HelpTip
+                  text="Cuando el stock llega a este número, aparece como 'stock bajo' en el dashboard para que repongas."
+                  example="Para una Coca 500ml que vendés 5 por día, poné 10-15 de mínimo."
+                />
+              </label>
               <input type="number" value={form.minStock} onChange={e => set("minStock", e.target.value)}
                 min="0" step="1"
                 className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Por peso</label>
+              <label className="flex items-center gap-1.5 text-sm text-gray-400 mb-1.5">
+                Por peso
+                <HelpTip
+                  text="Activá esto para productos que se venden por kilo o gramo (fiambres, verduras)."
+                  example="Al activarlo, en el POS vas a poder ingresar el peso en vez de cantidad."
+                />
+              </label>
               <label className="flex items-center gap-2 mt-2 cursor-pointer">
                 <div onClick={() => set("soldByWeight", !form.soldByWeight)}
                   className={`w-9 h-5 rounded-full transition-colors relative ${form.soldByWeight ? "bg-purple-600" : "bg-gray-700"}`}>

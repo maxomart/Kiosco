@@ -12,6 +12,8 @@ import { AIEnrichModal } from "@/components/inventario/AIEnrichModal"
 import { BulkPriceModal } from "@/components/inventario/BulkPriceModal"
 import { DuplicatesModal } from "@/components/inventario/DuplicatesModal"
 import { BarcodeScannerModal } from "@/components/inventario/BarcodeScannerModal"
+import { PageTip } from "@/components/shared/PageTip"
+import { HelpTip } from "@/components/ui/HelpTip"
 import { StockBulkModal } from "@/components/inventario/StockBulkModal"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
 import toast from "react-hot-toast"
@@ -164,7 +166,20 @@ export default function InventarioPage() {
   const outOfStockCount = products.filter(p => p.stock === 0).length
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Contextual tips */}
+      {total === 0 ? (
+        <PageTip id="inventory:first-time" tone="accent">
+          <strong>¡Bienvenido!</strong> Para cargar productos rápido tenés 3 opciones:{" "}
+          <strong>Escanear</strong> el código de barras con la cámara,{" "}
+          <strong>Importar</strong> desde un CSV/Excel, o crear manualmente con <strong>Nuevo producto</strong>.
+        </PageTip>
+      ) : total > 20 ? (
+        <PageTip id="inventory:pro-tips" tone="sky">
+          <strong>Tips de productividad:</strong> seleccioná varios productos con los checkboxes para <strong>mover a una categoría</strong> o <strong>ajustar precios en masa</strong>. Usá <strong>Auto-organizar con IA</strong> si tenés muchos sin categoría.
+        </PageTip>
+      ) : null}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -391,14 +406,60 @@ export default function InventarioPage() {
                 ))
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-12 text-center text-gray-500">
-                    <Package size={40} className="mx-auto mb-3 opacity-30" />
-                    <p>No se encontraron productos</p>
-                    {!search && !categoryFilter && (
-                      <button onClick={() => { setEditProduct(null); setShowModal(true) }}
-                        className="mt-3 text-purple-400 hover:text-purple-300 text-sm transition-colors">
-                        + Agregar primer producto
-                      </button>
+                  <td colSpan={10} className="p-12 text-center">
+                    {search || categoryFilter ? (
+                      <div className="text-gray-500">
+                        <Package size={40} className="mx-auto mb-3 opacity-30" />
+                        <p>Ningún producto coincide con los filtros</p>
+                        <button
+                          onClick={() => { setSearch(""); setCategoryFilter(""); setStockFilter("all") }}
+                          className="mt-2 text-accent hover:underline text-sm"
+                        >
+                          Limpiar filtros
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="max-w-md mx-auto">
+                        <div className="w-16 h-16 rounded-2xl bg-accent-soft flex items-center justify-center mx-auto mb-4">
+                          <Package size={32} className="text-accent" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-white mb-2">Empecemos cargando tus productos</h3>
+                        <p className="text-sm text-gray-400 mb-5">
+                          Elegí la forma más rápida según tu situación:
+                        </p>
+                        <div className="grid grid-cols-1 gap-2 text-left">
+                          <button
+                            onClick={() => setShowScanner(true)}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                          >
+                            <Camera size={18} className="text-sky-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white">Escanear código de barras</p>
+                              <p className="text-[11px] text-gray-500">Con la cámara del celu o lector USB</p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => setShowImport(true)}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                          >
+                            <Upload size={18} className="text-emerald-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white">Importar desde CSV / Excel</p>
+                              <p className="text-[11px] text-gray-500">Cargá muchos productos de una planilla</p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => { setEditProduct(null); setShowModal(true) }}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                          >
+                            <Plus size={18} className="text-amber-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white">Cargar manualmente</p>
+                              <p className="text-[11px] text-gray-500">Uno por uno, completando el formulario</p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </td>
                 </tr>

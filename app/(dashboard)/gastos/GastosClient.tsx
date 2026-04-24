@@ -5,6 +5,7 @@ import { Plus, Trash2, TrendingDown, Zap, Phone, CreditCard, Wrench, Receipt } f
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
 import { CurrencyInput } from "@/components/ui/CurrencyInput"
+import { PageTip } from "@/components/shared/PageTip"
 
 interface Expense {
   id: string
@@ -102,6 +103,12 @@ export default function GastosPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <PageTip id="gastos:intro" tone="amber">
+        Registrá acá todo lo que pagás <strong>que no es mercadería</strong>: alquiler, luz, sueldos,
+        recargas de servicios. Usá los atajos de abajo para cargar más rápido. Los gastos se descuentan
+        automáticamente en el cálculo de ganancia neta de la <strong>Caja</strong>.
+      </PageTip>
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
