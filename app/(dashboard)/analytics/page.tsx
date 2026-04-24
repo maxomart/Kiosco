@@ -1,6 +1,14 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Card } from "@/components/ui/Card"
+import { calculateProductMargins } from "@/lib/analytics/margins"
+import { predictStockLevels } from "@/lib/analytics/stock"
+import { detectInvisibleLosses, getTotalLossesByType } from "@/lib/analytics/losses"
+import { getDebtorAlerts } from "@/lib/analytics/debtors"
+import { MarginCard } from "@/components/analytics/MarginCard"
+import { StockWarningList } from "@/components/analytics/StockWarningList"
+import { InvisibleLossesList } from "@/components/analytics/InvisibleLossesList"
+import { DebtorsList } from "@/components/analytics/DebtorsList"
 
 export const metadata = {
   title: "Analytics - Kiosco",
@@ -12,20 +20,9 @@ export default async function AnalyticsPage() {
     redirect("/login")
   }
 
+  const tenantId = session.user.tenantId
+
   try {
-    const { calculateProductMargins } = await import("@/lib/analytics/margins")
-    const { predictStockLevels } = await import("@/lib/analytics/stock")
-    const { detectInvisibleLosses, getTotalLossesByType } = await import(
-      "@/lib/analytics/losses"
-    )
-    const { getDebtorAlerts } = await import("@/lib/analytics/debtors")
-    const { MarginCard } = await import("@/components/analytics/MarginCard")
-    const { StockWarningList } = await import("@/components/analytics/StockWarningList")
-    const { InvisibleLossesList } = await import("@/components/analytics/InvisibleLossesList")
-    const { DebtorsList } = await import("@/components/analytics/DebtorsList")
-
-    const tenantId = session.user.tenantId
-
     // Fetch all data in parallel
     const [margins, stocks, losses, debtors] = await Promise.all([
       calculateProductMargins(tenantId, 30),
@@ -39,13 +36,14 @@ export default async function AnalyticsPage() {
     const totalOwed = debtors.reduce((sum, d) => sum + d.totalOwed, 0)
 
     const criticalStock = stocks.filter((s) => s.urgency === "CRITICAL").length
-    const avgMargin = margins.length > 0
-      ? Math.round(
-          (margins.reduce((sum, p) => sum + p.currentMarginPct, 0) /
-            margins.length) *
-            10
-        ) / 10
-      : 0
+    const avgMargin =
+      margins.length > 0
+        ? Math.round(
+            (margins.reduce((sum, p) => sum + p.currentMarginPct, 0) /
+              margins.length) *
+              10
+          ) / 10
+        : 0
 
     return (
       <div className="space-y-6">
@@ -97,51 +95,54 @@ export default async function AnalyticsPage() {
         {/* Márgenes */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold mb-2">Análisis de Márgenes</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {margins.slice(0, 6).map((product) => (
-              <MarginCard key={product.productId} product={product} />
-            ))}
-          </div>
-          {margins.length === 0 && (
-            <Card className="p-4 text-center">
-              <p className="text-gray-500">Sin datos aún</p>
+          {margins.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-gray-500">Sin datos aún. Realiza algunas ventas.</p>
             </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {margins.map((product) => (
+                <MarginCard key={product.productId} product={product} />
+              ))}
+            </div>
           )}
         </div>
 
         {/* Stock */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold mb-2">Stock Inteligente</h2>
-          {stocks.length > 0 ? (
-            <StockWarningList predictions={stocks} />
-          ) : (
-            <Card className="p-4 text-center">
-              <p className="text-gray-500">Stock OK en todos</p>
+          {stocks.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-gray-500">
+                Stock en niveles normales para todos los productos
+              </p>
             </Card>
+          ) : (
+            <StockWarningList predictions={stocks} />
           )}
         </div>
 
         {/* Pérdidas */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold mb-2">Pérdidas Invisibles</h2>
-          {losses.length > 0 ? (
-            <InvisibleLossesList losses={losses} />
-          ) : (
-            <Card className="p-4 text-center">
-              <p className="text-gray-500">Sin pérdidas</p>
+          {losses.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-gray-500">Sin pérdidas en este período</p>
             </Card>
+          ) : (
+            <InvisibleLossesList losses={losses} />
           )}
         </div>
 
         {/* Deudores */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold mb-2">Deudores</h2>
-          {debtors.length > 0 ? (
-            <DebtorsList debtors={debtors} />
-          ) : (
-            <Card className="p-4 text-center">
-              <p className="text-gray-500">Sin deudores</p>
+          <h2 className="text-xl font-semibold mb-2">Clientes Deudores</h2>
+          {debtors.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-gray-500">¡Excelente! Sin deudores pendientes</p>
             </Card>
+          ) : (
+            <DebtorsList debtors={debtors} />
           )}
         </div>
       </div>
@@ -152,10 +153,8 @@ export default async function AnalyticsPage() {
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Analytics</h1>
         <Card className="p-8">
-          <p className="text-red-600 font-semibold">
-            Error cargando analytics:
-          </p>
-          <p className="text-gray-600 mt-2">
+          <p className="text-red-600 font-semibold">Error cargando analytics:</p>
+          <p className="text-gray-600 mt-2 text-sm">
             {error instanceof Error ? error.message : "Error desconocido"}
           </p>
         </Card>
