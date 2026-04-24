@@ -29,6 +29,7 @@ import { MarginCard } from "@/components/analytics/MarginCard"
 import { StockWarningList } from "@/components/analytics/StockWarningList"
 import { InvisibleLossesList } from "@/components/analytics/InvisibleLossesList"
 import { DebtorsList } from "@/components/analytics/DebtorsList"
+import { AllMarginsTable } from "@/components/analytics/AllMarginsTable"
 
 export const metadata = {
   title: "Analytics - Kiosco",
@@ -85,6 +86,7 @@ export default async function AnalyticsPage() {
 
     const {
       topAttention: margins,
+      allProducts,
       deadCount,
       totalProducts,
       avgMarginActive,
@@ -254,6 +256,13 @@ export default async function AnalyticsPage() {
                 </Link>
               </div>
             </Card>
+          )}
+
+          {/* Tabla de todos los productos */}
+          {allProducts.length > 0 && (
+            <div className="mt-4">
+              <AllMarginsTable products={allProducts} />
+            </div>
           )}
         </section>
 

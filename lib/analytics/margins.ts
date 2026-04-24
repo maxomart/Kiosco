@@ -4,6 +4,7 @@ import { subDays } from "date-fns"
 
 export interface MarginSummary {
   topAttention: ProductMarginAnalysis[]  // Top 20 que necesitan acción
+  allProducts: ProductMarginAnalysis[]    // Todos para vista tabla
   deadCount: number                       // Productos sin ventas
   totalProducts: number
   avgMargin: number
@@ -145,8 +146,19 @@ export async function calculateMarginsSummary(
         ) / 10
       : 0
 
+  // Sort all products: active first (by priority + sales), then dead (by stock)
+  const allSorted = [
+    ...active.sort((a, b) => {
+      const p = priority[a.healthStatus] - priority[b.healthStatus]
+      if (p !== 0) return p
+      return b.salesQuantity30d - a.salesQuantity30d
+    }),
+    ...dead.sort((a, b) => b.currentStock - a.currentStock),
+  ]
+
   return {
     topAttention,
+    allProducts: allSorted,
     deadCount: dead.length,
     totalProducts: allAnalysis.length,
     avgMargin,
