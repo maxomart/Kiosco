@@ -167,7 +167,7 @@ export default function InventarioPage() {
   const outOfStockCount = products.filter(p => p.stock === 0).length
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Contextual tips */}
       {total === 0 ? (
         <PageTip id="inventory:first-time" tone="accent">

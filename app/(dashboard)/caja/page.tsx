@@ -119,7 +119,7 @@ export default function CajaPage() {
   const expectedCash = current ? Number(current.openingBalance) + salesTotal : 0
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <PageTip id="caja:intro" tone="amber">
         La <strong>caja</strong> te ayuda a controlar el efectivo: <strong>abrís</strong> contando lo que tenés al arrancar,
         durante el día se suman las ventas en efectivo, y al <strong>cerrar</strong> comparás contra lo real para detectar diferencias.

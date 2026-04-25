@@ -72,7 +72,7 @@ export default function LoginPage() {
           }}
         />
 
-        <div className="relative bg-white/[0.04] backdrop-blur-2xl border border-white/10 rounded-2xl p-7 sm:p-9 shadow-2xl shadow-black/60 overflow-hidden">
+        <div className="relative bg-white/[0.04] backdrop-blur-2xl border border-white/10 rounded-2xl p-5 sm:p-9 shadow-2xl shadow-black/60 overflow-hidden">
           {/* Inner subtle gradient sheen on top edge */}
           <div
             aria-hidden
@@ -167,7 +167,7 @@ export default function LoginPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-1">
               <label
                 htmlFor={rememberId}
                 className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer select-none"

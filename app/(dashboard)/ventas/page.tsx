@@ -129,7 +129,7 @@ export default function VentasPage() {
   const hasActiveFilters = search || statusFilter || methodFilter
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       <PageTip id="ventas:intro" tone="accent">
         <strong>💡 Preguntale a tu negocio:</strong> usá el botón <strong>✨ Consultar con IA</strong> para hacer preguntas como{" "}
         <em>"¿cuánto vendí ayer?"</em> o <em>"¿cuál es mi producto más rentable?"</em>. Te responde al toque con tus datos reales.
@@ -137,66 +137,66 @@ export default function VentasPage() {
 
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Ventas</h1>
-          <p className="text-gray-400 text-sm mt-1">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Ventas</h1>
+          <p className="text-gray-400 text-xs sm:text-sm mt-1">
             Historial de transacciones · <span className="text-gray-300 font-medium">{total}</span> en el período
           </p>
         </div>
         <button
           onClick={() => setShowAI(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent to-accent/80 hover:from-accent-hover text-accent-foreground font-semibold text-sm shadow-lg shadow-accent/20 transition-colors whitespace-nowrap"
+          className="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent to-accent/80 hover:from-accent-hover text-accent-foreground font-semibold text-sm shadow-lg shadow-accent/20 transition-colors whitespace-nowrap"
         >
           <Sparkles size={16} />
           Consultar con IA
         </button>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-emerald-900/30 to-emerald-950/30 border border-emerald-700/40 rounded-xl p-4">
+      {/* KPIs — 2 cols on mobile, 4 on tablet+ for compact reading */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-gradient-to-br from-emerald-900/30 to-emerald-950/30 border border-emerald-700/40 rounded-xl p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-900/50 flex items-center justify-center">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-900/50 flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
             </div>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-emerald-400">Ingresos</p>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-emerald-400 truncate">Ingresos</p>
           </div>
-          <p className="text-2xl font-bold text-white">{formatCurrency(kpis.revenue)}</p>
-          <p className="text-[11px] text-gray-500 mt-1">{kpis.completed} ventas completadas</p>
+          <p className="text-lg sm:text-2xl font-bold text-white tabular-nums break-all">{formatCurrency(kpis.revenue)}</p>
+          <p className="text-[11px] text-gray-500 mt-1">{kpis.completed} completadas</p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-sky-900/40 flex items-center justify-center">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-sky-900/40 flex items-center justify-center flex-shrink-0">
               <Receipt className="w-4 h-4 text-sky-400" />
             </div>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">Ticket promedio</p>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 truncate">Ticket prom.</p>
           </div>
-          <p className="text-2xl font-bold text-white">{formatCurrency(kpis.avgTicket)}</p>
+          <p className="text-lg sm:text-2xl font-bold text-white tabular-nums break-all">{formatCurrency(kpis.avgTicket)}</p>
           <p className="text-[11px] text-gray-500 mt-1">Por venta</p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-900/40 flex items-center justify-center">
-              <Users className="w-4 h-4 text-purple-400" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent-soft flex items-center justify-center flex-shrink-0">
+              <Users className="w-4 h-4 text-accent" />
             </div>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">Clientes</p>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 truncate">Clientes</p>
           </div>
-          <p className="text-2xl font-bold text-white">{kpis.uniqueClients}</p>
-          <p className="text-[11px] text-gray-500 mt-1">Únicos en el período</p>
+          <p className="text-lg sm:text-2xl font-bold text-white tabular-nums">{kpis.uniqueClients}</p>
+          <p className="text-[11px] text-gray-500 mt-1">Únicos</p>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
               kpis.cancelled > 0 ? "bg-red-900/40" : "bg-gray-800"
             }`}>
               <XCircle className={`w-4 h-4 ${kpis.cancelled > 0 ? "text-red-400" : "text-gray-500"}`} />
             </div>
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400">Anuladas</p>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 truncate">Anuladas</p>
           </div>
-          <p className={`text-2xl font-bold ${kpis.cancelled > 0 ? "text-red-400" : "text-white"}`}>
+          <p className={`text-lg sm:text-2xl font-bold tabular-nums ${kpis.cancelled > 0 ? "text-red-400" : "text-white"}`}>
             {kpis.cancelled}
           </p>
           <p className="text-[11px] text-gray-500 mt-1">

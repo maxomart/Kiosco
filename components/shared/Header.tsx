@@ -132,14 +132,16 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
         {title}
       </h1>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        {/* Plan badge — full label on tablet+, compact on mobile */}
         <span
           className={cn(
-            "hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+            "inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-medium whitespace-nowrap",
             PLAN_COLORS[plan]
           )}
         >
-          {PLAN_LABELS[plan]}
+          <span className="sm:hidden">{PLAN_LABELS[plan].slice(0, 3).toUpperCase()}</span>
+          <span className="hidden sm:inline">{PLAN_LABELS[plan]}</span>
         </span>
 
         <NotificationsBell />

@@ -50,22 +50,26 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
             <div key={item.productId} className="bg-gray-800 rounded-xl p-3">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <p className="text-sm text-gray-100 flex-1 leading-tight">{item.productName}</p>
-                <button onClick={() => removeFromCart(item.productId)} className="text-gray-600 hover:text-red-400 transition flex-shrink-0">
+                <button onClick={() => removeFromCart(item.productId)}
+                  className="w-8 h-8 lg:w-auto lg:h-auto -mr-1 -mt-1 lg:m-0 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition flex-shrink-0"
+                  aria-label="Quitar del carrito">
                   <Trash2 size={14} />
                 </button>
               </div>
               <div className="flex items-center justify-between gap-2">
-                {/* Qty */}
+                {/* Qty — touch-friendly on mobile (36px), compact on desktop (24px) */}
                 <div className="flex items-center gap-1.5">
                   <button onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                    className="w-6 h-6 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition">
-                    <Minus size={11} />
+                    className="w-9 h-9 lg:w-6 lg:h-6 rounded-lg bg-gray-700 hover:bg-gray-600 active:scale-95 flex items-center justify-center transition"
+                    aria-label="Disminuir cantidad">
+                    <Minus className="w-4 h-4 lg:w-3 lg:h-3" />
                   </button>
-                  <span className="text-sm font-medium w-7 text-center">{item.quantity}</span>
+                  <span className="text-base lg:text-sm font-medium w-9 lg:w-7 text-center tabular-nums">{item.quantity}</span>
                   <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                     disabled={!item.soldByWeight && item.quantity >= item.stock}
-                    className="w-6 h-6 rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 flex items-center justify-center transition">
-                    <Plus size={11} />
+                    className="w-9 h-9 lg:w-6 lg:h-6 rounded-lg bg-gray-700 hover:bg-gray-600 active:scale-95 disabled:opacity-40 flex items-center justify-center transition"
+                    aria-label="Aumentar cantidad">
+                    <Plus className="w-4 h-4 lg:w-3 lg:h-3" />
                   </button>
                 </div>
                 {/* Price + discount */}

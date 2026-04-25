@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { Check, X, Sparkles, ShoppingBag, ArrowRight, Zap, Crown, Building2 } from "lucide-react"
+import { Check, X, Sparkles, ArrowRight, Zap, Crown, Building2 } from "lucide-react"
+import { OrvexLogo } from "@/components/shared/OrvexLogo"
 
 // Native ARS pricing — primary source of truth. USD shown as secondary reference.
 // Edit lib/utils.ts → PLAN_PRICES_ARS for the canonical numbers.
@@ -48,7 +49,7 @@ const PLANS = [
     cta: "Empezar prueba",
     href: "/signup",
     icon: Zap,
-    accent: "border-purple-500 ring-2 ring-purple-500/30",
+    accent: "border-blue-500 ring-2 ring-blue-500/30",
     highlight: "Más elegido",
     features: [
       "Hasta 500 productos",
@@ -80,7 +81,7 @@ const PLANS = [
     cta: "Empezar prueba",
     href: "/signup",
     icon: Crown,
-    accent: "border-purple-700",
+    accent: "border-violet-700",
     highlight: null as string | null,
     features: [
       "Hasta 5.000 productos",
@@ -205,16 +206,14 @@ export default function PricingPage() {
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-gray-950/85 backdrop-blur-xl border-b border-gray-800/60">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <ShoppingBag className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg">Orvex</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-2 min-w-0">
+            <OrvexLogo size={32} className="flex-shrink-0" gradientId="pricing-nav-logo" />
+            <span className="font-bold text-lg truncate">Orvex</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-gray-300 hover:text-white">Ingresar</Link>
-            <Link href="/signup" className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <Link href="/login" className="text-sm text-gray-300 hover:text-white px-2 py-1.5">Ingresar</Link>
+            <Link href="/signup" className="px-3 sm:px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white text-sm font-medium whitespace-nowrap shadow-lg shadow-blue-900/30 transition-colors">
               Empezar gratis
             </Link>
           </div>
@@ -222,25 +221,25 @@ export default function PricingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-20 pb-12 px-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/15 via-transparent to-pink-900/10 pointer-events-none" />
+      <section className="relative pt-12 sm:pt-20 pb-10 sm:pb-12 px-4 sm:px-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/15 via-transparent to-violet-900/10 pointer-events-none" />
         <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs mb-5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs mb-5">
             <Sparkles size={12} /> Precios en pesos · Pagás con MercadoPago o tarjeta
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-5">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-4 sm:mb-5">
             Planes para cada etapa <br className="hidden md:block" />
             de tu negocio
           </h1>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto px-2">
             Empezá gratis. Sin tarjeta. Crecé cuando estés listo. Cancelás cuando quieras.
           </p>
         </div>
       </section>
 
       {/* Plan cards */}
-      <section className="px-6 pb-20">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      <section className="px-4 sm:px-6 pb-16 sm:pb-20">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {PLANS.map((plan) => {
             const Icon = plan.icon
             return (
@@ -249,15 +248,15 @@ export default function PricingPage() {
                 className={`relative bg-gray-900 rounded-2xl p-6 border ${plan.accent} flex flex-col`}
               >
                 {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-purple-600 text-white text-xs font-semibold shadow-lg shadow-purple-900/40">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-gradient-to-r from-blue-500 to-violet-500 text-white text-xs font-semibold shadow-lg shadow-blue-900/40 whitespace-nowrap">
                     {plan.highlight}
                   </div>
                 )}
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-gray-800 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-purple-400" />
+                  <div className="w-9 h-9 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-blue-400" />
                   </div>
-                  <h3 className="font-bold text-lg">{plan.name}</h3>
+                  <h3 className="font-bold text-lg truncate">{plan.name}</h3>
                 </div>
                 <p className="text-sm text-gray-500 mb-5 min-h-[2.5rem]">{plan.tagline}</p>
 
@@ -279,9 +278,9 @@ export default function PricingPage() {
 
                 <Link
                   href={plan.href}
-                  className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-semibold text-sm transition mb-6 ${
+                  className={`flex items-center justify-center gap-2 w-full min-h-[44px] py-2.5 rounded-xl font-semibold text-sm transition mb-6 ${
                     plan.id === "STARTER"
-                      ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/30"
+                      ? "bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white shadow-lg shadow-blue-900/30"
                       : "bg-gray-800 hover:bg-gray-700 text-gray-100"
                   }`}
                 >
@@ -309,22 +308,28 @@ export default function PricingPage() {
       </section>
 
       {/* Comparison table */}
-      <section className="px-6 pb-20">
+      <section className="px-4 sm:px-6 pb-16 sm:pb-20">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold mb-2 text-center">Comparativa completa</h2>
-          <p className="text-gray-400 text-center mb-10">Todo lo que tenés en cada plan, lado a lado</p>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-center">Comparativa completa</h2>
+          <p className="text-gray-400 text-center mb-3 text-sm sm:text-base">Todo lo que tenés en cada plan, lado a lado</p>
+          {/* Scroll hint on mobile only — disappears once scrolled */}
+          <p className="lg:hidden text-center text-xs text-blue-300/80 mb-3 flex items-center justify-center gap-1">
+            <ArrowRight size={12} className="animate-pulse" /> Deslizá para ver todos los planes
+          </p>
 
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+          <div className="relative bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+            {/* Edge fade hints on mobile so users know there's more content sideways */}
+            <div className="lg:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-900 to-transparent z-20" aria-hidden />
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-gray-900/95 backdrop-blur-sm z-10">
                   <tr className="border-b border-gray-800">
-                    <th className="text-left p-4 font-medium text-gray-400 min-w-[220px]">Función</th>
+                    <th className="text-left p-3 sm:p-4 font-medium text-gray-400 min-w-[160px] sm:min-w-[220px] sticky left-0 bg-gray-900/95 backdrop-blur-sm z-10">Función</th>
                     {PLANS.map((p) => (
-                      <th key={p.id} className="text-center p-4 font-semibold text-white min-w-[120px]">
+                      <th key={p.id} className="text-center p-3 sm:p-4 font-semibold text-white min-w-[110px] sm:min-w-[120px]">
                         {p.name}
                         {p.id === "STARTER" && (
-                          <span className="block mt-0.5 text-[10px] font-normal text-purple-400 uppercase tracking-wide">
+                          <span className="block mt-0.5 text-[10px] font-normal text-blue-400 uppercase tracking-wide">
                             Más elegido
                           </span>
                         )}
@@ -336,13 +341,13 @@ export default function PricingPage() {
                   {COMPARISON.map((section) => (
                     <>
                       <tr key={`s-${section.section}`} className="bg-gray-800/30">
-                        <td colSpan={5} className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-purple-400">
+                        <td colSpan={5} className="px-3 sm:px-4 py-2 text-xs font-semibold uppercase tracking-wide text-blue-400 sticky left-0 bg-gray-900">
                           {section.section}
                         </td>
                       </tr>
                       {section.rows.map(([label, ...vals], i) => (
                         <tr key={`${section.section}-${i}`} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition">
-                          <td className="p-3 text-gray-300">{label as string}</td>
+                          <td className="p-3 text-gray-300 sticky left-0 bg-gray-900 text-xs sm:text-sm">{label as string}</td>
                           {vals.map((v, j) => (
                             <td key={j} className="p-3 text-center">
                               {typeof v === "boolean" ? (
@@ -350,7 +355,7 @@ export default function PricingPage() {
                                   {v ? <CheckIcon /> : <XIcon />}
                                 </span>
                               ) : (
-                                <span className="text-gray-200 text-sm">{v}</span>
+                                <span className="text-gray-200 text-xs sm:text-sm">{v}</span>
                               )}
                             </td>
                           ))}
@@ -366,18 +371,18 @@ export default function PricingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="px-6 pb-24">
+      <section className="px-4 sm:px-6 pb-16 sm:pb-24">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold mb-10 text-center">Preguntas frecuentes</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-10 text-center">Preguntas frecuentes</h2>
           <div className="space-y-3">
             {FAQ.map((f) => (
               <details
                 key={f.q}
-                className="group bg-gray-900 border border-gray-800 rounded-xl p-5 open:border-gray-700 transition"
+                className="group bg-gray-900 border border-gray-800 rounded-xl p-4 sm:p-5 open:border-gray-700 transition"
               >
-                <summary className="font-semibold cursor-pointer flex items-center justify-between text-gray-100 list-none">
-                  {f.q}
-                  <span className="text-purple-400 text-xl group-open:rotate-45 transition-transform">+</span>
+                <summary className="font-semibold cursor-pointer flex items-center justify-between gap-3 text-gray-100 list-none text-sm sm:text-base">
+                  <span className="flex-1 min-w-0">{f.q}</span>
+                  <span className="text-blue-400 text-xl group-open:rotate-45 transition-transform flex-shrink-0">+</span>
                 </summary>
                 <p className="mt-3 text-gray-400 text-sm leading-relaxed">{f.a}</p>
               </details>
@@ -387,15 +392,15 @@ export default function PricingPage() {
       </section>
 
       {/* CTA footer */}
-      <section className="px-6 pb-20">
-        <div className="max-w-4xl mx-auto bg-gradient-to-br from-purple-900/40 to-pink-900/30 rounded-3xl p-10 text-center border border-purple-700/30">
-          <h2 className="text-3xl md:text-4xl font-bold mb-3">¿Listo para empezar?</h2>
-          <p className="text-gray-300 mb-7 max-w-xl mx-auto">
+      <section className="px-4 sm:px-6 pb-16 sm:pb-20">
+        <div className="max-w-4xl mx-auto bg-gradient-to-br from-blue-900/40 to-violet-900/30 rounded-3xl p-6 sm:p-10 text-center border border-blue-700/30">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">¿Listo para empezar?</h2>
+          <p className="text-gray-300 mb-6 sm:mb-7 max-w-xl mx-auto text-sm sm:text-base">
             Creá tu cuenta gratis ahora. Sin tarjeta de crédito. 7 días de prueba en planes pagos.
           </p>
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-lg shadow-purple-900/40 transition"
+            className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 sm:px-7 py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white font-semibold shadow-lg shadow-blue-900/40 transition"
           >
             Empezar gratis <ArrowRight size={16} />
           </Link>

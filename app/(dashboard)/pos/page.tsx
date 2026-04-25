@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { Search, Barcode, ShoppingCart, DollarSign, AlertTriangle, ArrowRight, Package, Keyboard } from "lucide-react"
+import { Search, Barcode, ShoppingCart, DollarSign, AlertTriangle, ArrowRight, Package, Keyboard, X } from "lucide-react"
 import { useShortcuts, useShortcutKey } from "@/hooks/useShortcuts"
 import { ShortcutsHelpModal } from "@/components/shared/ShortcutsHelpModal"
 import toast from "react-hot-toast"
@@ -37,8 +37,10 @@ export default function POSPage() {
   const [lastKeyTime, setLastKeyTime] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
   const debouncedQuery = useDebounce(query, 280)
-  const { addToCart, cart, setCashSession, clearCart } = usePOSStore()
+  const { addToCart, cart, setCashSession, clearCart, total } = usePOSStore()
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const [cartOpen, setCartOpen] = useState(false)
+  // Auto-close cart drawer when payment modal opens (so user sees the modal cleanly)
   const searchShortcutKey = useShortcutKey("pos:search")
   const chargeShortcutKey = useShortcutKey("pos:charge")
   const helpShortcutKey = useShortcutKey("global:help")
@@ -270,8 +272,8 @@ export default function POSPage() {
       )}
 
       <div className="flex flex-1 gap-3 overflow-hidden px-3 pt-2 pb-3 min-h-0">
-      {/* LEFT: Search + Products */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      {/* LEFT: Search + Products. Pad-bottom on mobile so the floating cart bar doesn't cover the last row. */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 lg:pb-0">
         {/* Search bar */}
         <div className="relative mb-2 flex-shrink-0">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -393,8 +395,8 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* RIGHT: Cart — h-full explicit so the Cobrar button never scrolls off */}
-      <div className="w-72 xl:w-80 flex-shrink-0 h-full">
+      {/* RIGHT: Cart — desktop sidebar (lg+). h-full so Cobrar button never scrolls off. */}
+      <div className="hidden lg:block w-72 xl:w-80 flex-shrink-0 h-full">
         <CartPanel
           onPay={() => {
             if (!cashOpen) {
@@ -406,6 +408,80 @@ export default function POSPage() {
           payDisabled={!cashOpen}
           payDisabledReason={!cashOpen ? "Abrí la caja primero" : undefined}
         />
+      </div>
+
+      {/* MOBILE: Floating cart summary bar — fixed at bottom, opens drawer on tap */}
+      <button
+        type="button"
+        onClick={() => setCartOpen(true)}
+        className={cn(
+          "lg:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-2 bg-gradient-to-t from-gray-950 via-gray-950/95 to-gray-950/0",
+          "transition-transform duration-200",
+          cartOpen && "translate-y-full"
+        )}
+        aria-label="Abrir carrito"
+      >
+        <div className="flex items-center justify-between gap-3 bg-accent text-accent-foreground rounded-xl px-4 py-3 shadow-2xl shadow-accent/30 active:scale-[0.98] transition-transform">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="relative flex-shrink-0">
+              <ShoppingCart className="w-5 h-5" />
+              {cart.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {cart.length}
+                </span>
+              )}
+            </div>
+            <span className="font-semibold text-sm truncate">
+              {cart.length === 0 ? "Carrito vacío" : `${cart.length} ${cart.length === 1 ? "producto" : "productos"}`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="font-bold text-sm tabular-nums">{formatCurrency(total())}</span>
+            <ArrowRight className="w-4 h-4" />
+          </div>
+        </div>
+      </button>
+
+      {/* MOBILE: Cart drawer (slides up from bottom) */}
+      {cartOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          onClick={() => setCartOpen(false)}
+          aria-hidden
+        />
+      )}
+      <div
+        className={cn(
+          "lg:hidden fixed inset-x-0 bottom-0 z-50 max-h-[88vh] h-[88vh] transform transition-transform duration-300 ease-out",
+          cartOpen ? "translate-y-0" : "translate-y-full"
+        )}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Carrito de compra"
+      >
+        <div className="relative h-full">
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setCartOpen(false)}
+            className="absolute -top-12 right-3 w-10 h-10 rounded-full bg-gray-900/90 backdrop-blur-sm border border-gray-700 flex items-center justify-center text-gray-300 hover:text-white"
+            aria-label="Cerrar carrito"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <CartPanel
+            onPay={() => {
+              if (!cashOpen) {
+                toast.error("Abrí la caja antes de cobrar")
+                return
+              }
+              setCartOpen(false)
+              setShowPayment(true)
+            }}
+            payDisabled={!cashOpen}
+            payDisabledReason={!cashOpen ? "Abrí la caja primero" : undefined}
+          />
+        </div>
       </div>
 
       {showPayment && cashOpen && <PaymentModal onClose={() => setShowPayment(false)} />}
