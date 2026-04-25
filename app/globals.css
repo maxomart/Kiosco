@@ -364,6 +364,17 @@ html[data-theme="light"] {
   50%, 100% { opacity: 0; }
 }
 
+@keyframes star-twinkle {
+  0%, 100% { opacity: var(--min-op, 0.15); transform: scale(1); }
+  50% { opacity: var(--max-op, 0.95); transform: scale(1.15); }
+}
+
+@keyframes star-drift {
+  0% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(8px, -12px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
 /* Aurora layer — sits behind hero, drifts slowly */
 .aurora-bg {
   position: absolute;

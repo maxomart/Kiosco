@@ -73,15 +73,6 @@ export default async function LandingPage({
 
   const plans = [
     {
-      plan: "Gratis",
-      price: PLAN_PRICES_ARS.FREE,
-      desc: "Para probar y empezar",
-      features: ["Hasta 50 productos", "1 usuario", "POS + caja básica", "200 ventas/mes"],
-      cta: "Empezar gratis",
-      href: freeHref,
-      highlight: false,
-    },
-    {
       plan: "Básico",
       price: PLAN_PRICES_ARS.STARTER,
       desc: "Para kioscos chicos",

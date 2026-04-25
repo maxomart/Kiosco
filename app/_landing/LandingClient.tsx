@@ -91,6 +91,9 @@ export default function LandingClient({
 
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden relative landing-root selection:bg-violet-500/30 selection:text-white">
+      {/* Starfield — sits behind everything */}
+      <Starfield />
+
       {/* Promo top strip */}
       {activePromo && (
         <Link
@@ -314,7 +317,7 @@ export default function LandingClient({
             title="Planes simples, sin sorpresas"
             subtitle="Empezá gratis. Crecé cuando lo necesites."
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
             {plans.map((p, i) => (
               <PricingCard key={i} plan={p} index={i} />
             ))}
@@ -405,6 +408,124 @@ export default function LandingClient({
 /* ============================================================================
    Subcomponents
    ========================================================================== */
+
+function Starfield() {
+  // Generated client-side after mount to avoid hydration mismatch.
+  // Three layers: tiny twinklers, medium with halo, big drifting accents.
+  const [layers, setLayers] = useState<{
+    tiny: Star[]
+    halo: Star[]
+    accent: AccentStar[]
+  } | null>(null)
+
+  useEffect(() => {
+    const rand = (min: number, max: number) => Math.random() * (max - min) + min
+    const tiny: Star[] = Array.from({ length: 110 }, () => ({
+      x: rand(0, 100),
+      y: rand(0, 100),
+      size: rand(0.6, 1.4),
+      delay: rand(0, 6),
+      duration: rand(2.5, 5.5),
+      minOp: rand(0.1, 0.25),
+      maxOp: rand(0.6, 1),
+    }))
+    const halo: Star[] = Array.from({ length: 28 }, () => ({
+      x: rand(0, 100),
+      y: rand(0, 100),
+      size: rand(1.4, 2.4),
+      delay: rand(0, 5),
+      duration: rand(3.5, 6.5),
+      minOp: rand(0.2, 0.4),
+      maxOp: rand(0.8, 1),
+    }))
+    const accentColors = ["#a78bfa", "#67e8f9", "#f0abfc"]
+    const accent: AccentStar[] = Array.from({ length: 8 }, (_, i) => ({
+      x: rand(5, 95),
+      y: rand(5, 95),
+      size: rand(2.2, 3.2),
+      delay: rand(0, 4),
+      duration: rand(4, 7),
+      driftDuration: rand(12, 22),
+      color: accentColors[i % accentColors.length],
+    }))
+    setLayers({ tiny, halo, accent })
+  }, [])
+
+  if (!layers) return null
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden>
+      {layers.tiny.map((s, i) => (
+        <span
+          key={`t-${i}`}
+          className="absolute rounded-full bg-white"
+          style={{
+            left: `${s.x}%`,
+            top: `${s.y}%`,
+            width: `${s.size}px`,
+            height: `${s.size}px`,
+            // @ts-expect-error CSS vars
+            "--min-op": s.minOp,
+            "--max-op": s.maxOp,
+            animation: `star-twinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
+          }}
+        />
+      ))}
+      {layers.halo.map((s, i) => (
+        <span
+          key={`h-${i}`}
+          className="absolute rounded-full bg-white"
+          style={{
+            left: `${s.x}%`,
+            top: `${s.y}%`,
+            width: `${s.size}px`,
+            height: `${s.size}px`,
+            boxShadow: `0 0 ${s.size * 4}px rgba(255,255,255,0.7), 0 0 ${s.size * 2}px rgba(255,255,255,0.4)`,
+            // @ts-expect-error CSS vars
+            "--min-op": s.minOp,
+            "--max-op": s.maxOp,
+            animation: `star-twinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
+          }}
+        />
+      ))}
+      {layers.accent.map((s, i) => (
+        <span
+          key={`a-${i}`}
+          className="absolute rounded-full"
+          style={{
+            left: `${s.x}%`,
+            top: `${s.y}%`,
+            width: `${s.size}px`,
+            height: `${s.size}px`,
+            backgroundColor: s.color,
+            boxShadow: `0 0 ${s.size * 6}px ${s.color}, 0 0 ${s.size * 3}px ${s.color}`,
+            animation: `star-twinkle ${s.duration}s ease-in-out ${s.delay}s infinite, star-drift ${s.driftDuration}s ease-in-out infinite`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+interface Star {
+  x: number
+  y: number
+  size: number
+  delay: number
+  duration: number
+  minOp: number
+  maxOp: number
+}
+
+interface AccentStar {
+  x: number
+  y: number
+  size: number
+  delay: number
+  duration: number
+  driftDuration: number
+  color: string
+}
 
 function Navbar({
   promoActive,
