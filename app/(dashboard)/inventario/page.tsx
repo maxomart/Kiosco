@@ -181,28 +181,32 @@ export default function InventarioPage() {
         </PageTip>
       ) : null}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      {/* Header — title + actions wrap together so the action row owns its
+          own line on mobile instead of squeezing next to the title */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-white">Inventario</h1>
-          <p className="text-gray-400 text-sm mt-1">{total} productos · {lowStockCount} stock bajo · {outOfStockCount} sin stock</p>
+          <p className="text-gray-400 text-xs sm:text-sm mt-1">{total} productos · {lowStockCount} stock bajo · {outOfStockCount} sin stock</p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          {/* Acciones principales siempre visibles */}
+          {/* Acciones secundarias — icon-only en mobile para no saturar el header.
+              Tooltips mantienen la información para el usuario. */}
           <button
             onClick={() => setShowScanner(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors"
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors"
             title="Escanear código de barras"
+            aria-label="Escanear código de barras"
           >
-            <Camera size={16} /> Escanear
+            <Camera size={16} /> <span className="hidden sm:inline">Escanear</span>
           </button>
 
           <button
             onClick={() => setShowAIEnrich(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-accent/20 to-accent-soft text-accent border border-accent/40 hover:from-accent/30 text-sm font-medium transition-colors whitespace-nowrap"
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-lg bg-gradient-to-r from-accent/20 to-accent-soft text-accent border border-accent/40 hover:from-accent/30 text-sm font-medium transition-colors whitespace-nowrap"
             title="Auto-asignar categoría y proveedor a productos con IA"
+            aria-label="Auto-organizar con IA"
           >
-            <Sparkles size={16} /> Auto-organizar IA
+            <Sparkles size={16} /> <span className="hidden sm:inline">Auto-organizar IA</span>
           </button>
 
           {/* Más acciones: dropdown con Importar / Exportar / Stock masivo / Categorías / Duplicados */}
@@ -210,10 +214,11 @@ export default function InventarioPage() {
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
               onBlur={() => setTimeout(() => setShowMoreMenu(false), 150)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors"
               title="Más acciones"
+              aria-label="Más acciones"
             >
-              <MoreHorizontal size={16} /> Más
+              <MoreHorizontal size={16} /> <span className="hidden sm:inline">Más</span>
             </button>
             {showMoreMenu && (
               <div className="absolute right-0 top-full mt-1 w-60 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-20">
@@ -271,9 +276,9 @@ export default function InventarioPage() {
                 onClick={() => { setEditProduct(null); setShowModal(true) }}
                 disabled={atLimit}
                 title={atLimit ? `Plan ${plan}: máximo ${productLimit} productos` : isUnlimited ? undefined : `${total} / ${productLimit} productos en plan ${plan}`}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-medium transition-colors whitespace-nowrap"
               >
-                <Plus size={16} /> {atLimit ? "Límite alcanzado" : "Nuevo Producto"}
+                <Plus size={16} /> {atLimit ? "Límite" : (<><span className="sm:hidden">Nuevo</span><span className="hidden sm:inline">Nuevo Producto</span></>)}
               </button>
             )
           })()}

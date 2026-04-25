@@ -245,45 +245,54 @@ html[data-theme="light"] {
    Derivan del accent del tema (--color-accent) así respetan el color tenant.
    ========================================================================== */
 
-.app-surface {
-  background:
-    radial-gradient(1200px 600px at 90% -10%, color-mix(in oklab, var(--color-accent) calc(18% * var(--surface-glow-intensity, 1)), transparent), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, color-mix(in oklab, var(--color-accent) calc(10% * var(--surface-glow-intensity, 1)), transparent), transparent 55%),
-    linear-gradient(160deg, var(--surface-app-from) 0%, var(--surface-app-via) 50%, var(--surface-app-to) 100%);
-  position: relative;
-}
-.app-surface::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 24px 24px;
-  mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
-}
+/* Wrapped in @layer components so Tailwind utilities (e.g. .fixed) defined
+   in the utilities layer always win over our background helpers. Without
+   the layer wrap, the bare ".sidebar-surface { position: relative }" rule
+   would beat ".fixed { position: fixed }" — and the mobile sidebar (which
+   has both classes) would fall back to relative positioning, taking up
+   real flex-flow width and shoving the dashboard content into a sliver
+   on the right of the viewport. Yes, this happened in production. */
+@layer components {
+  .app-surface {
+    background:
+      radial-gradient(1200px 600px at 90% -10%, color-mix(in oklab, var(--color-accent) calc(18% * var(--surface-glow-intensity, 1)), transparent), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, color-mix(in oklab, var(--color-accent) calc(10% * var(--surface-glow-intensity, 1)), transparent), transparent 55%),
+      linear-gradient(160deg, var(--surface-app-from) 0%, var(--surface-app-via) 50%, var(--surface-app-to) 100%);
+    position: relative;
+  }
+  .app-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+  }
 
-.nav-surface {
-  background: linear-gradient(180deg,
-    color-mix(in oklab, var(--color-accent) 5%, var(--surface-nav-from)) 0%,
-    var(--surface-nav-to) 100%);
-}
+  .nav-surface {
+    background: linear-gradient(180deg,
+      color-mix(in oklab, var(--color-accent) 5%, var(--surface-nav-from)) 0%,
+      var(--surface-nav-to) 100%);
+  }
 
-.surface-card {
-  background-color: var(--surface-card-bg);
-  border-color: var(--surface-card-border);
-}
+  .surface-card {
+    background-color: var(--surface-card-bg);
+    border-color: var(--surface-card-border);
+  }
 
-.sidebar-surface {
-  background: linear-gradient(180deg, var(--surface-sidebar-from) 0%, var(--surface-sidebar-via) 55%, var(--surface-sidebar-to) 100%);
-  position: relative;
-}
-.sidebar-surface::after {
-  content: "";
-  position: absolute;
-  top: 0; right: 0; bottom: 0;
-  width: 1px;
-  pointer-events: none;
-  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--color-accent) 20%, transparent) 30%, color-mix(in oklab, var(--color-accent) 20%, transparent) 70%, transparent);
+  .sidebar-surface {
+    background: linear-gradient(180deg, var(--surface-sidebar-from) 0%, var(--surface-sidebar-via) 55%, var(--surface-sidebar-to) 100%);
+    position: relative;
+  }
+  .sidebar-surface::after {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 1px;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--color-accent) 20%, transparent) 30%, color-mix(in oklab, var(--color-accent) 20%, transparent) 70%, transparent);
+  }
 }
 
 .card-glow {
