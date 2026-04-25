@@ -37,7 +37,7 @@ export default function AdminNav({ user }: Props) {
       <div className="flex items-center gap-8">
         <Link href="/admin" className="flex items-center gap-2">
           <Shield size={20} className="text-purple-400" />
-          <span className="text-white font-bold tracking-tight">RetailAR Admin</span>
+          <span className="text-white font-bold tracking-tight">Orvex Admin</span>
         </Link>
         <div className="flex gap-1 overflow-x-auto">
           {links.map(l => {

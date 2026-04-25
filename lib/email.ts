@@ -26,7 +26,7 @@ export interface SendEmailOptions {
 
 export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; id?: string; error?: string }> {
   const resend = getResend()
-  const from = process.env.EMAIL_FROM ?? "RetailAR <onboarding@resend.dev>"
+  const from = process.env.EMAIL_FROM ?? "Orvex <onboarding@resend.dev>"
 
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set — skipping send. Subject:", opts.subject)

@@ -36,7 +36,7 @@ const THRESHOLDS: ReminderThreshold[] = [
     daysLeftMax: 1,
     level: 3,
     copyFor: ({ plan, appUrl }) =>
-      `🚨 Último día de ${plan} gratis en RetailAR.\n\n` +
+      `🚨 Último día de ${plan} gratis en Orvex.\n\n` +
       `Mañana tu cuenta pasa a Gratis y perdés IA, multi-usuario y fidelización. ` +
       `Activá tu suscripción en menos de 1 minuto acá:\n${appUrl}/configuracion/suscripcion\n\n` +
       `Si ya decidiste no continuar, ¡gracias por haberla usado!`,
@@ -45,7 +45,7 @@ const THRESHOLDS: ReminderThreshold[] = [
     daysLeftMax: 10,
     level: 2,
     copyFor: ({ plan, daysLeft, appUrl }) =>
-      `⏳ Te quedan ${daysLeft} días de ${plan} gratis en RetailAR.\n\n` +
+      `⏳ Te quedan ${daysLeft} días de ${plan} gratis en Orvex.\n\n` +
       `Para seguir con todas las features activas, suscribite acá antes del vencimiento:\n${appUrl}/configuracion/suscripcion\n\n` +
       `Si querés darnos feedback, respondé a este WhatsApp — lo leo yo.`,
   },
@@ -53,7 +53,7 @@ const THRESHOLDS: ReminderThreshold[] = [
     daysLeftMax: 30,
     level: 1,
     copyFor: ({ plan, daysLeft, appUrl }) =>
-      `👋 Hola! Ya pasó más de la mitad de tu prueba de ${plan} gratis en RetailAR.\n\n` +
+      `👋 Hola! Ya pasó más de la mitad de tu prueba de ${plan} gratis en Orvex.\n\n` +
       `Te quedan ${daysLeft} días. Si te está sirviendo, podés pasar a plan pago cuando quieras: ${appUrl}/configuracion/suscripcion\n\n` +
       `¿Qué funciona? ¿Qué falta? Respondeme acá — cualquier feedback ayuda.`,
   },

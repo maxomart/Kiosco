@@ -1,5 +1,5 @@
 /**
- * RetailAR — Bulk sync endpoint for offline POS sales.
+ * Orvex — Bulk sync endpoint for offline POS sales.
  *
  * Body: { sales: [{ localId, payload, clientCreatedAt }] }
  * Returns: { results: [{ localId, ok, saleId?, error? }] }

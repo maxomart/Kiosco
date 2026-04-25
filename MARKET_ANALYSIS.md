@@ -18,7 +18,7 @@
 
 ## Lo que TODOS tienen y nosotros NO
 
-| Feature | Estado RetailAR | Prioridad |
+| Feature | Estado Orvex | Prioridad |
 |---|---|---|
 | AFIP factura electrónica (CAE) | 🟡 Schema listo, falta integración | **CRÍTICO** |
 | MercadoPago QR / checkout real | 🟡 Solo método declarativo | **CRÍTICO** |
@@ -35,7 +35,7 @@
 
 ## Lo que NOSOTROS tenemos y la competencia NO (moat)
 
-| Feature | Loyverse | Bsale | Geocom | RetailAR |
+| Feature | Loyverse | Bsale | Geocom | Orvex |
 |---|---|---|---|---|
 | Asistente IA con contexto del negocio | ❌ | ❌ | ❌ | ✅ |
 | Notificaciones por WhatsApp nativas | ❌ | ❌ | ❌ | ✅ |
@@ -98,7 +98,7 @@ Bsale                                $30-80                          $150+
 Tango                                                               $60-200
 Fudo                                 $25-60
 
-RetailAR        Free → $25 (Starter) → $60 (Pro) → $150 (Business)
+Orvex        Free → $25 (Starter) → $60 (Pro) → $150 (Business)
 ```
 
 **Nuestro posicionamiento**:

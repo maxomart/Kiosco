@@ -78,7 +78,7 @@ export default function LoginPage() {
             Iniciar sesión
           </h1>
           <p className="text-sm text-gray-400 mt-1.5">
-            Accedé a tu cuenta de RetailAR
+            Accedé a tu cuenta de Orvex
           </p>
         </div>
 

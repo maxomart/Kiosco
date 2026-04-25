@@ -217,7 +217,7 @@ export default async function LandingPage({
             <div className="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center">
               <ShoppingBag size={16} />
             </div>
-            <span className="font-bold text-lg tracking-tight">RetailAR</span>
+            <span className="font-bold text-lg tracking-tight">Orvex</span>
           </Link>
           <div className="hidden md:flex items-center gap-7 text-sm text-gray-400">
             <a href="#features" className="hover:text-white transition-colors">Funciones</a>
@@ -472,7 +472,7 @@ export default async function LandingPage({
             {[
               {
                 q: "¿Necesito instalar algo?",
-                a: "No. RetailAR funciona 100% en el navegador. Entrás con tu usuario desde cualquier dispositivo con internet.",
+                a: "No. Orvex funciona 100% en el navegador. Entrás con tu usuario desde cualquier dispositivo con internet.",
               },
               {
                 q: "¿Qué pasa si no tengo internet?",
@@ -554,7 +554,7 @@ export default async function LandingPage({
             <div className="w-6 h-6 rounded bg-white text-black flex items-center justify-center">
               <ShoppingBag size={12} />
             </div>
-            <span>RetailAR © {new Date().getFullYear()}</span>
+            <span>Orvex © {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center gap-6">
             <a href="#pricing" className="hover:text-white transition-colors">Precios</a>

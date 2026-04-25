@@ -1,5 +1,5 @@
 /**
- * RetailAR — Sync queue + React hook for offline POS.
+ * Orvex — Sync queue + React hook for offline POS.
  *
  * Reads pending sales from IndexedDB (lib/offline-store.ts) and POSTs
  * them in bulk to /api/sync/sales. The endpoint is idempotent on

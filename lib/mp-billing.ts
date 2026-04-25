@@ -2,7 +2,7 @@
  * MercadoPago **Suscripciones (Preapproval)** helper — used by the SaaS platform
  * to bill its tenants in ARS.
  *
- * IMPORTANT: This is the *platform-level* MP integration (RetailAR's own MP
+ * IMPORTANT: This is the *platform-level* MP integration (Orvex's own MP
  * account). It is intentionally separate from `lib/mercadopago.ts`, which is
  * the *per-tenant* POS integration where each merchant connects their own MP
  * account to receive customer payments.

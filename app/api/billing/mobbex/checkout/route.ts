@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
   try {
     result = await createMobbexCheckout(
       {
-        name: `RetailAR ${PLAN_LABELS_AR[plan]}`,
-        description: `RetailAR ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
+        name: `Orvex ${PLAN_LABELS_AR[plan]}`,
+        description: `Orvex ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
         amountARS: amount,
         interval: period === "annual" ? "1y" : "1m",
         returnUrl,

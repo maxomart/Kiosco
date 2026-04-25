@@ -5,7 +5,7 @@
  *   1. Ir a https://www.mercadopago.com.ar/developers
  *   2. Crear una aplicación (tipo "Pagos online")
  *   3. Copiar el ACCESS_TOKEN de Producción
- *   4. Pegarlo en /configuracion/mercadopago dentro de RetailAR
+ *   4. Pegarlo en /configuracion/mercadopago dentro de Orvex
  *
  * Usamos la API de "Preferences" (Checkout Pro):
  *   POST https://api.mercadopago.com/checkout/preferences

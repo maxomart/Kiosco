@@ -1,10 +1,10 @@
 # Cómo enlazar Mercado Pago — guía paso a paso
 
-RetailAR usa Mercado Pago **para dos cosas distintas**. Cada una se configura en un lugar diferente:
+Orvex usa Mercado Pago **para dos cosas distintas**. Cada una se configura en un lugar diferente:
 
 | ¿Para qué? | Quién paga | Quién cobra | Dónde se configura |
 |---|---|---|---|
-| **A) Cobrar las suscripciones** del SaaS | Tu cliente (el kiosquero) | **Vos** (RetailAR) | Variables de entorno de Railway |
+| **A) Cobrar las suscripciones** del SaaS | Tu cliente (el kiosquero) | **Vos** (Orvex) | Variables de entorno de Railway |
 | **B) Cobrar a los clientes del kiosco con QR** | Cliente final del kiosco | **El kiosquero** (cada tenant) | Configuración → Mercado Pago dentro del POS |
 
 ---
@@ -26,7 +26,7 @@ Esto te lo cobra MP a vos por hacer SaaS. Lo configurás UNA SOLA VEZ.
 - Tipo: "**Pagos online**" → "Suscripciones"
 - Producto: "Pagos online y presenciales"
 - Modelo de integración: "Checkout Pro / Suscripciones"
-- Dale un nombre tipo "RetailAR Billing"
+- Dale un nombre tipo "Orvex Billing"
 
 ### 3. Copiar las credenciales
 
@@ -101,7 +101,7 @@ Esto es para que cada kiosquero (cada tenant) cobre a SUS clientes desde el POS 
 1. Tener cuenta MP propia (el comerciante).
 2. En MP → Developers → "Tus integraciones" → "Crear aplicación" → tipo "**Pagos online**" → "Checkout Pro".
 3. Copiar el **Access Token de Producción** (empieza con `APP_USR-...`).
-4. En RetailAR → Configuración → Mercado Pago → pegarlo y guardar.
+4. En Orvex → Configuración → Mercado Pago → pegarlo y guardar.
 5. **Test rápido**: botón "Probar conexión" en la misma página → te crea un pago fake de $1 a tu propia cuenta para confirmar que anda.
 
 ### Lo que pasa cuando se hace una venta

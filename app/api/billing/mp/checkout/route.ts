@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     preapproval = await createPreapproval({
       payerEmail, // undefined on purpose when not confirmed — see checkout comment
       backUrl,
-      reason: `RetailAR ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
+      reason: `Orvex ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
       externalReference: tenantId!,
       amountARS: amount,
       frequencyType: period === "annual" ? "years" : "months",

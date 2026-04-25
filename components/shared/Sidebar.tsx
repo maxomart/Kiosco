@@ -125,7 +125,7 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
         )}
         {!collapsed && (
           <span className="text-white font-bold text-lg tracking-tight truncate">
-            {brandName?.trim() || "RetailAR"}
+            {brandName?.trim() || "Orvex"}
           </span>
         )}
         {/* Mobile close button */}

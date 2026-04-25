@@ -1,6 +1,6 @@
 {
-  "name": "RetailAR — POS para tu negocio",
-  "short_name": "RetailAR",
+  "name": "Orvex — POS para tu negocio",
+  "short_name": "Orvex",
   "description": "POS, inventario y reportes para kioscos, farmacias y minisúper.",
   "start_url": "/inicio",
   "scope": "/",

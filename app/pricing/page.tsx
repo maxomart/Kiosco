@@ -210,7 +210,7 @@ export default function PricingPage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <ShoppingBag className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-lg">RetailAR</span>
+            <span className="font-bold text-lg">Orvex</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm text-gray-300 hover:text-white">Ingresar</Link>
@@ -403,7 +403,7 @@ export default function PricingPage() {
       </section>
 
       <footer className="border-t border-gray-900 py-8 text-center text-sm text-gray-600">
-        &copy; {new Date().getFullYear()} RetailAR — Todos los derechos reservados
+        &copy; {new Date().getFullYear()} Orvex — Todos los derechos reservados
       </footer>
     </div>
   )

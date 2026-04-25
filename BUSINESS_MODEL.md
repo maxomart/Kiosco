@@ -1,4 +1,4 @@
-# Modelo de negocio — RetailAR
+# Modelo de negocio — Orvex
 
 > Última actualización: 2026-04. Vivo y editable según ajustes de pricing y costos reales.
 
@@ -118,7 +118,7 @@ Asumiendo distribución 60% Básico / 30% Pro / 10% Business:
 
 ## Revenue streams alternativos (futuro)
 
-1. **Marketplace de plugins** — desarrolladores externos venden extensiones, RetailAR cobra 15-30%
+1. **Marketplace de plugins** — desarrolladores externos venden extensiones, Orvex cobra 15-30%
 2. **Procesamiento de pagos pasthrough** — ofrecer tu propia pasarela con 2,5% (menor que MP) tomando 0,5% de margen
 3. **Servicios pro**: setup asistido, migración desde Excel, capacitación = $50k-200k AR por servicio
 4. **Datos agregados** — venderle a CPGs (Coca-Cola, Arcor) datos anónimos de tendencias = $$ a escala

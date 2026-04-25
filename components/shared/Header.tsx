@@ -55,7 +55,7 @@ function getPageTitle(pathname: string): string {
   for (const [path, title] of Object.entries(PAGE_TITLES)) {
     if (path !== "/" && pathname.startsWith(path + "/")) return title
   }
-  return "RetailAR"
+  return "Orvex"
 }
 
 function openMobileSidebar() {

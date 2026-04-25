@@ -7,9 +7,9 @@ import ServiceWorkerRegistrar from "./sw"
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 export const metadata: Metadata = {
-  title: { default: "RetailAR - Sistema de Gestión", template: "%s | RetailAR" },
+  title: { default: "Orvex - Sistema de Gestión", template: "%s | Orvex" },
   description: "Sistema de gestión para negocios retail argentinos: kioscos, farmacias, verdulerías y minisúper",
-  applicationName: "RetailAR",
+  applicationName: "Orvex",
   manifest: "/manifest.json",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000"
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     "caja registradora digital",
     "gestión minisúper",
   ],
-  authors: [{ name: "RetailAR" }],
+  authors: [{ name: "Orvex" }],
   referrer: "strict-origin-when-cross-origin",
   robots: {
     index: true,
@@ -39,15 +39,15 @@ export const metadata: Metadata = {
   },
   formatDetection: { telephone: false },
   openGraph: {
-    title: "RetailAR - Sistema de Gestión para Negocios",
+    title: "Orvex - Sistema de Gestión para Negocios",
     description: "POS, inventario y reportes para kioscos, farmacias y minisúper",
     locale: "es_AR",
     type: "website",
-    siteName: "RetailAR",
+    siteName: "Orvex",
   },
   twitter: {
     card: "summary_large_image",
-    title: "RetailAR - Sistema de Gestión para Negocios",
+    title: "Orvex - Sistema de Gestión para Negocios",
     description: "POS, inventario y reportes para kioscos, farmacias y minisúper",
   },
 }

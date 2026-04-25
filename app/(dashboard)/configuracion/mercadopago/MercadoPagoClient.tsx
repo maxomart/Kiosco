@@ -67,7 +67,7 @@ export default function MercadoPagoClient() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        items: [{ title: "Prueba RetailAR", quantity: 1, unit_price: 1 }],
+        items: [{ title: "Prueba Orvex", quantity: 1, unit_price: 1 }],
         externalReference: `test-${Date.now()}`,
       }),
     })

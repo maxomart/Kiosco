@@ -41,7 +41,7 @@ export async function POST() {
 
   const result = await sendWhatsApp(
     phone,
-    `✅ ${tenant?.name ?? "RetailAR"}: Esta es una prueba. Las notificaciones de WhatsApp ya están funcionando. Te avisaremos cuando haya stock bajo o eventos importantes.`
+    `✅ ${tenant?.name ?? "Orvex"}: Esta es una prueba. Las notificaciones de WhatsApp ya están funcionando. Te avisaremos cuando haya stock bajo o eventos importantes.`
   )
 
   if (!result.ok) {

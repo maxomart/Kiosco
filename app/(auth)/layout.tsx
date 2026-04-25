@@ -38,13 +38,13 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <Link
           href="/"
           className="flex items-center gap-2.5 group"
-          aria-label="RetailAR home"
+          aria-label="Orvex home"
         >
           <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-black/50 group-hover:scale-105 transition-transform">
             <ShoppingCart className="w-5 h-5 text-black" strokeWidth={2.2} />
           </div>
           <span className="text-xl font-bold tracking-tight text-white">
-            Retail<span className="text-gray-400">AR</span>
+            Orv<span className="text-gray-400">ex</span>
           </span>
         </Link>
       </header>
@@ -54,7 +54,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="relative py-6 text-center text-xs text-gray-600">
-        &copy; {new Date().getFullYear()} RetailAR &mdash; Todos los derechos reservados.
+        &copy; {new Date().getFullYear()} Orvex &mdash; Todos los derechos reservados.
       </footer>
     </div>
   )

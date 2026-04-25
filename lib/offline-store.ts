@@ -1,5 +1,5 @@
 /**
- * RetailAR — Offline IndexedDB wrapper.
+ * Orvex — Offline IndexedDB wrapper.
  *
  * Pure native IndexedDB, no external deps. Three object stores:
  *   - products      → cached product list for offline search
