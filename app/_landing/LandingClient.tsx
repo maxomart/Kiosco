@@ -30,6 +30,9 @@ import {
   Receipt,
   DollarSign,
   Search,
+  Store,
+  Pill,
+  Carrot,
 } from "lucide-react"
 
 interface PlanCard {
@@ -300,24 +303,59 @@ export default function LandingClient({
           />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { emoji: "🏪", title: "Kioscos", desc: "Miles de productos chicos, alta rotación, ventas rápidas" },
-              { emoji: "💊", title: "Farmacias", desc: "Inventario grande, clientes recurrentes, trazabilidad" },
-              { emoji: "🥕", title: "Verdulerías", desc: "Precios por kg, productos variables, caja diaria" },
-              { emoji: "🛒", title: "Minisúper", desc: "Múltiples categorías, empleados, control de stock" },
-            ].map((u, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
-                className="spotlight-card p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-center hover:border-white/30 transition-all"
-              >
-                <div className="text-4xl mb-3">{u.emoji}</div>
-                <h3 className="font-semibold text-white mb-2">{u.title}</h3>
-                <p className="text-gray-400 text-sm">{u.desc}</p>
-              </motion.div>
-            ))}
+              {
+                icon: Store,
+                title: "Kioscos",
+                desc: "Miles de productos chicos, alta rotación, ventas rápidas",
+                bg: "bg-violet-500/15",
+                border: "border-violet-500/30",
+                color: "text-violet-300",
+              },
+              {
+                icon: Pill,
+                title: "Farmacias",
+                desc: "Inventario grande, clientes recurrentes, trazabilidad",
+                bg: "bg-emerald-500/15",
+                border: "border-emerald-500/30",
+                color: "text-emerald-300",
+              },
+              {
+                icon: Carrot,
+                title: "Verdulerías",
+                desc: "Precios por kg, productos variables, caja diaria",
+                bg: "bg-orange-500/15",
+                border: "border-orange-500/30",
+                color: "text-orange-300",
+              },
+              {
+                icon: ShoppingCart,
+                title: "Minisúper",
+                desc: "Múltiples categorías, empleados, control de stock",
+                bg: "bg-sky-500/15",
+                border: "border-sky-500/30",
+                color: "text-sky-300",
+              },
+            ].map((u, i) => {
+              const Icon = u.icon
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ delay: i * 0.08, duration: 0.5 }}
+                  className="spotlight-card p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-center hover:border-white/30 transition-all"
+                >
+                  <div
+                    className={`w-14 h-14 rounded-2xl ${u.bg} border ${u.border} flex items-center justify-center mx-auto mb-4`}
+                  >
+                    <Icon size={26} className={u.color} />
+                  </div>
+                  <h3 className="font-semibold text-white mb-2">{u.title}</h3>
+                  <p className="text-gray-400 text-sm">{u.desc}</p>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -917,15 +955,29 @@ const MOCK_TABS: { id: MockTab; label: string; icon: typeof Home }[] = [
   { id: "caja", label: "Caja", icon: DollarSign },
 ]
 
+const TABS_ORDER: MockTab[] = ["reportes", "pos", "inventario", "ventas", "caja", "inicio"]
+
 function DashboardMock() {
   const [tab, setTab] = useState<MockTab>("reportes")
+  const [autoplay, setAutoplay] = useState(true)
 
-  // Subtle auto-advance hint on mount: rotate once to "POS" after a few
-  // seconds so users notice the tabs are interactive, then stop.
+  // Cycle through every tab while autoplay is on. Click on any tab pauses
+  // the cycle so visitors can read at their own pace.
   useEffect(() => {
-    const t = window.setTimeout(() => setTab("pos"), 2400)
-    return () => window.clearTimeout(t)
-  }, [])
+    if (!autoplay) return
+    const id = window.setInterval(() => {
+      setTab((current) => {
+        const idx = TABS_ORDER.indexOf(current)
+        return TABS_ORDER[(idx + 1) % TABS_ORDER.length]
+      })
+    }, 3200)
+    return () => window.clearInterval(id)
+  }, [autoplay])
+
+  const handleTabClick = (id: MockTab) => {
+    setAutoplay(false)
+    setTab(id)
+  }
 
   return (
     <div className="grid grid-cols-12 gap-px bg-white/5 min-h-[360px]">
@@ -945,8 +997,8 @@ function DashboardMock() {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setTab(t.id)}
-                className={`w-full flex items-center gap-2 text-[11px] px-2 py-1.5 rounded transition-all ${
+                onClick={() => handleTabClick(t.id)}
+                className={`relative w-full flex items-center gap-2 text-[11px] px-2 py-1.5 rounded transition-all overflow-hidden ${
                   active
                     ? "bg-violet-500/15 text-violet-200 border border-violet-500/30"
                     : "text-gray-500 hover:text-gray-200 hover:bg-white/5 border border-transparent"
@@ -954,6 +1006,17 @@ function DashboardMock() {
               >
                 <Icon size={12} className="shrink-0" />
                 <span className="truncate hidden md:inline">{t.label}</span>
+                {active && autoplay && (
+                  <motion.span
+                    key={`bar-${t.id}`}
+                    aria-hidden
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: 3.2, ease: "linear" }}
+                    style={{ transformOrigin: "left" }}
+                    className="absolute left-0 bottom-0 h-px w-full bg-gradient-to-r from-violet-400 to-fuchsia-400"
+                  />
+                )}
               </button>
             )
           })}
@@ -1219,7 +1282,7 @@ function MockReportes() {
         {[40, 55, 35, 70, 45, 60, 80, 65, 50, 75, 90, 70, 85, 95].map((h, i) => (
           <div
             key={i}
-            className="flex-1 rounded-t bg-gradient-to-t from-amber-500/50 to-orange-400/90"
+            className="flex-1 rounded-t bg-gradient-to-t from-emerald-500/50 to-emerald-400/90"
             style={{ height: `${h}%` }}
           />
         ))}
