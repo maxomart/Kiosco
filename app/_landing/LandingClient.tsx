@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { motion, useInView, useMotionValue, useTransform, animate, useScroll } from "framer-motion"
+import { motion, AnimatePresence, useInView, useMotionValue, useTransform, animate, useScroll } from "framer-motion"
 import {
   ShoppingBag,
   Shield,
@@ -25,6 +25,11 @@ import {
   FileSpreadsheet,
   Bot,
   Keyboard,
+  Home,
+  ShoppingCart,
+  Receipt,
+  DollarSign,
+  Search,
 } from "lucide-react"
 
 interface PlanCard {
@@ -432,10 +437,10 @@ function ColorBlobs() {
   // pulses on its own loop.
   const blobs = [
     { x: "8%",  y: "12%", size: 540, color: "rgba(251, 146, 60, 0.22)",  d: 18 }, // naranja durazno
-    { x: "78%", y: "8%",  size: 520, color: "rgba(34, 197, 94, 0.18)",   d: 22 }, // verde menta
-    { x: "65%", y: "42%", size: 600, color: "rgba(56, 189, 248, 0.18)",  d: 20 }, // celeste
+    { x: "78%", y: "8%",  size: 520, color: "rgba(168, 85, 247, 0.22)",  d: 22 }, // violeta
+    { x: "65%", y: "42%", size: 600, color: "rgba(34, 197, 94, 0.16)",   d: 20 }, // verde menta
     { x: "12%", y: "65%", size: 560, color: "rgba(251, 191, 36, 0.18)",  d: 24 }, // amarillo cálido
-    { x: "70%", y: "85%", size: 580, color: "rgba(244, 114, 182, 0.18)", d: 19 }, // rosa
+    { x: "70%", y: "85%", size: 580, color: "rgba(192, 132, 252, 0.20)", d: 19 }, // lavanda
   ]
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden>
@@ -901,70 +906,358 @@ function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
   )
 }
 
+type MockTab = "inicio" | "pos" | "inventario" | "ventas" | "reportes" | "caja"
+
+const MOCK_TABS: { id: MockTab; label: string; icon: typeof Home }[] = [
+  { id: "inicio", label: "Inicio", icon: Home },
+  { id: "pos", label: "POS", icon: ShoppingCart },
+  { id: "inventario", label: "Inventario", icon: Package },
+  { id: "ventas", label: "Ventas", icon: Receipt },
+  { id: "reportes", label: "Reportes", icon: BarChart3 },
+  { id: "caja", label: "Caja", icon: DollarSign },
+]
+
 function DashboardMock() {
+  const [tab, setTab] = useState<MockTab>("reportes")
+
+  // Subtle auto-advance hint on mount: rotate once to "POS" after a few
+  // seconds so users notice the tabs are interactive, then stop.
+  useEffect(() => {
+    const t = window.setTimeout(() => setTab("pos"), 2400)
+    return () => window.clearTimeout(t)
+  }, [])
+
   return (
-    <div className="grid grid-cols-12 gap-px bg-white/5">
+    <div className="grid grid-cols-12 gap-px bg-white/5 min-h-[360px]">
       {/* Sidebar */}
-      <div className="col-span-2 bg-[#0a0a14] p-4 hidden md:block">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="col-span-3 md:col-span-2 bg-[#0a0a14] p-3 md:p-4">
+        <div className="flex items-center gap-2 mb-5">
           <div className="w-6 h-6 rounded bg-white text-black flex items-center justify-center">
             <ShoppingBag size={12} />
           </div>
-          <span className="text-xs font-bold">Orvex</span>
+          <span className="text-xs font-bold hidden md:inline">Orvex</span>
         </div>
-        <div className="space-y-1.5">
-          {["Inicio", "POS", "Inventario", "Ventas", "Reportes", "Caja"].map((s, i) => (
-            <div
-              key={i}
-              className={`text-xs px-2 py-1.5 rounded ${
-                i === 4 ? "bg-white/10 text-white" : "text-gray-500"
-              }`}
-            >
-              {s}
-            </div>
-          ))}
+        <div className="space-y-1">
+          {MOCK_TABS.map((t) => {
+            const Icon = t.icon
+            const active = tab === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`w-full flex items-center gap-2 text-[11px] px-2 py-1.5 rounded transition-all ${
+                  active
+                    ? "bg-violet-500/15 text-violet-200 border border-violet-500/30"
+                    : "text-gray-500 hover:text-gray-200 hover:bg-white/5 border border-transparent"
+                }`}
+              >
+                <Icon size={12} className="shrink-0" />
+                <span className="truncate hidden md:inline">{t.label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
+
       {/* Main */}
-      <div className="col-span-12 md:col-span-10 bg-[#06060c] p-6 min-h-[300px]">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <p className="text-xs text-gray-500">Reportes · últimos 30 días</p>
-            <p className="text-lg font-semibold">Hoy ganaste $42.180</p>
-          </div>
-          <div className="flex gap-2">
-            <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-              +18% vs mes anterior
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-5">
-          {[
-            { label: "Ventas", value: "127" },
-            { label: "Ingresos", value: "$284k" },
-            { label: "Margen", value: "32%" },
-            { label: "Ticket prom.", value: "$2.235" },
-          ].map((k, i) => (
-            <div key={i} className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
-              <p className="text-[10px] text-gray-500">{k.label}</p>
-              <p className="text-base font-bold text-white tabular-nums">{k.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Fake chart */}
-        <div className="rounded-lg bg-white/[0.02] border border-white/5 p-3 h-28 flex items-end gap-1">
-          {[40, 55, 35, 70, 45, 60, 80, 65, 50, 75, 90, 70, 85, 95].map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-gradient-to-t from-amber-500/50 to-orange-400/90"
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
+      <div className="col-span-9 md:col-span-10 bg-[#06060c] p-5 md:p-6 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {tab === "inicio" && <MockInicio />}
+            {tab === "pos" && <MockPos />}
+            {tab === "inventario" && <MockInventario />}
+            {tab === "ventas" && <MockVentas />}
+            {tab === "reportes" && <MockReportes />}
+            {tab === "caja" && <MockCaja />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
+  )
+}
+
+function MockHeader({
+  kicker,
+  title,
+  badge,
+  badgeTone = "emerald",
+}: {
+  kicker: string
+  title: string
+  badge?: string
+  badgeTone?: "emerald" | "amber" | "violet"
+}) {
+  const toneMap = {
+    emerald: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
+    amber: "bg-amber-500/10 text-amber-300 border-amber-500/20",
+    violet: "bg-violet-500/10 text-violet-300 border-violet-500/20",
+  }
+  return (
+    <div className="flex items-start justify-between mb-4 gap-3">
+      <div className="min-w-0">
+        <p className="text-[10px] text-gray-500 truncate">{kicker}</p>
+        <p className="text-base md:text-lg font-semibold truncate">{title}</p>
+      </div>
+      {badge && (
+        <span
+          className={`shrink-0 text-[10px] px-2 py-1 rounded border whitespace-nowrap ${toneMap[badgeTone]}`}
+        >
+          {badge}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function MockInicio() {
+  return (
+    <>
+      <MockHeader
+        kicker="Inicio · resumen del día"
+        title="¡Buen día! Ya van 23 ventas"
+        badge="Caja abierta"
+        badgeTone="emerald"
+      />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+        {[
+          { label: "Ventas hoy", value: "23", color: "text-violet-300" },
+          { label: "Ingresos", value: "$58.4k", color: "text-emerald-300" },
+          { label: "En caja", value: "$24.1k", color: "text-amber-300" },
+          { label: "Stock bajo", value: "3", color: "text-rose-300" },
+        ].map((k, i) => (
+          <div key={i} className="rounded-lg bg-white/[0.03] border border-white/5 p-2.5">
+            <p className="text-[10px] text-gray-500">{k.label}</p>
+            <p className={`text-base font-bold tabular-nums ${k.color}`}>{k.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-lg bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 border border-violet-500/20 p-3">
+        <div className="flex items-start gap-2">
+          <Sparkles size={14} className="text-violet-300 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-violet-200">Tip del día</p>
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              Coca 500ml lleva 4 días con stock crítico. Reabastecé antes del finde — es tu top
+              ventas.
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function MockPos() {
+  const items = [
+    { name: "Coca Cola 500ml", qty: 2, price: 950 },
+    { name: "Sándwich miga jamón", qty: 1, price: 1800 },
+    { name: "Marlboro Box 20", qty: 1, price: 2400 },
+  ]
+  const total = items.reduce((s, i) => s + i.qty * i.price, 0)
+  return (
+    <>
+      <MockHeader kicker="POS · venta en curso" title="Cobrá rápido" badge="3 productos" badgeTone="violet" />
+      <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3 mb-3">
+        <div className="flex items-center gap-2 mb-2.5">
+          <Search size={12} className="text-gray-500" />
+          <span className="text-[11px] text-gray-500">Buscar producto o escanear...</span>
+        </div>
+        <div className="space-y-1.5">
+          {items.map((it, i) => (
+            <div key={i} className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-5 h-5 rounded bg-violet-500/15 text-violet-300 flex items-center justify-center text-[10px] font-bold">
+                  {it.qty}
+                </span>
+                <span className="text-gray-200 truncate">{it.name}</span>
+              </div>
+              <span className="text-gray-300 tabular-nums shrink-0 ml-2">
+                ${(it.qty * it.price).toLocaleString("es-AR")}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] text-gray-500">Total</p>
+          <p className="text-2xl font-bold tabular-nums text-white">
+            ${total.toLocaleString("es-AR")}
+          </p>
+        </div>
+        <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 text-black text-xs font-bold shadow-lg shadow-amber-500/30 pointer-events-none">
+          Cobrar (F2)
+        </button>
+      </div>
+    </>
+  )
+}
+
+function MockInventario() {
+  const products = [
+    { name: "Coca Cola 500ml", stock: 4, min: 12, status: "low" as const },
+    { name: "Galletitas Oreo", stock: 28, min: 10, status: "ok" as const },
+    { name: "Marlboro Box 20", stock: 1, min: 6, status: "critical" as const },
+    { name: "Agua Villavicencio 1.5L", stock: 18, min: 8, status: "ok" as const },
+  ]
+  return (
+    <>
+      <MockHeader
+        kicker="Inventario · 487 productos"
+        title="Stock en tiempo real"
+        badge="3 críticos"
+        badgeTone="amber"
+      />
+      <div className="rounded-lg bg-white/[0.03] border border-white/5 overflow-hidden">
+        {products.map((p, i) => (
+          <div
+            key={i}
+            className={`flex items-center justify-between p-2.5 text-[11px] ${
+              i < products.length - 1 ? "border-b border-white/5" : ""
+            }`}
+          >
+            <div className="min-w-0">
+              <p className="text-gray-200 truncate">{p.name}</p>
+              <p className="text-[10px] text-gray-500">Mínimo: {p.min}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-gray-300 tabular-nums">{p.stock}</span>
+              {p.status === "critical" && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                  Crítico
+                </span>
+              )}
+              {p.status === "low" && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  Bajo
+                </span>
+              )}
+              {p.status === "ok" && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  OK
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function MockVentas() {
+  const sales = [
+    { time: "14:32", method: "MP QR", amount: 4150 },
+    { time: "14:18", method: "Efectivo", amount: 2400 },
+    { time: "14:05", method: "Débito", amount: 8900 },
+    { time: "13:51", method: "MODO", amount: 1750 },
+    { time: "13:42", method: "Efectivo", amount: 3300 },
+  ]
+  const methodColor: Record<string, string> = {
+    "MP QR": "text-sky-300",
+    Efectivo: "text-emerald-300",
+    Débito: "text-violet-300",
+    MODO: "text-amber-300",
+  }
+  return (
+    <>
+      <MockHeader kicker="Ventas · hoy" title="Últimas operaciones" badge="23 ventas" badgeTone="violet" />
+      <div className="rounded-lg bg-white/[0.03] border border-white/5 overflow-hidden">
+        {sales.map((s, i) => (
+          <div
+            key={i}
+            className={`flex items-center justify-between p-2.5 text-[11px] ${
+              i < sales.length - 1 ? "border-b border-white/5" : ""
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-gray-500 tabular-nums">{s.time}</span>
+              <span className={`font-medium ${methodColor[s.method] ?? "text-gray-300"}`}>
+                {s.method}
+              </span>
+            </div>
+            <span className="text-white tabular-nums font-semibold">
+              ${s.amount.toLocaleString("es-AR")}
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function MockReportes() {
+  return (
+    <>
+      <MockHeader
+        kicker="Reportes · últimos 30 días"
+        title="Hoy ganaste $42.180"
+        badge="+18% vs mes anterior"
+        badgeTone="emerald"
+      />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+        {[
+          { label: "Ventas", value: "127" },
+          { label: "Ingresos", value: "$284k" },
+          { label: "Margen", value: "32%" },
+          { label: "Ticket prom.", value: "$2.235" },
+        ].map((k, i) => (
+          <div key={i} className="rounded-lg bg-white/[0.03] border border-white/5 p-2.5">
+            <p className="text-[10px] text-gray-500">{k.label}</p>
+            <p className="text-base font-bold text-white tabular-nums">{k.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-lg bg-white/[0.02] border border-white/5 p-3 h-24 flex items-end gap-1">
+        {[40, 55, 35, 70, 45, 60, 80, 65, 50, 75, 90, 70, 85, 95].map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-t bg-gradient-to-t from-amber-500/50 to-orange-400/90"
+            style={{ height: `${h}%` }}
+          />
+        ))}
+      </div>
+    </>
+  )
+}
+
+function MockCaja() {
+  return (
+    <>
+      <MockHeader
+        kicker="Caja · turno tarde"
+        title="Sesión abierta hace 3h 24m"
+        badge="Sin diferencias"
+        badgeTone="emerald"
+      />
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {[
+          { label: "Efectivo", value: "$24.150", color: "text-emerald-300" },
+          { label: "Digital", value: "$58.480", color: "text-violet-300" },
+          { label: "Total", value: "$82.630", color: "text-white" },
+        ].map((k, i) => (
+          <div key={i} className="rounded-lg bg-white/[0.03] border border-white/5 p-2.5">
+            <p className="text-[10px] text-gray-500">{k.label}</p>
+            <p className={`text-base font-bold tabular-nums ${k.color}`}>{k.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3 flex items-center gap-2">
+        <CheckCircle size={14} className="text-emerald-300 shrink-0" />
+        <p className="text-[11px] text-emerald-200">
+          Esperado: <span className="tabular-nums font-semibold">$24.150</span> · Contado:{" "}
+          <span className="tabular-nums font-semibold">$24.150</span> · Diferencia:{" "}
+          <span className="tabular-nums font-semibold">$0</span>
+        </p>
+      </div>
+    </>
   )
 }
 

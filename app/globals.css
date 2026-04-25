@@ -405,7 +405,7 @@ html[data-theme="light"] {
 .aurora-bg::after {
   top: 25%; right: 5%;
   width: 50%; height: 60%;
-  background: radial-gradient(closest-side, #38bdf8, transparent 70%);
+  background: radial-gradient(closest-side, #a855f7, transparent 70%);
   animation: aurora-drift 22s var(--ease-in-out-soft) infinite reverse, aurora-pulse 9s ease-in-out infinite;
 }
 
