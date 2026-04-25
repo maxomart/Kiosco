@@ -27,6 +27,9 @@ export interface SendEmailOptions {
 export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; id?: string; error?: string }> {
   const resend = getResend()
   const from = process.env.EMAIL_FROM ?? "Orvex <onboarding@resend.dev>"
+  // Default reply-to from env (e.g. cobraorvex@gmail.com) so responses
+  // land in a real inbox even when sent from a noreply@ address.
+  const defaultReplyTo = process.env.EMAIL_REPLY_TO
 
   if (!resend) {
     console.warn("[email] RESEND_API_KEY not set — skipping send. Subject:", opts.subject)
@@ -40,7 +43,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<{ ok: boolean; 
       subject: opts.subject,
       html: opts.html,
       text: opts.text,
-      replyTo: opts.replyTo,
+      replyTo: opts.replyTo ?? defaultReplyTo,
     })
 
     if (error) {

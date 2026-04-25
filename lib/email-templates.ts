@@ -238,9 +238,10 @@ export function renderDigestEmail(d: DigestData): string {
 
       <!-- Footer -->
       <tr><td style="padding:20px 32px;background:#0f172a;border-top:1px solid #1f2937;">
-        <p style="margin:0;font-size:11px;color:#6b7280;text-align:center;">
-          Recibís este email porque activaste resúmenes en tu negocio.
-          ${d.appUrl ? `<a href="${d.appUrl}/configuracion" style="color:${accent};text-decoration:none;">Cambiar preferencias</a>` : ""}
+        <p style="margin:0;font-size:11px;color:#6b7280;text-align:center;line-height:1.6;">
+          Recibís este email porque activaste resúmenes en tu negocio.<br />
+          ${d.appUrl ? `<a href="${d.appUrl}/configuracion" style="color:${accent};text-decoration:none;">Cambiar preferencias</a> · ` : ""}
+          <span>Respondé este email para contactarnos</span>
         </p>
       </td></tr>
     </table>
