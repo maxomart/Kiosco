@@ -20,7 +20,7 @@ async function main() {
   console.log("🌱 Seeding database...")
 
   // ── SUPER ADMIN ──────────────────────────────────────────────
-  const superAdminEmail = (process.env.SUPERADMIN_EMAIL ?? "admin@retailar.app").toLowerCase()
+  const superAdminEmail = (process.env.SUPERADMIN_EMAIL ?? "admin@cobraorvex.com").toLowerCase()
   const superAdminPlain = process.env.SUPERADMIN_PASSWORD || generateDemoPassword(18)
   if (process.env.SUPERADMIN_PASSWORD && process.env.SUPERADMIN_PASSWORD.length < 10) {
     throw new Error("SUPERADMIN_PASSWORD debe tener al menos 10 caracteres")

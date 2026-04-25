@@ -517,7 +517,7 @@ export default function SuscripcionPage() {
                 cambiar las condiciones comerciales, contactá al equipo de soporte.
               </p>
               <a
-                href="mailto:soporte@retailar.com?subject=Cambio%20de%20plan%20Enterprise"
+                href="mailto:soporte@cobraorvex.com?subject=Cambio%20de%20plan%20Enterprise"
                 className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-semibold transition"
               >
                 Contactar soporte

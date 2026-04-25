@@ -42,8 +42,8 @@ export default function MultiTiendaClient() {
 
         <div className="bg-gray-800/50 rounded-lg p-4 mb-6 flex items-center gap-3">
           <Mail className="w-5 h-5 text-accent" />
-          <a href="mailto:soporte@retailar.app" className="text-accent hover:underline text-sm font-medium">
-            soporte@retailar.app
+          <a href="mailto:soporte@cobraorvex.com" className="text-accent hover:underline text-sm font-medium">
+            soporte@cobraorvex.com
           </a>
         </div>
 

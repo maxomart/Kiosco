@@ -559,7 +559,7 @@ export default async function LandingPage({
           <div className="flex items-center gap-6">
             <a href="#pricing" className="hover:text-white transition-colors">Precios</a>
             <Link href="/login" className="hover:text-white transition-colors">Ingresar</Link>
-            <a href="mailto:soporte@retailar.com" className="hover:text-white transition-colors">Soporte</a>
+            <a href="mailto:soporte@cobraorvex.com" className="hover:text-white transition-colors">Soporte</a>
           </div>
         </div>
       </footer>

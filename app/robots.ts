@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next"
 const baseUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
   process.env.NEXTAUTH_URL ??
-  "https://retailar.app"
+  "https://cobraorvex.com"
 
 export default function robots(): MetadataRoute.Robots {
   return {
