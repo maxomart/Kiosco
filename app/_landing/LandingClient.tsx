@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence, useInView, useMotionValue, useTransform, animate, useScroll } from "framer-motion"
+import { OrvexLogo } from "@/components/shared/OrvexLogo"
 import {
   ShoppingBag,
   Shield,
@@ -157,7 +158,7 @@ export default function LandingClient({
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(700px circle at var(--mx) var(--my), rgba(251,146,60,0.14), transparent 45%)",
+              "radial-gradient(700px circle at var(--mx) var(--my), rgba(99,102,241,0.18), transparent 45%)",
           }}
           aria-hidden
         />
@@ -194,7 +195,7 @@ export default function LandingClient({
             <motion.span
               variants={fadeUp}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="block bg-gradient-to-br from-white via-white to-gray-500 bg-clip-text text-transparent"
+              className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent"
             >
               desde cualquier lugar.
             </motion.span>
@@ -254,7 +255,7 @@ export default function LandingClient({
           transition={{ delay: 0.7, duration: 1, ease: [0.16, 1, 0.3, 1] }}
           className="relative max-w-5xl mx-auto mt-20 px-4"
         >
-          <div className="relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur-md p-1 shadow-[0_30px_80px_-20px_rgba(251,146,60,0.4)]">
+          <div className="relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur-md p-1 shadow-[0_30px_80px_-20px_rgba(99,102,241,0.5)]">
             <div className="rounded-xl bg-[#0a0a14] overflow-hidden">
               <DashboardMock />
             </div>
@@ -263,7 +264,7 @@ export default function LandingClient({
           <div
             aria-hidden
             className="absolute inset-x-10 bottom-0 h-32 -z-10 blur-3xl opacity-60"
-            style={{ background: "radial-gradient(closest-side, #fb923c, transparent 70%)" }}
+            style={{ background: "radial-gradient(closest-side, #6366f1, transparent 70%)" }}
           />
         </motion.div>
       </section>
@@ -417,20 +418,20 @@ export default function LandingClient({
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden border border-violet-400/30 bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-transparent"
+          className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden border border-blue-400/30 bg-gradient-to-br from-blue-500/10 via-violet-500/5 to-transparent"
         >
           <div
             aria-hidden
             className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-60"
-            style={{ background: "radial-gradient(circle, rgba(168,85,247,0.45), transparent 70%)", filter: "blur(40px)" }}
+            style={{ background: "radial-gradient(circle, rgba(59,130,246,0.45), transparent 70%)", filter: "blur(40px)" }}
           />
           <div
             aria-hidden
-            className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-50"
-            style={{ background: "radial-gradient(circle, rgba(244,114,182,0.35), transparent 70%)", filter: "blur(40px)" }}
+            className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-60"
+            style={{ background: "radial-gradient(circle, rgba(139,92,246,0.45), transparent 70%)", filter: "blur(40px)" }}
           />
           <div className="relative px-8 py-14 md:p-14 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/15 border border-violet-400/30 text-violet-200 text-xs mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-200 text-xs mb-5">
               <Sparkles size={12} /> 7 días gratis · sin tarjeta
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
@@ -442,7 +443,7 @@ export default function LandingClient({
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 href={activePromo ? professionalHref : freeHref}
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.98] shadow-2xl shadow-violet-500/40"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.98] shadow-2xl shadow-blue-500/40"
               >
                 {activePromo
                   ? `Reclamar ${mesesOdias(activePromo.daysGranted)} de ${activePromo.planLabel}`
@@ -474,11 +475,11 @@ function ColorBlobs() {
   // feel without going space-y. Five fixed positions, each blob drifts and
   // pulses on its own loop.
   const blobs = [
-    { x: "8%",  y: "12%", size: 540, color: "rgba(251, 146, 60, 0.22)",  d: 18 }, // naranja durazno
-    { x: "78%", y: "8%",  size: 520, color: "rgba(168, 85, 247, 0.22)",  d: 22 }, // violeta
-    { x: "65%", y: "42%", size: 600, color: "rgba(34, 197, 94, 0.16)",   d: 20 }, // verde menta
-    { x: "12%", y: "65%", size: 560, color: "rgba(251, 191, 36, 0.18)",  d: 24 }, // amarillo cálido
-    { x: "70%", y: "85%", size: 580, color: "rgba(192, 132, 252, 0.20)", d: 19 }, // lavanda
+    { x: "82%", y: "15%", size: 620, color: "rgba(139, 92, 246, 0.32)",  d: 18 }, // violeta vivo
+    { x: "8%",  y: "20%", size: 540, color: "rgba(59, 130, 246, 0.26)",  d: 22 }, // azul
+    { x: "85%", y: "55%", size: 600, color: "rgba(168, 85, 247, 0.28)",  d: 20 }, // violeta
+    { x: "15%", y: "75%", size: 560, color: "rgba(34, 211, 238, 0.20)",  d: 24 }, // cyan
+    { x: "55%", y: "90%", size: 520, color: "rgba(99, 102, 241, 0.24)",  d: 19 }, // indigo
   ]
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden>
@@ -541,8 +542,8 @@ function Navbar({
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href={promoCode ? `/?promo=${promoCode}` : "/"} className="flex items-center gap-2 group">
-          <div className="relative w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-3">
-            <ShoppingBag size={16} />
+          <div className="relative w-8 h-8 flex items-center justify-center transition-transform group-hover:scale-110">
+            <OrvexLogo size={32} gradientId="nav-logo-grad" />
             <span className="absolute inset-0 rounded-lg bg-violet-500 opacity-0 group-hover:opacity-40 blur-md transition-opacity" />
           </div>
           <span className="font-bold text-lg tracking-tight">Orvex</span>
@@ -899,13 +900,13 @@ function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
       whileHover={{ y: -4 }}
       className={`relative h-full rounded-2xl border transition-colors ${
         plan.highlight
-          ? "border-violet-400/60 bg-gradient-to-b from-violet-500/[0.10] to-transparent shadow-[0_20px_60px_-20px_rgba(168,85,247,0.55)]"
+          ? "border-blue-400/60 bg-gradient-to-b from-blue-500/[0.10] to-transparent shadow-[0_20px_60px_-20px_rgba(99,102,241,0.6)]"
           : "border-white/10 bg-white/[0.03] hover:border-white/25"
       }`}
     >
       <div className="relative h-full flex flex-col p-6">
         {plan.highlight && (
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[10px] font-bold tracking-wider shadow-lg shadow-violet-500/40">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-violet-500 text-white text-[10px] font-bold tracking-wider shadow-lg shadow-blue-500/40">
             MÁS POPULAR
           </div>
         )}
@@ -923,7 +924,7 @@ function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
             <li key={j} className="flex items-start gap-2 text-sm text-gray-300">
               <CheckCircle
                 size={14}
-                className={`mt-0.5 shrink-0 ${plan.highlight ? "text-violet-300" : "text-emerald-300"}`}
+                className={`mt-0.5 shrink-0 ${plan.highlight ? "text-blue-300" : "text-emerald-300"}`}
               />
               {f}
             </li>
@@ -933,7 +934,7 @@ function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
           href={plan.href}
           className={`block text-center py-2.5 rounded-lg font-semibold text-sm transition-all hover:scale-[1.02] ${
             plan.highlight
-              ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white shadow-lg shadow-violet-500/30"
+              ? "bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white shadow-lg shadow-blue-500/30"
               : "bg-white/5 hover:bg-white/10 border border-white/10 text-white"
           }`}
         >
@@ -984,9 +985,7 @@ function DashboardMock() {
       {/* Sidebar */}
       <div className="col-span-3 md:col-span-2 bg-[#0a0a14] p-3 md:p-4">
         <div className="flex items-center gap-2 mb-5">
-          <div className="w-6 h-6 rounded bg-white text-black flex items-center justify-center">
-            <ShoppingBag size={12} />
-          </div>
+          <OrvexLogo size={22} gradientId="mock-logo-grad" />
           <span className="text-xs font-bold hidden md:inline">Orvex</span>
         </div>
         <div className="space-y-1">
@@ -1282,7 +1281,7 @@ function MockReportes() {
         {[40, 55, 35, 70, 45, 60, 80, 65, 50, 75, 90, 70, 85, 95].map((h, i) => (
           <div
             key={i}
-            className="flex-1 rounded-t bg-gradient-to-t from-emerald-500/50 to-emerald-400/90"
+            className="flex-1 rounded-t bg-gradient-to-t from-blue-500/50 to-violet-400/90"
             style={{ height: `${h}%` }}
           />
         ))}
@@ -1356,9 +1355,7 @@ function Footer() {
     <footer className="relative border-t border-white/5 py-10 px-6">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-white text-black flex items-center justify-center">
-            <ShoppingBag size={12} />
-          </div>
+          <OrvexLogo size={22} gradientId="footer-logo-grad" />
           <span>Orvex © {new Date().getFullYear()}</span>
         </div>
         <div className="flex items-center gap-6">

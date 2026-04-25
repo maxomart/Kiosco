@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Placeholder icon for the RetailAR PWA. Replace with a real branded icon
-  (e.g. exported from Figma) and regenerate the PNG variants:
-    npx pwa-asset-generator public/icons/icon.svg public/icons --background "#0a0a0a"
+  Orvex brand mark — open ring + diagonal stroke, cyan→blue→violet gradient
+  on a dark rounded-square background. Matches the in-app <OrvexLogo>
+  component. Used for the PWA install icon (Android) via manifest.json.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="96" fill="#8b5cf6"/>
-  <g fill="#ffffff" font-family="Inter, system-ui, -apple-system, sans-serif" font-weight="800">
-    <text x="256" y="310" font-size="220" text-anchor="middle">R</text>
-  </g>
-  <rect x="44" y="412" width="424" height="32" rx="16" fill="rgba(255,255,255,0.18)"/>
+  <defs>
+    <linearGradient id="g" x1="50" y1="50" x2="450" y2="450" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="45%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#050510"/>
+  <path d="M 256 75 A 175 175 0 1 1 132 388"
+        stroke="url(#g)" stroke-width="64" stroke-linecap="round" fill="none"/>
+  <path d="M 274 244 L 414 448"
+        stroke="url(#g)" stroke-width="64" stroke-linecap="round"/>
 </svg>

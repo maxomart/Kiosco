@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { ShoppingCart } from "lucide-react"
+import { OrvexLogo } from "@/components/shared/OrvexLogo"
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -24,12 +24,12 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         }}
         aria-hidden
       />
-      {/* Subtle top glow */}
+      {/* Subtle top glow — blue→violet to match the brand */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[500px]"
         style={{
           background:
-            "radial-gradient(900px 400px at 50% -10%, rgba(139,92,246,0.08), transparent 60%)",
+            "radial-gradient(900px 400px at 50% -10%, rgba(99,102,241,0.16), transparent 60%)",
         }}
         aria-hidden
       />
@@ -40,11 +40,9 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           className="flex items-center gap-2.5 group"
           aria-label="Orvex home"
         >
-          <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-lg shadow-black/50 group-hover:scale-105 transition-transform">
-            <ShoppingCart className="w-5 h-5 text-black" strokeWidth={2.2} />
-          </div>
+          <OrvexLogo size={36} className="group-hover:scale-105 transition-transform" gradientId="auth-logo-grad" />
           <span className="text-xl font-bold tracking-tight text-white">
-            Orv<span className="text-gray-400">ex</span>
+            Orv<span className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">ex</span>
           </span>
         </Link>
       </header>

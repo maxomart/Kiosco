@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils"
 import { canAny, hasFeature, type Permission, type PlanFeature } from "@/lib/permissions"
 import type { Plan } from "@/lib/utils"
+import { OrvexLogo } from "@/components/shared/OrvexLogo"
 
 interface SidebarProps {
   user: {
@@ -117,9 +118,7 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
             className="flex-shrink-0 w-8 h-8 rounded-lg object-cover bg-gray-800"
           />
         ) : (
-          <div className="flex-shrink-0 w-8 h-8 bg-accent rounded-lg flex items-center justify-center transition-colors duration-200">
-            <ShoppingBag className="w-4 h-4 text-accent-foreground" />
-          </div>
+          <OrvexLogo size={32} className="flex-shrink-0" gradientId="sidebar-logo-grad" />
         )}
         {!collapsed && (
           <span className="text-white font-bold text-lg tracking-tight truncate">

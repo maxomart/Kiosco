@@ -399,13 +399,13 @@ html[data-theme="light"] {
 .aurora-bg::before {
   top: 5%; left: 8%;
   width: 55%; height: 55%;
-  background: radial-gradient(closest-side, #fb923c, transparent 70%);
+  background: radial-gradient(closest-side, #3b82f6, transparent 70%);
   animation: aurora-drift 18s var(--ease-in-out-soft) infinite, aurora-pulse 7s ease-in-out infinite;
 }
 .aurora-bg::after {
   top: 25%; right: 5%;
   width: 50%; height: 60%;
-  background: radial-gradient(closest-side, #a855f7, transparent 70%);
+  background: radial-gradient(closest-side, #8b5cf6, transparent 70%);
   animation: aurora-drift 22s var(--ease-in-out-soft) infinite reverse, aurora-pulse 9s ease-in-out infinite;
 }
 
