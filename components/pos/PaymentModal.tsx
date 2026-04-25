@@ -331,9 +331,17 @@ export function PaymentModal({ onClose }: Props) {
             <div>
               <label className="text-xs text-gray-500 uppercase tracking-wide block mb-2">Efectivo recibido</label>
               <input
-                type="number" step="0.01" min={totalAmount}
-                value={cashReceived}
-                onChange={e => setCashReceived(e.target.value)}
+                type="text"
+                inputMode="numeric"
+                value={cashReceived === "" ? "" : new Intl.NumberFormat("es-AR").format(Number(cashReceived))}
+                onChange={(e) => {
+                  // Strip everything except digits, then store as string. We
+                  // format on render so the user sees thousands separators
+                  // (10.000) while typing.
+                  const digits = e.target.value.replace(/\D/g, "")
+                  setCashReceived(digits)
+                }}
+                onFocus={(e) => e.target.select()}
                 placeholder={formatCurrency(totalAmount)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-lg font-semibold text-gray-100 focus:outline-none focus:border-purple-500 text-right"
                 autoFocus

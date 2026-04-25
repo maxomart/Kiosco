@@ -161,9 +161,16 @@ export default function POSPage() {
     }
     if (!p) { toast.error(`Código no encontrado: ${barcode}`); return }
     if (p.stock <= 0 && !p.soldByWeight) { toast.error(`Sin stock: ${p.name}`); return }
+    // Stock guard: if already at max in cart, don't increment past it.
+    const inCart = cart.find((i) => i.productId === p!.id)
+    const currentQty = inCart?.quantity ?? 0
+    if (!p.soldByWeight && currentQty + 1 > p.stock) {
+      toast.error(`Stock máximo de ${p.name}: ${p.stock} unidades`)
+      return
+    }
     addToCart({ productId: p.id, productName: p.name, barcode: p.barcode, unitPrice: p.salePrice, costPrice: p.costPrice, stock: p.stock, taxRate: "STANDARD", soldByWeight: p.soldByWeight })
     toast.success(`${p.name} agregado`, { duration: 1200, icon: "🛒" })
-  }, [addToCart])
+  }, [addToCart, cart])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -185,6 +192,13 @@ export default function POSPage() {
 
   const handleAddProduct = (p: Product) => {
     if (p.stock <= 0 && !p.soldByWeight) { toast.error(`Sin stock: ${p.name}`); return }
+    // Stock guard: don't let the user click past available stock.
+    const inCart = cart.find((i) => i.productId === p.id)
+    const currentQty = inCart?.quantity ?? 0
+    if (!p.soldByWeight && currentQty + 1 > p.stock) {
+      toast.error(`Stock máximo de ${p.name}: ${p.stock} unidades`)
+      return
+    }
     addToCart({ productId: p.id, productName: p.name, barcode: p.barcode, unitPrice: p.salePrice, costPrice: p.costPrice, stock: p.stock, taxRate: "STANDARD", soldByWeight: p.soldByWeight })
     setQuery("")
     setProducts([])

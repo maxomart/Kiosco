@@ -45,6 +45,12 @@ export const usePOSStore = create<POSStore>()(
         const { cart } = get()
         const existing = cart.find((i) => i.productId === product.productId)
         if (existing) {
+          // Stock guard: never increment past available stock for unit-based
+          // products. Callers are expected to validate first and toast a
+          // friendly message; this is a backstop.
+          if (!existing.soldByWeight && existing.quantity + 1 > existing.stock) {
+            return
+          }
           set({
             cart: cart.map((i) =>
               i.productId === product.productId
@@ -57,6 +63,7 @@ export const usePOSStore = create<POSStore>()(
             ),
           })
         } else {
+          if (!product.soldByWeight && product.stock <= 0) return
           set({
             cart: [
               ...cart,
@@ -81,15 +88,16 @@ export const usePOSStore = create<POSStore>()(
           return
         }
         set({
-          cart: get().cart.map((i) =>
-            i.productId === productId
-              ? {
-                  ...i,
-                  quantity,
-                  subtotal: Math.round((quantity * i.unitPrice * (1 - i.discount / 100)) * 100) / 100,
-                }
-              : i
-          ),
+          cart: get().cart.map((i) => {
+            if (i.productId !== productId) return i
+            // Same stock guard for the +/- buttons in CartPanel.
+            const capped = !i.soldByWeight ? Math.min(quantity, i.stock) : quantity
+            return {
+              ...i,
+              quantity: capped,
+              subtotal: Math.round((capped * i.unitPrice * (1 - i.discount / 100)) * 100) / 100,
+            }
+          }),
         })
       },
 

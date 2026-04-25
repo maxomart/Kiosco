@@ -73,8 +73,10 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
                   {editingDiscount === item.productId ? (
                     <input
                       type="number" min={0} max={100}
-                      defaultValue={item.discount}
+                      defaultValue={item.discount === 0 ? "" : item.discount}
+                      placeholder="0"
                       className="w-14 text-xs bg-gray-700 rounded px-1.5 py-1 text-center"
+                      onFocus={e => e.target.select()}
                       onBlur={e => { updateDiscount(item.productId, Math.min(100, Math.max(0, Number(e.target.value)))); setEditingDiscount(null) }}
                       onKeyDown={e => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
                       autoFocus
@@ -105,7 +107,10 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
           <span className="text-gray-400">Descuento</span>
           <div className="flex items-center gap-2">
             <input
-              type="number" min={0} max={100} value={discount}
+              type="number" min={0} max={100}
+              value={discount === 0 ? "" : discount}
+              placeholder="0"
+              onFocus={e => e.target.select()}
               onChange={e => setGlobalDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
               className="w-14 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-center text-gray-300 focus:outline-none focus:border-purple-500"
             />
