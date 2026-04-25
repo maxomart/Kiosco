@@ -1,12 +1,5 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { db } from "@/lib/db"
-import { can, hasFeature } from "@/lib/permissions"
-import { PaywallGate } from "@/components/shared/PaywallGate"
-import { NoAccess } from "@/components/shared/NoAccess"
-import type { Plan } from "@/lib/utils"
-import StatCard from "@/components/shared/StatCard"
 import { Card } from "@/components/ui/Card"
+import StatCard from "@/components/shared/StatCard"
 import {
   TrendingUp,
   AlertTriangle,
@@ -31,51 +24,7 @@ import { InvisibleLossesList } from "@/components/analytics/InvisibleLossesList"
 import { DebtorsList } from "@/components/analytics/DebtorsList"
 import { AllMarginsTable } from "@/components/analytics/AllMarginsTable"
 
-export const metadata = {
-  title: "Analytics - Kiosco",
-}
-
-export default async function AnalyticsPage() {
-  const session = await auth()
-  if (!session?.user) {
-    redirect("/login")
-  }
-
-  const role = session.user.role
-  const tenantId = session.user.tenantId
-
-  if (!can(role, "reports:read")) {
-    return <NoAccess />
-  }
-
-  let plan: Plan = "STARTER"
-  if (tenantId) {
-    const sub = await db.subscription.findUnique({
-      where: { tenantId },
-      select: { plan: true },
-    })
-    plan = (sub?.plan as Plan) ?? "STARTER"
-  }
-
-  if (!hasFeature(plan, "feature:analytics")) {
-    return (
-      <PaywallGate
-        currentPlan={plan}
-        requiredPlan="PROFESSIONAL"
-        title="Análisis Inteligente de Negocio"
-        description="Descubrí dónde se pierde plata y qué hacer para ganar más. Análisis que transforma datos en acciones concretas."
-        perks={[
-          "Márgenes por producto — sabé qué sube de precio sin afectar ventas",
-          "Predicción de stock — nunca te quedes sin lo que más vende",
-          "Pérdidas invisibles — detectá vencimientos y diferencias de caja",
-          "Alertas de deudores — cobrá antes de que se convierta en incobrable",
-        ]}
-      />
-    )
-  }
-
-  if (!tenantId) return <NoAccess />
-
+export async function BusinessInsightsSection({ tenantId }: { tenantId: string }) {
   try {
     const [marginsSummary, stocks, losses, debtors] = await Promise.all([
       calculateMarginsSummary(tenantId, 30),
@@ -107,26 +56,24 @@ export default async function AnalyticsPage() {
       margins.some((m) => m.healthStatus === "LOW")
 
     return (
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-start justify-between flex-wrap gap-4">
+      <div className="space-y-8">
+        <div className="flex items-start justify-between flex-wrap gap-4 pt-4 border-t border-gray-800">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-soft border border-accent/30 text-accent text-xs font-medium">
                 <Sparkles className="w-3 h-3" />
-                Analytics Inteligente
+                Análisis Inteligente
               </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-100">
+            <h2 className="text-2xl font-bold text-gray-100">
               Análisis de Negocio
-            </h1>
-            <p className="text-gray-400 mt-1">
+            </h2>
+            <p className="text-gray-400 mt-1 text-sm">
               Ganá más sin trabajar más. Estos números te dicen qué hacer.
             </p>
           </div>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Margen promedio"
@@ -166,7 +113,6 @@ export default async function AnalyticsPage() {
           />
         </div>
 
-        {/* Resumen general / empty state */}
         {!hasAnyIssue && (
           <Card padding="lg" className="text-center border-emerald-700/40 bg-emerald-900/10">
             <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
@@ -179,7 +125,6 @@ export default async function AnalyticsPage() {
           </Card>
         )}
 
-        {/* Márgenes */}
         <section>
           <SectionHeader
             title="Márgenes por Producto"
@@ -191,23 +136,10 @@ export default async function AnalyticsPage() {
             }
           />
 
-          {/* Leyenda compacta */}
           <div className="flex flex-wrap gap-2 mb-4">
-            <LegendBadge
-              color="emerald"
-              label="HIGH"
-              desc="Margen >20% + rota"
-            />
-            <LegendBadge
-              color="amber"
-              label="MEDIUM"
-              desc="Rendimiento medio"
-            />
-            <LegendBadge
-              color="orange"
-              label="LOW"
-              desc="Margen bajo o rota poco"
-            />
+            <LegendBadge color="emerald" label="HIGH" desc="Margen >20% + rota" />
+            <LegendBadge color="amber" label="MEDIUM" desc="Rendimiento medio" />
+            <LegendBadge color="orange" label="LOW" desc="Margen bajo o rota poco" />
             <LegendBadge color="red" label="DEAD" desc="Sin ventas" />
           </div>
 
@@ -258,7 +190,6 @@ export default async function AnalyticsPage() {
             </Card>
           )}
 
-          {/* Tabla de todos los productos */}
           {allProducts.length > 0 && (
             <div className="mt-4">
               <AllMarginsTable products={allProducts} />
@@ -266,7 +197,6 @@ export default async function AnalyticsPage() {
           )}
         </section>
 
-        {/* Stock */}
         <section>
           <SectionHeader
             title="Stock Inteligente"
@@ -276,9 +206,7 @@ export default async function AnalyticsPage() {
           {stocks.length === 0 ? (
             <Card padding="lg" className="text-center">
               <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
-              <p className="text-gray-300 font-medium">
-                Stock en niveles normales
-              </p>
+              <p className="text-gray-300 font-medium">Stock en niveles normales</p>
               <p className="text-xs text-gray-500 mt-1">
                 Todos los productos tienen stock suficiente
               </p>
@@ -288,7 +216,6 @@ export default async function AnalyticsPage() {
           )}
         </section>
 
-        {/* Pérdidas */}
         <section>
           <SectionHeader
             title="Pérdidas Invisibles"
@@ -298,9 +225,7 @@ export default async function AnalyticsPage() {
           {losses.length === 0 ? (
             <Card padding="lg" className="text-center">
               <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-2" />
-              <p className="text-gray-300 font-medium">
-                Sin pérdidas detectadas
-              </p>
+              <p className="text-gray-300 font-medium">Sin pérdidas detectadas</p>
               <p className="text-xs text-gray-500 mt-1">
                 No hay diferencias de caja ni vencimientos
               </p>
@@ -310,7 +235,6 @@ export default async function AnalyticsPage() {
           )}
         </section>
 
-        {/* Deudores */}
         <section>
           <SectionHeader
             title="Clientes Deudores"
@@ -336,17 +260,14 @@ export default async function AnalyticsPage() {
       </div>
     )
   } catch (error) {
-    console.error("[analytics] Error:", error)
+    console.error("[business-insights] Error:", error)
     return (
-      <div className="max-w-7xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-gray-100">Analytics</h1>
-        <Card padding="lg">
-          <p className="text-red-400 font-semibold">Error cargando analytics</p>
-          <p className="text-gray-400 mt-2 text-sm">
-            {error instanceof Error ? error.message : "Error desconocido"}
-          </p>
-        </Card>
-      </div>
+      <Card padding="lg">
+        <p className="text-red-400 font-semibold">Error cargando análisis de negocio</p>
+        <p className="text-gray-400 mt-2 text-sm">
+          {error instanceof Error ? error.message : "Error desconocido"}
+        </p>
+      </Card>
     )
   }
 }
@@ -363,7 +284,7 @@ function SectionHeader({
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-        <h2 className="text-xl font-semibold text-gray-100">{title}</h2>
+        <h3 className="text-xl font-semibold text-gray-100">{title}</h3>
         {accent && (
           <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-300 bg-amber-900/30 border border-amber-700/40 px-2 py-0.5 rounded-full">
             <DollarSign className="w-3 h-3" />

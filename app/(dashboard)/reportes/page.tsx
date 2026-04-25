@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { can, hasFeature } from "@/lib/permissions"
 import { NoAccess } from "@/components/shared/NoAccess"
 import ReportesPage from "./ReportesClient"
+import { BusinessInsightsSection } from "@/components/reportes/BusinessInsightsSection"
 import type { Plan } from "@/lib/utils"
 
 export default async function ReportesRoute() {
@@ -23,8 +24,16 @@ export default async function ReportesRoute() {
     plan = (sub?.plan as Plan) ?? "FREE"
   }
 
-  // Reports basic is unlocked for everyone (FREE inclusive). The client
-  // component reads `plan` and renders either the limited view or the
-  // full one with charts + breakdowns.
-  return <ReportesPage plan={plan} />
+  const showInsights = tenantId && hasFeature(plan, "feature:analytics")
+
+  return (
+    <div className="space-y-8">
+      <ReportesPage plan={plan} />
+      {showInsights && (
+        <div className="p-6 max-w-7xl mx-auto">
+          <BusinessInsightsSection tenantId={tenantId} />
+        </div>
+      )}
+    </div>
+  )
 }

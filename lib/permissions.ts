@@ -110,7 +110,6 @@ export type PlanFeature =
   | "feature:recharges"       // Supplier recharges
   | "feature:suppliers"       // Suppliers CRUD (locked on FREE — kiosks need this when they grow)
   | "feature:multiple_users"  // Multi-user (any user beyond the owner)
-  | "feature:api"             // API access
   | "feature:csv_import"      // Bulk CSV import
   | "feature:csv_export"      // CSV export
   | "feature:loyalty"         // Loyalty points
@@ -135,7 +134,6 @@ const PLAN_FEATURES: PlanGate = {
   "feature:recharges":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:suppliers":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multiple_users":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:api":               ["BUSINESS", "ENTERPRISE"],
   "feature:csv_import":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_export":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
