@@ -316,7 +316,7 @@ function SignupForm() {
   }
 
   const inputBase =
-    "w-full bg-black/40 border rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition focus:ring-2 focus:ring-white/20 focus:border-white/30"
+    "w-full bg-black/40 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 outline-none transition focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60"
   const inputOk = "border-white/10 hover:border-white/20"
   const inputErr = "border-red-500/60"
 
@@ -408,26 +408,36 @@ function SignupForm() {
         </div>
       </div>
 
-      {/* Form card */}
-      <div className="relative bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-5 sm:p-7 lg:p-8 shadow-2xl shadow-black/50">
+      {/* Form card with brand-tinted glow */}
+      <div className="relative">
+        <div
+          aria-hidden
+          className="absolute -inset-px rounded-2xl opacity-50 blur-xl"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(59,130,246,0.3), rgba(139,92,246,0.3))",
+          }}
+        />
+        <div className="relative bg-white/[0.04] backdrop-blur-2xl border border-white/10 rounded-2xl p-5 sm:p-7 lg:p-8 shadow-2xl shadow-black/60 overflow-hidden">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)",
+          }}
+        />
         <div className="flex justify-center mb-4 sm:mb-5">
           <div
-            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
-              boxShadow:
-                "inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 30px -10px rgba(0,0,0,0.8)",
-              border: "1px solid rgba(255,255,255,0.1)",
-            }}
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-violet-500/20 border border-blue-400/30"
             aria-hidden
           >
-            <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-white" strokeWidth={2} />
+            <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-blue-300" strokeWidth={2} />
           </div>
         </div>
 
         <div className="text-center mb-5 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
             Crear cuenta
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-1.5">
@@ -630,7 +640,7 @@ function SignupForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed text-black font-semibold rounded-lg py-2.5 text-sm transition-colors mt-2"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 text-sm transition-all shadow-lg shadow-blue-500/30 hover:scale-[1.01] active:scale-[0.99] mt-2"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {submitLabel}
@@ -650,15 +660,16 @@ function SignupForm() {
         </form>
 
         <div className="mt-5 pt-5 border-t border-white/10 text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-400">
             ¿Ya tenés cuenta?{" "}
             <Link
               href="/login"
-              className="text-white hover:text-gray-200 font-medium transition-colors"
+              className="bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent font-semibold hover:from-blue-300 hover:to-violet-300 transition-colors"
             >
               Iniciá sesión
             </Link>
           </p>
+        </div>
         </div>
       </div>
     </div>
