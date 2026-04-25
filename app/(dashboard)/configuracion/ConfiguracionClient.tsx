@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Key, Building2, QrCode, FileCheck2, Keyboard, Settings, Sparkles, Crown } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Key, Building2, QrCode, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon } from "lucide-react"
 import { PageTip } from "@/components/shared/PageTip"
 import { BUSINESS_TYPES, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
@@ -29,6 +29,13 @@ interface TenantConfig {
   whatsappPhone: string | null
   whatsappLowStockAlerts: boolean
   whatsappDailySummary: boolean
+  // Email notifications
+  notificationEmail: string | null
+  emailLowStockAlerts: boolean
+  emailDailySummary: boolean
+  emailWeeklySummary: boolean
+  emailMonthlySummary: boolean
+  emailIncludeAIInsights: boolean
   logoUrl: string | null
   loyaltyEnabled: boolean
   loyaltyPointsPerPeso: number
@@ -293,102 +300,15 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
-          {/* WhatsApp notifications */}
+          {/* Email notifications */}
           {config && (
-            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
-              <div className="flex items-start gap-3 pb-2 border-b border-gray-800/60">
-                <div className="w-9 h-9 rounded-lg bg-emerald-900/40 border border-emerald-700/40 flex items-center justify-center flex-shrink-0">
-                  <MessageCircle size={16} className="text-emerald-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-white font-semibold">Notificaciones por WhatsApp</h2>
-                    {!waUnlocked && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-medium">
-                        <Lock size={10} /> STARTER+
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">Recibí alertas de stock bajo y resumen diario en tu celular</p>
-                </div>
-              </div>
-
-              {!waUnlocked ? (
-                <div className="bg-gray-800/50 border border-gray-800 rounded-xl p-4 text-center">
-                  <p className="text-sm text-gray-300 mb-1">Recibí alertas en tu WhatsApp</p>
-                  <p className="text-xs text-gray-500 mb-4">Stock bajo, ventas raras, resumen diario. Disponible desde el plan Starter.</p>
-                  <Link href="/configuracion/suscripcion"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium transition">
-                    Ver planes
-                  </Link>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <Input
-                      label="Tu número de WhatsApp"
-                      type="tel"
-                      value={config.whatsappPhone || ""}
-                      onChange={e => set("whatsappPhone", e.target.value)}
-                      placeholder="+5491112345678"
-                      hint="Formato internacional con + y código de país. Ej: +54 9 11 1234-5678 → +5491112345678"
-                    />
-                  </div>
-
-                  <div className="space-y-3 pt-1">
-                    <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-800/40 hover:bg-gray-800/60 transition cursor-pointer">
-                      <div>
-                        <p className="text-sm font-medium text-gray-100">Alertas de stock bajo</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Cuando un producto baja del mínimo después de una venta.</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={config.whatsappLowStockAlerts}
-                        onChange={e => set("whatsappLowStockAlerts", e.target.checked)}
-                        className="w-5 h-5 rounded accent-accent flex-shrink-0"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-800/40 hover:bg-gray-800/60 transition cursor-pointer">
-                      <div>
-                        <p className="text-sm font-medium text-gray-100">Resumen diario de ventas</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Cada noche te llega un resumen del día (próximamente).</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={config.whatsappDailySummary}
-                        onChange={e => set("whatsappDailySummary", e.target.checked)}
-                        disabled
-                        className="w-5 h-5 rounded accent-accent flex-shrink-0 opacity-50"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-gray-800">
-                    <Button onClick={handleSave} loading={saving} size="md">
-                      {saving ? "Guardando..." : "Guardar cambios"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={testWhatsapp}
-                      loading={testingWa}
-                      leftIcon={<Send size={14} />}
-                      disabled={!config.whatsappPhone}
-                    >
-                      Enviar mensaje de prueba
-                    </Button>
-                  </div>
-
-                  <p className="text-[11px] text-gray-600 leading-relaxed">
-                    Usamos Twilio para enviar notificaciones de WhatsApp.
-                    Si los mensajes no llegan, verificá que estén configurados{" "}
-                    <code className="bg-gray-800 px-1 rounded">TWILIO_ACCOUNT_SID</code>,{" "}
-                    <code className="bg-gray-800 px-1 rounded">TWILIO_AUTH_TOKEN</code> y{" "}
-                    <code className="bg-gray-800 px-1 rounded">TWILIO_WHATSAPP_FROM</code> en Railway.
-                  </p>
-                </>
-              )}
-            </div>
+            <EmailNotificationsSection
+              config={config}
+              set={set}
+              onSave={handleSave}
+              saving={saving}
+              waUnlocked={waUnlocked}
+            />
           )}
 
           {/* Programa de fidelidad */}
@@ -493,6 +413,245 @@ export default function ConfiguracionPage() {
           <SurfacePicker />
         </div>
 
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// EmailNotificationsSection
+// ============================================================================
+function EmailNotificationsSection({
+  config,
+  set,
+  onSave,
+  saving,
+  waUnlocked,
+}: {
+  config: TenantConfig
+  set: (key: keyof TenantConfig, val: any) => void
+  onSave: () => Promise<void> | void
+  saving: boolean
+  waUnlocked: boolean
+}) {
+  const [testing, setTesting] = useState<null | "daily" | "weekly" | "monthly" | "lowstock">(null)
+
+  const test = async (period: "daily" | "weekly" | "monthly" | "lowstock") => {
+    setTesting(period)
+    try {
+      const res = await fetch("/api/email/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        toast.success(
+          period === "lowstock"
+            ? "Email de stock bajo enviado"
+            : `Reporte ${period === "daily" ? "diario" : period === "weekly" ? "semanal" : "mensual"} enviado`
+        )
+      } else {
+        toast.error(data?.error ?? "No se pudo enviar el email")
+      }
+    } finally {
+      setTesting(null)
+    }
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+      <div className="flex items-start gap-3 pb-2 border-b border-gray-800/60">
+        <div className="w-9 h-9 rounded-lg bg-sky-900/40 border border-sky-700/40 flex items-center justify-center flex-shrink-0">
+          <Mail size={16} className="text-sky-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-white font-semibold">Notificaciones por email</h2>
+            {!waUnlocked && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-medium">
+                <Lock size={10} /> STARTER+
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Recibí informes profesionales con el resumen del día, semana o mes a tu correo.
+          </p>
+        </div>
+      </div>
+
+      {!waUnlocked ? (
+        <div className="bg-gray-800/50 border border-gray-800 rounded-xl p-4 text-center">
+          <p className="text-sm text-gray-300 mb-1">Reportes automáticos en tu correo</p>
+          <p className="text-xs text-gray-500 mb-4">
+            Resumen diario, semanal y mensual con KPIs, top productos, márgenes y análisis con IA.
+            Disponible desde el plan Básico.
+          </p>
+          <Link
+            href="/configuracion/suscripcion"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-medium transition"
+          >
+            Ver planes
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div>
+            <Input
+              label="Email para los reportes"
+              type="email"
+              value={config.notificationEmail || ""}
+              onChange={(e) => set("notificationEmail", e.target.value)}
+              placeholder="tunegocio@gmail.com"
+              hint="Si lo dejás vacío, usamos el email del propietario."
+            />
+          </div>
+
+          {/* Frequency cards */}
+          <div className="space-y-3">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">¿Qué querés recibir?</p>
+
+            <FrequencyCard
+              icon={<CalendarDays size={16} className="text-sky-400" />}
+              iconBg="bg-sky-900/40 border-sky-700/40"
+              title="Resumen diario"
+              description="Cada noche te llega cómo cerró el día: ventas, ganancia, top productos."
+              checked={config.emailDailySummary}
+              onChange={(v) => set("emailDailySummary", v)}
+              onTest={() => test("daily")}
+              testing={testing === "daily"}
+              disabled={saving}
+            />
+
+            <FrequencyCard
+              icon={<CalendarRange size={16} className="text-emerald-400" />}
+              iconBg="bg-emerald-900/40 border-emerald-700/40"
+              title="Resumen semanal"
+              description="Cada lunes a la mañana, qué pasó la semana pasada con comparación."
+              checked={config.emailWeeklySummary}
+              onChange={(v) => set("emailWeeklySummary", v)}
+              onTest={() => test("weekly")}
+              testing={testing === "weekly"}
+              disabled={saving}
+            />
+
+            <FrequencyCard
+              icon={<CalendarIcon size={16} className="text-purple-400" />}
+              iconBg="bg-purple-900/40 border-purple-700/40"
+              title="Resumen mensual"
+              description="El primer día de cada mes, balance del mes anterior con análisis profundo."
+              checked={config.emailMonthlySummary}
+              onChange={(v) => set("emailMonthlySummary", v)}
+              onTest={() => test("monthly")}
+              testing={testing === "monthly"}
+              disabled={saving}
+            />
+
+            <FrequencyCard
+              icon={<AlertTriangle size={16} className="text-amber-400" />}
+              iconBg="bg-amber-900/40 border-amber-700/40"
+              title="Alertas de stock bajo"
+              description="Cuando un producto baja del mínimo, te avisamos para reponer a tiempo."
+              checked={config.emailLowStockAlerts}
+              onChange={(v) => set("emailLowStockAlerts", v)}
+              onTest={() => test("lowstock")}
+              testing={testing === "lowstock"}
+              disabled={saving}
+            />
+
+            {/* AI insights toggle */}
+            <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gradient-to-r from-accent-soft/30 to-accent-soft/10 border border-accent/20 hover:border-accent/40 transition cursor-pointer">
+              <div className="flex items-start gap-2">
+                <Sparkles size={14} className="text-accent flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-gray-100">Incluir análisis con IA en los reportes</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Resumen, destacados y recomendaciones generados automáticamente.
+                  </p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={config.emailIncludeAIInsights}
+                onChange={(e) => set("emailIncludeAIInsights", e.target.checked)}
+                className="w-5 h-5 rounded accent-accent flex-shrink-0"
+              />
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2 border-t border-gray-800">
+            <Button onClick={onSave} loading={saving} size="md">
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </div>
+
+          <p className="text-[11px] text-gray-600 leading-relaxed">
+            Los emails se envían desde nuestro servidor (Resend). Si no llegan, revisá la carpeta
+            de spam y agregá el dominio del remitente a contactos.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+function FrequencyCard({
+  icon,
+  iconBg,
+  title,
+  description,
+  checked,
+  onChange,
+  onTest,
+  testing,
+  disabled,
+}: {
+  icon: React.ReactNode
+  iconBg: string
+  title: string
+  description: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  onTest: () => void
+  testing: boolean
+  disabled?: boolean
+}) {
+  return (
+    <div
+      className={`p-3 rounded-lg border transition-colors ${
+        checked
+          ? "bg-gray-800/60 border-gray-700"
+          : "bg-gray-800/30 border-gray-800 hover:bg-gray-800/40"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`w-9 h-9 rounded-lg ${iconBg} border flex items-center justify-center flex-shrink-0`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-sm font-medium text-gray-100">{title}</p>
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(e) => onChange(e.target.checked)}
+              className="w-5 h-5 rounded accent-accent flex-shrink-0"
+              disabled={disabled}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+          {checked && (
+            <button
+              type="button"
+              onClick={onTest}
+              disabled={testing || disabled}
+              className="mt-2 inline-flex items-center gap-1 text-[11px] text-accent hover:underline disabled:opacity-50"
+            >
+              <Send className="w-3 h-3" />
+              {testing ? "Enviando..." : "Enviar email de prueba"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

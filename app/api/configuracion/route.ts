@@ -19,6 +19,13 @@ const putSchema = z.object({
   whatsappPhone: z.string().optional().nullable(),
   whatsappLowStockAlerts: z.boolean().optional(),
   whatsappDailySummary: z.boolean().optional(),
+  // Email notifications
+  notificationEmail: z.string().email().optional().nullable().or(z.literal("")),
+  emailLowStockAlerts: z.boolean().optional(),
+  emailDailySummary: z.boolean().optional(),
+  emailWeeklySummary: z.boolean().optional(),
+  emailMonthlySummary: z.boolean().optional(),
+  emailIncludeAIInsights: z.boolean().optional(),
   // Logo (URL string for now — direct upload coming soon)
   logoUrl: z.string().url("URL inválida").optional().nullable().or(z.literal("")),
   // Loyalty config
@@ -66,6 +73,12 @@ export async function GET() {
         whatsappPhone: cfg?.whatsappPhone ?? null,
         whatsappLowStockAlerts: cfg?.whatsappLowStockAlerts ?? false,
         whatsappDailySummary: cfg?.whatsappDailySummary ?? false,
+        notificationEmail: (cfg as any)?.notificationEmail ?? null,
+        emailLowStockAlerts: (cfg as any)?.emailLowStockAlerts ?? false,
+        emailDailySummary: (cfg as any)?.emailDailySummary ?? false,
+        emailWeeklySummary: (cfg as any)?.emailWeeklySummary ?? false,
+        emailMonthlySummary: (cfg as any)?.emailMonthlySummary ?? false,
+        emailIncludeAIInsights: (cfg as any)?.emailIncludeAIInsights ?? true,
         logoUrl: cfg?.logoUrl ?? null,
         loyaltyEnabled: cfg?.loyaltyEnabled ?? false,
         loyaltyPointsPerPeso: cfg?.loyaltyPointsPerPeso != null ? Number(cfg.loyaltyPointsPerPeso) : 1,
@@ -103,6 +116,12 @@ export async function PUT(req: NextRequest) {
   if (data.whatsappPhone !== undefined) extraData.whatsappPhone = data.whatsappPhone || null
   if (data.whatsappLowStockAlerts !== undefined) extraData.whatsappLowStockAlerts = data.whatsappLowStockAlerts
   if (data.whatsappDailySummary !== undefined) extraData.whatsappDailySummary = data.whatsappDailySummary
+  if (data.notificationEmail !== undefined) extraData.notificationEmail = data.notificationEmail || null
+  if (data.emailLowStockAlerts !== undefined) extraData.emailLowStockAlerts = data.emailLowStockAlerts
+  if (data.emailDailySummary !== undefined) extraData.emailDailySummary = data.emailDailySummary
+  if (data.emailWeeklySummary !== undefined) extraData.emailWeeklySummary = data.emailWeeklySummary
+  if (data.emailMonthlySummary !== undefined) extraData.emailMonthlySummary = data.emailMonthlySummary
+  if (data.emailIncludeAIInsights !== undefined) extraData.emailIncludeAIInsights = data.emailIncludeAIInsights
   if (data.logoUrl !== undefined) extraData.logoUrl = data.logoUrl ? data.logoUrl : null
   if (data.loyaltyEnabled !== undefined) extraData.loyaltyEnabled = data.loyaltyEnabled
   if (data.loyaltyPointsPerPeso !== undefined) extraData.loyaltyPointsPerPeso = data.loyaltyPointsPerPeso

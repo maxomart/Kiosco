@@ -428,6 +428,16 @@ model TenantConfig {
   whatsappLowStockAlerts  Boolean  @default(false)
   whatsappDailySummary    Boolean  @default(false)
 
+  // Email notifications
+  notificationEmail       String?  // where to send digests (defaults to owner email)
+  emailLowStockAlerts     Boolean  @default(false)
+  emailDailySummary       Boolean  @default(false)
+  emailWeeklySummary      Boolean  @default(false)
+  emailMonthlySummary     Boolean  @default(false)
+  emailIncludeAIInsights  Boolean  @default(true)
+  // Hour of day to send daily digest (0-23, local timezone)
+  emailDailyHour          Int      @default(22)
+
   // Onboarding / first-time user experience
   onboardingDismissed     Boolean  @default(false)
 
