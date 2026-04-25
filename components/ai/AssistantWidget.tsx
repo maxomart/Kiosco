@@ -28,8 +28,8 @@ const SEVERITY_STYLES = {
   success: { bg: "bg-emerald-900/30", border: "border-emerald-700/40", icon: "text-emerald-400", iconC: Lightbulb },
 } as const
 
-const STORAGE_KEY = "retailar:ai-chat-history"
-const CORNER_STORAGE_KEY = "retailar:ai-corner"
+const STORAGE_KEY = "orvex:ai-chat-history"
+const CORNER_STORAGE_KEY = "orvex:ai-corner"
 
 // Which screen corner the widget is anchored to. Saved per browser. The user
 // can drag the FAB and it snaps to the nearest of these four.

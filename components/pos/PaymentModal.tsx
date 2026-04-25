@@ -218,7 +218,7 @@ export function PaymentModal({ onClose }: Props) {
       const localId = await enqueueSale(payload)
       // Notify any mounted useOfflineSync() consumers to refresh count.
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("retailar:offline-sale-enqueued"))
+        window.dispatchEvent(new Event("orvex:offline-sale-enqueued"))
       }
       setSuccess({
         saleId: localId,

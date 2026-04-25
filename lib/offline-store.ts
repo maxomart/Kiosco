@@ -10,10 +10,10 @@
  * `typeof window === "undefined"`.
  *
  * Testing:
- *   - DevTools → Application → IndexedDB → retailar-offline-v1
+ *   - DevTools → Application → IndexedDB → orvex-offline-v1
  */
 
-const DB_NAME = "retailar-offline-v1"
+const DB_NAME = "orvex-offline-v1"
 const DB_VERSION = 1
 
 export interface CachedProduct {

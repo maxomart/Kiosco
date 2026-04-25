@@ -63,7 +63,7 @@ export default function NotificationsBell() {
   useEffect(() => {
     if (typeof window === "undefined") return
     try {
-      const raw = localStorage.getItem("retailar:notif-dismissed")
+      const raw = localStorage.getItem("orvex:notif-dismissed")
       if (raw) setDismissed(new Set(JSON.parse(raw)))
     } catch {}
   }, [])
@@ -73,7 +73,7 @@ export default function NotificationsBell() {
     setDismissed(next)
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("retailar:notif-dismissed", JSON.stringify(Array.from(next)))
+        localStorage.setItem("orvex:notif-dismissed", JSON.stringify(Array.from(next)))
       } catch {}
     }
   }

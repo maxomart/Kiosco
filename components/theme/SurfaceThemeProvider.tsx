@@ -19,7 +19,7 @@ interface SurfaceContextValue {
 
 const SurfaceContext = createContext<SurfaceContextValue | null>(null)
 
-const STORAGE_KEY = "retailar:surface-theme"
+const STORAGE_KEY = "orvex:surface-theme"
 
 export function SurfaceThemeProvider({
   children,

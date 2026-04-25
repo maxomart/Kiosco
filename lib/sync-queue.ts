@@ -161,11 +161,11 @@ export function useOfflineSync(): OfflineSyncState {
     window.addEventListener("offline", onOffline)
     // Listen to a custom event so PaymentModal can poke us right after enqueue
     const onEnqueued = () => refresh()
-    window.addEventListener("retailar:offline-sale-enqueued", onEnqueued)
+    window.addEventListener("orvex:offline-sale-enqueued", onEnqueued)
     return () => {
       window.removeEventListener("online", onOnline)
       window.removeEventListener("offline", onOffline)
-      window.removeEventListener("retailar:offline-sale-enqueued", onEnqueued)
+      window.removeEventListener("orvex:offline-sale-enqueued", onEnqueued)
     }
   }, [flush, refresh])
 

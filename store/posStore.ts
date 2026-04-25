@@ -139,7 +139,7 @@ export const usePOSStore = create<POSStore>()(
       },
     }),
     {
-      name: "retailar-pos-cart",
+      name: "orvex-pos-cart",
       storage: createJSONStorage(() => sessionStorage), // sessionStorage: se limpia al cerrar tab
       partialize: (state) => ({
         cart: state.cart,

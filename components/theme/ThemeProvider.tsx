@@ -19,8 +19,8 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-const STORAGE_KEY = "retailar:theme-accent"
-const MODE_KEY = "retailar:theme-mode"
+const STORAGE_KEY = "orvex:theme-accent"
+const MODE_KEY = "orvex:theme-mode"
 
 function resolveMode(mode: ThemeMode): "light" | "dark" {
   if (mode === "auto") {
