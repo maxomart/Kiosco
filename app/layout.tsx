@@ -44,16 +44,25 @@ export const metadata: Metadata = {
     locale: "es_AR",
     type: "website",
     siteName: "Orvex",
+    images: [
+      {
+        url: "/orvex-og.png",
+        width: 1254,
+        height: 1254,
+        alt: "Orvex — Tu negocio, en control",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Orvex - Sistema de Gestión para Negocios",
     description: "POS, inventario y reportes para kioscos, farmacias y minisúper",
+    images: ["/orvex-og.png"],
   },
 }
 
 export const viewport: Viewport = {
-  themeColor: "#8b5cf6",
+  themeColor: "#6366f1",
   width: "device-width",
   initialScale: 1,
 }
@@ -63,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es-AR" suppressHydrationWarning className="dark">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#8b5cf6" />
+        <meta name="theme-color" content="#6366f1" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className={`${inter.variable} antialiased min-h-screen bg-gray-950`} suppressHydrationWarning>
