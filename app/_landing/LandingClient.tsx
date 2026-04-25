@@ -103,7 +103,7 @@ export default function LandingClient({
   }
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden relative landing-root selection:bg-amber-400/30 selection:text-white">
+    <div className="min-h-screen bg-black text-white overflow-x-hidden relative landing-root selection:bg-violet-500/30 selection:text-white">
       {/* Color blobs — soft, warm, commercial backdrop */}
       <ColorBlobs />
 
@@ -379,20 +379,20 @@ export default function LandingClient({
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent"
+          className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden border border-violet-400/30 bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-transparent"
         >
           <div
             aria-hidden
-            className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-50"
-            style={{ background: "radial-gradient(circle, rgba(251,191,36,0.4), transparent 70%)", filter: "blur(40px)" }}
+            className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-60"
+            style={{ background: "radial-gradient(circle, rgba(168,85,247,0.45), transparent 70%)", filter: "blur(40px)" }}
           />
           <div
             aria-hidden
             className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-50"
-            style={{ background: "radial-gradient(circle, rgba(244,114,182,0.3), transparent 70%)", filter: "blur(40px)" }}
+            style={{ background: "radial-gradient(circle, rgba(244,114,182,0.35), transparent 70%)", filter: "blur(40px)" }}
           />
           <div className="relative px-8 py-14 md:p-14 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/15 border border-violet-400/30 text-violet-200 text-xs mb-5">
               <Sparkles size={12} /> 7 días gratis · sin tarjeta
             </div>
             <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
@@ -404,7 +404,7 @@ export default function LandingClient({
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 href={activePromo ? professionalHref : freeHref}
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-black font-bold transition-all hover:scale-[1.03] active:scale-[0.98] shadow-2xl shadow-amber-500/30"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.98] shadow-2xl shadow-violet-500/40"
               >
                 {activePromo
                   ? `Reclamar ${mesesOdias(activePromo.daysGranted)} de ${activePromo.planLabel}`
@@ -505,7 +505,7 @@ function Navbar({
         <Link href={promoCode ? `/?promo=${promoCode}` : "/"} className="flex items-center gap-2 group">
           <div className="relative w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-3">
             <ShoppingBag size={16} />
-            <span className="absolute inset-0 rounded-lg bg-amber-400 opacity-0 group-hover:opacity-30 blur-md transition-opacity" />
+            <span className="absolute inset-0 rounded-lg bg-violet-500 opacity-0 group-hover:opacity-40 blur-md transition-opacity" />
           </div>
           <span className="font-bold text-lg tracking-tight">Orvex</span>
         </Link>
@@ -603,7 +603,7 @@ function Marquee() {
               key={i}
               className="text-gray-400 text-lg font-medium tracking-tight flex items-center gap-2"
             >
-              <Cpu size={16} className="text-amber-400/70" /> {it}
+              <Cpu size={16} className="text-violet-400/70" /> {it}
             </span>
           ))}
         </div>
@@ -632,8 +632,8 @@ function SectionHeading({
       className={`mb-14 ${center ? "text-center" : "text-center"}`}
     >
       {kicker && (
-        <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-amber-300 mb-3">
-          <span className="h-px w-6 bg-amber-300/50" /> {kicker} <span className="h-px w-6 bg-amber-300/50" />
+        <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-violet-300 mb-3">
+          <span className="h-px w-6 bg-violet-300/50" /> {kicker} <span className="h-px w-6 bg-violet-300/50" />
         </p>
       )}
       <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">{title}</h2>
@@ -861,13 +861,13 @@ function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
       whileHover={{ y: -4 }}
       className={`relative h-full rounded-2xl border transition-colors ${
         plan.highlight
-          ? "border-amber-400/60 bg-gradient-to-b from-amber-400/[0.08] to-transparent shadow-[0_20px_60px_-20px_rgba(251,191,36,0.45)]"
+          ? "border-violet-400/60 bg-gradient-to-b from-violet-500/[0.10] to-transparent shadow-[0_20px_60px_-20px_rgba(168,85,247,0.55)]"
           : "border-white/10 bg-white/[0.03] hover:border-white/25"
       }`}
     >
       <div className="relative h-full flex flex-col p-6">
         {plan.highlight && (
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-black text-[10px] font-bold tracking-wider shadow-lg shadow-amber-500/30">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[10px] font-bold tracking-wider shadow-lg shadow-violet-500/40">
             MÁS POPULAR
           </div>
         )}
@@ -885,7 +885,7 @@ function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
             <li key={j} className="flex items-start gap-2 text-sm text-gray-300">
               <CheckCircle
                 size={14}
-                className={`mt-0.5 shrink-0 ${plan.highlight ? "text-amber-300" : "text-emerald-300"}`}
+                className={`mt-0.5 shrink-0 ${plan.highlight ? "text-violet-300" : "text-emerald-300"}`}
               />
               {f}
             </li>
@@ -895,7 +895,7 @@ function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
           href={plan.href}
           className={`block text-center py-2.5 rounded-lg font-semibold text-sm transition-all hover:scale-[1.02] ${
             plan.highlight
-              ? "bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-black"
+              ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white shadow-lg shadow-violet-500/30"
               : "bg-white/5 hover:bg-white/10 border border-white/10 text-white"
           }`}
         >
