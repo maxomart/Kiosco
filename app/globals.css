@@ -375,6 +375,12 @@ html[data-theme="light"] {
   100% { transform: translate3d(0, 0, 0); }
 }
 
+@keyframes blob-drift {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+  33% { transform: translate(-46%, -54%) scale(1.08); opacity: 1; }
+  66% { transform: translate(-54%, -46%) scale(0.95); opacity: 0.75; }
+}
+
 /* Aurora layer — sits behind hero, drifts slowly */
 .aurora-bg {
   position: absolute;
@@ -393,13 +399,13 @@ html[data-theme="light"] {
 .aurora-bg::before {
   top: 5%; left: 8%;
   width: 55%; height: 55%;
-  background: radial-gradient(closest-side, #8b5cf6, transparent 70%);
+  background: radial-gradient(closest-side, #fb923c, transparent 70%);
   animation: aurora-drift 18s var(--ease-in-out-soft) infinite, aurora-pulse 7s ease-in-out infinite;
 }
 .aurora-bg::after {
   top: 25%; right: 5%;
   width: 50%; height: 60%;
-  background: radial-gradient(closest-side, #06b6d4, transparent 70%);
+  background: radial-gradient(closest-side, #38bdf8, transparent 70%);
   animation: aurora-drift 22s var(--ease-in-out-soft) infinite reverse, aurora-pulse 9s ease-in-out infinite;
 }
 

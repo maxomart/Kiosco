@@ -12,11 +12,19 @@ import {
   BarChart3,
   CheckCircle,
   ArrowRight,
-  Store,
   Smartphone,
   Sparkles,
   PartyPopper,
   Cpu,
+  QrCode,
+  FileCheck2,
+  Truck,
+  TrendingDown,
+  Building2,
+  MessageCircle,
+  FileSpreadsheet,
+  Bot,
+  Keyboard,
 } from "lucide-react"
 
 interface PlanCard {
@@ -90,9 +98,9 @@ export default function LandingClient({
   }
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden relative landing-root selection:bg-violet-500/30 selection:text-white">
-      {/* Starfield — sits behind everything */}
-      <Starfield />
+    <div className="min-h-screen bg-black text-white overflow-x-hidden relative landing-root selection:bg-amber-400/30 selection:text-white">
+      {/* Color blobs — soft, warm, commercial backdrop */}
+      <ColorBlobs />
 
       {/* Promo top strip */}
       {activePromo && (
@@ -141,7 +149,7 @@ export default function LandingClient({
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "radial-gradient(700px circle at var(--mx) var(--my), rgba(139,92,246,0.12), transparent 45%)",
+              "radial-gradient(700px circle at var(--mx) var(--my), rgba(251,146,60,0.14), transparent 45%)",
           }}
           aria-hidden
         />
@@ -238,7 +246,7 @@ export default function LandingClient({
           transition={{ delay: 0.7, duration: 1, ease: [0.16, 1, 0.3, 1] }}
           className="relative max-w-5xl mx-auto mt-20 px-4"
         >
-          <div className="relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur-md p-1 shadow-[0_30px_80px_-20px_rgba(139,92,246,0.45)]">
+          <div className="relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] backdrop-blur-md p-1 shadow-[0_30px_80px_-20px_rgba(251,146,60,0.4)]">
             <div className="rounded-xl bg-[#0a0a14] overflow-hidden">
               <DashboardMock />
             </div>
@@ -247,7 +255,7 @@ export default function LandingClient({
           <div
             aria-hidden
             className="absolute inset-x-10 bottom-0 h-32 -z-10 blur-3xl opacity-60"
-            style={{ background: "radial-gradient(closest-side, #8b5cf6, transparent 70%)" }}
+            style={{ background: "radial-gradient(closest-side, #fb923c, transparent 70%)" }}
           />
         </motion.div>
       </section>
@@ -366,35 +374,44 @@ export default function LandingClient({
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="conic-border max-w-4xl mx-auto"
+          className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent"
         >
-          <div className="relative rounded-[1.25rem] p-12 bg-gradient-to-br from-white/[0.06] to-white/[0.02] backdrop-blur overflow-hidden">
-            <div
-              className="absolute inset-0 pointer-events-none opacity-50"
-              style={{
-                backgroundImage:
-                  "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)",
-                backgroundSize: "18px 18px",
-                maskImage: "radial-gradient(ellipse at center, black 40%, transparent 80%)",
-              }}
-            />
-            <div className="relative text-center">
-              <Sparkles className="w-8 h-8 text-violet-400 mx-auto mb-4 float-slow" />
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Probalo gratis hoy</h2>
-              <p className="text-gray-300 text-lg mb-8">
-                Creás tu cuenta en 2 minutos. Sin tarjeta. Sin compromiso.
-              </p>
-              <div className="cta-glow inline-block">
-                <Link
-                  href={activePromo ? professionalHref : freeHref}
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white hover:bg-gray-100 text-black font-bold transition-all hover:scale-[1.03] active:scale-[0.98] shadow-2xl"
-                >
-                  {activePromo
-                    ? `Reclamar ${mesesOdias(activePromo.daysGranted)} de ${activePromo.planLabel}`
-                    : "Crear mi cuenta gratis"}{" "}
-                  <ArrowRight size={18} />
-                </Link>
-              </div>
+          <div
+            aria-hidden
+            className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-50"
+            style={{ background: "radial-gradient(circle, rgba(251,191,36,0.4), transparent 70%)", filter: "blur(40px)" }}
+          />
+          <div
+            aria-hidden
+            className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full opacity-50"
+            style={{ background: "radial-gradient(circle, rgba(244,114,182,0.3), transparent 70%)", filter: "blur(40px)" }}
+          />
+          <div className="relative px-8 py-14 md:p-14 text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs mb-5">
+              <Sparkles size={12} /> 7 días gratis · sin tarjeta
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+              Probalo en tu negocio hoy
+            </h2>
+            <p className="text-gray-300 text-lg mb-8 max-w-xl mx-auto">
+              Creás tu cuenta en 2 minutos, cargás tus productos, empezás a vender. Sin instalar nada.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href={activePromo ? professionalHref : freeHref}
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-black font-bold transition-all hover:scale-[1.03] active:scale-[0.98] shadow-2xl shadow-amber-500/30"
+              >
+                {activePromo
+                  ? `Reclamar ${mesesOdias(activePromo.daysGranted)} de ${activePromo.planLabel}`
+                  : "Crear mi cuenta gratis"}{" "}
+                <ArrowRight size={18} />
+              </Link>
+              <Link
+                href="#features"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold transition-colors"
+              >
+                Ver funciones
+              </Link>
             </div>
           </div>
         </motion.div>
@@ -409,122 +426,47 @@ export default function LandingClient({
    Subcomponents
    ========================================================================== */
 
-function Starfield() {
-  // Generated client-side after mount to avoid hydration mismatch.
-  // Three layers: tiny twinklers, medium with halo, big drifting accents.
-  const [layers, setLayers] = useState<{
-    tiny: Star[]
-    halo: Star[]
-    accent: AccentStar[]
-  } | null>(null)
-
-  useEffect(() => {
-    const rand = (min: number, max: number) => Math.random() * (max - min) + min
-    const tiny: Star[] = Array.from({ length: 110 }, () => ({
-      x: rand(0, 100),
-      y: rand(0, 100),
-      size: rand(0.6, 1.4),
-      delay: rand(0, 6),
-      duration: rand(2.5, 5.5),
-      minOp: rand(0.1, 0.25),
-      maxOp: rand(0.6, 1),
-    }))
-    const halo: Star[] = Array.from({ length: 28 }, () => ({
-      x: rand(0, 100),
-      y: rand(0, 100),
-      size: rand(1.4, 2.4),
-      delay: rand(0, 5),
-      duration: rand(3.5, 6.5),
-      minOp: rand(0.2, 0.4),
-      maxOp: rand(0.8, 1),
-    }))
-    const accentColors = ["#a78bfa", "#67e8f9", "#f0abfc"]
-    const accent: AccentStar[] = Array.from({ length: 8 }, (_, i) => ({
-      x: rand(5, 95),
-      y: rand(5, 95),
-      size: rand(2.2, 3.2),
-      delay: rand(0, 4),
-      duration: rand(4, 7),
-      driftDuration: rand(12, 22),
-      color: accentColors[i % accentColors.length],
-    }))
-    setLayers({ tiny, halo, accent })
-  }, [])
-
-  if (!layers) return null
-
+function ColorBlobs() {
+  // Soft, slow-moving color blobs — give the dark canvas a warm, commercial
+  // feel without going space-y. Five fixed positions, each blob drifts and
+  // pulses on its own loop.
+  const blobs = [
+    { x: "8%",  y: "12%", size: 540, color: "rgba(251, 146, 60, 0.22)",  d: 18 }, // naranja durazno
+    { x: "78%", y: "8%",  size: 520, color: "rgba(34, 197, 94, 0.18)",   d: 22 }, // verde menta
+    { x: "65%", y: "42%", size: 600, color: "rgba(56, 189, 248, 0.18)",  d: 20 }, // celeste
+    { x: "12%", y: "65%", size: 560, color: "rgba(251, 191, 36, 0.18)",  d: 24 }, // amarillo cálido
+    { x: "70%", y: "85%", size: 580, color: "rgba(244, 114, 182, 0.18)", d: 19 }, // rosa
+  ]
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden>
-      {layers.tiny.map((s, i) => (
-        <span
-          key={`t-${i}`}
-          className="absolute rounded-full bg-white"
-          style={{
-            left: `${s.x}%`,
-            top: `${s.y}%`,
-            width: `${s.size}px`,
-            height: `${s.size}px`,
-            // @ts-expect-error CSS vars
-            "--min-op": s.minOp,
-            "--max-op": s.maxOp,
-            animation: `star-twinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
-          }}
-        />
-      ))}
-      {layers.halo.map((s, i) => (
-        <span
-          key={`h-${i}`}
-          className="absolute rounded-full bg-white"
-          style={{
-            left: `${s.x}%`,
-            top: `${s.y}%`,
-            width: `${s.size}px`,
-            height: `${s.size}px`,
-            boxShadow: `0 0 ${s.size * 4}px rgba(255,255,255,0.7), 0 0 ${s.size * 2}px rgba(255,255,255,0.4)`,
-            // @ts-expect-error CSS vars
-            "--min-op": s.minOp,
-            "--max-op": s.maxOp,
-            animation: `star-twinkle ${s.duration}s ease-in-out ${s.delay}s infinite`,
-          }}
-        />
-      ))}
-      {layers.accent.map((s, i) => (
-        <span
-          key={`a-${i}`}
+      {blobs.map((b, i) => (
+        <div
+          key={i}
           className="absolute rounded-full"
           style={{
-            left: `${s.x}%`,
-            top: `${s.y}%`,
-            width: `${s.size}px`,
-            height: `${s.size}px`,
-            backgroundColor: s.color,
-            boxShadow: `0 0 ${s.size * 6}px ${s.color}, 0 0 ${s.size * 3}px ${s.color}`,
-            animation: `star-twinkle ${s.duration}s ease-in-out ${s.delay}s infinite, star-drift ${s.driftDuration}s ease-in-out infinite`,
+            left: b.x,
+            top: b.y,
+            width: `${b.size}px`,
+            height: `${b.size}px`,
+            transform: "translate(-50%, -50%)",
+            background: `radial-gradient(circle, ${b.color} 0%, transparent 65%)`,
+            filter: "blur(40px)",
+            animation: `blob-drift ${b.d}s ease-in-out ${i * 0.7}s infinite`,
           }}
         />
       ))}
+      {/* Subtle dotted noise overlay — a tiny bit of texture so the dark
+          canvas does not feel empty */}
+      <div
+        className="absolute inset-0 opacity-[0.4]"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      />
     </div>
   )
-}
-
-interface Star {
-  x: number
-  y: number
-  size: number
-  delay: number
-  duration: number
-  minOp: number
-  maxOp: number
-}
-
-interface AccentStar {
-  x: number
-  y: number
-  size: number
-  delay: number
-  duration: number
-  driftDuration: number
-  color: string
 }
 
 function Navbar({
@@ -558,7 +500,7 @@ function Navbar({
         <Link href={promoCode ? `/?promo=${promoCode}` : "/"} className="flex items-center gap-2 group">
           <div className="relative w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-3">
             <ShoppingBag size={16} />
-            <span className="absolute inset-0 rounded-lg bg-violet-500 opacity-0 group-hover:opacity-30 blur-md transition-opacity" />
+            <span className="absolute inset-0 rounded-lg bg-amber-400 opacity-0 group-hover:opacity-30 blur-md transition-opacity" />
           </div>
           <span className="font-bold text-lg tracking-tight">Orvex</span>
         </Link>
@@ -656,7 +598,7 @@ function Marquee() {
               key={i}
               className="text-gray-400 text-lg font-medium tracking-tight flex items-center gap-2"
             >
-              <Cpu size={16} className="text-violet-400/70" /> {it}
+              <Cpu size={16} className="text-amber-400/70" /> {it}
             </span>
           ))}
         </div>
@@ -685,8 +627,8 @@ function SectionHeading({
       className={`mb-14 ${center ? "text-center" : "text-center"}`}
     >
       {kicker && (
-        <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-violet-300 mb-3">
-          <span className="h-px w-6 bg-violet-300/50" /> {kicker} <span className="h-px w-6 bg-violet-300/50" />
+        <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-amber-300 mb-3">
+          <span className="h-px w-6 bg-amber-300/50" /> {kicker} <span className="h-px w-6 bg-amber-300/50" />
         </p>
       )}
       <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">{title}</h2>
@@ -700,6 +642,10 @@ interface FeatureItem {
   title: string
   desc: string
   span?: string
+  // tailwind utility classes — written out so the JIT picks them up
+  iconBg: string
+  iconBorder: string
+  iconText: string
   glow: string
 }
 
@@ -707,57 +653,152 @@ const FEATURES: FeatureItem[] = [
   {
     icon: ShoppingBag,
     title: "POS rápido",
-    desc: "Escaneá códigos de barras, buscá productos en milisegundos. Efectivo, MP, MODO, Ualá, tarjetas.",
-    span: "md:col-span-2 md:row-span-2",
-    glow: "rgba(139, 92, 246, 0.35)",
+    desc: "Escaneá códigos de barras y cobrás en segundos.",
+    iconBg: "bg-violet-500/15",
+    iconBorder: "border-violet-500/30",
+    iconText: "text-violet-300",
+    glow: "rgba(139, 92, 246, 0.32)",
   },
   {
     icon: Package,
-    title: "Inventario automático",
-    desc: "Stock en tiempo real. Alertas de stock bajo. Importá tu Excel en 30 segundos.",
-    glow: "rgba(6, 182, 212, 0.3)",
+    title: "Inventario en tiempo real",
+    desc: "Stock se actualiza con cada venta. Alertas de stock bajo. Importá tu Excel en 30 segundos.",
+    iconBg: "bg-cyan-500/15",
+    iconBorder: "border-cyan-500/30",
+    iconText: "text-cyan-300",
+    glow: "rgba(6, 182, 212, 0.28)",
   },
   {
     icon: BarChart3,
     title: "Reportes con IA",
-    desc: "Ganancia neta, márgenes, top ventas. Análisis automático en lenguaje natural.",
-    glow: "rgba(16, 185, 129, 0.3)",
+    desc: "Análisis en lenguaje natural. Margen, top productos, comparación con mes pasado.",
+    iconBg: "bg-emerald-500/15",
+    iconBorder: "border-emerald-500/30",
+    iconText: "text-emerald-300",
+    glow: "rgba(16, 185, 129, 0.28)",
   },
   {
     icon: CreditCard,
     title: "Caja con auditoría",
-    desc: "Apertura, cierre, diferencias. Todo registrado.",
-    glow: "rgba(245, 158, 11, 0.3)",
+    desc: "Apertura, cierre, diferencias. Todo registrado por turno y empleado.",
+    iconBg: "bg-amber-500/15",
+    iconBorder: "border-amber-500/30",
+    iconText: "text-amber-300",
+    glow: "rgba(245, 158, 11, 0.28)",
   },
   {
     icon: Users,
     title: "Clientes + fidelidad",
     desc: "Base integrada. Programa de puntos. Historial por cliente.",
-    glow: "rgba(236, 72, 153, 0.3)",
+    iconBg: "bg-pink-500/15",
+    iconBorder: "border-pink-500/30",
+    iconText: "text-pink-300",
+    glow: "rgba(236, 72, 153, 0.28)",
+  },
+  {
+    icon: QrCode,
+    title: "Cobrar con QR de MP",
+    desc: "Tu QR de Mercado Pago integrado al POS. El cliente escanea, vos confirmás.",
+    iconBg: "bg-sky-500/15",
+    iconBorder: "border-sky-500/30",
+    iconText: "text-sky-300",
+    glow: "rgba(14, 165, 233, 0.28)",
+  },
+  {
+    icon: FileCheck2,
+    title: "Facturación AFIP",
+    desc: "Emití facturas A/B/C con CAE en segundos, desde el mismo POS.",
+    iconBg: "bg-orange-500/15",
+    iconBorder: "border-orange-500/30",
+    iconText: "text-orange-300",
+    glow: "rgba(249, 115, 22, 0.28)",
+  },
+  {
+    icon: TrendingDown,
+    title: "Gastos y proveedores",
+    desc: "Registrá egresos por proveedor. Margen real, no sólo facturación bruta.",
+    iconBg: "bg-rose-500/15",
+    iconBorder: "border-rose-500/30",
+    iconText: "text-rose-300",
+    glow: "rgba(244, 63, 94, 0.28)",
+  },
+  {
+    icon: Truck,
+    title: "Cargas virtuales",
+    desc: "Vendé saldo de celular, transporte, gift cards. Pagos al instante.",
+    iconBg: "bg-teal-500/15",
+    iconBorder: "border-teal-500/30",
+    iconText: "text-teal-300",
+    glow: "rgba(20, 184, 166, 0.28)",
+  },
+  {
+    icon: Building2,
+    title: "Multi-tienda",
+    desc: "Gestioná varias sucursales desde la misma cuenta. Reportes consolidados.",
+    iconBg: "bg-indigo-500/15",
+    iconBorder: "border-indigo-500/30",
+    iconText: "text-indigo-300",
+    glow: "rgba(99, 102, 241, 0.28)",
+  },
+  {
+    icon: Bot,
+    title: "Asistente de IA",
+    desc: "Preguntá en español: «¿qué se vendió ayer?», «top productos del mes». Responde al toque.",
+    iconBg: "bg-fuchsia-500/15",
+    iconBorder: "border-fuchsia-500/30",
+    iconText: "text-fuchsia-300",
+    glow: "rgba(217, 70, 239, 0.28)",
+  },
+  {
+    icon: MessageCircle,
+    title: "Alertas por email",
+    desc: "Resumen diario, semanal, mensual + alertas de stock bajo a tu inbox.",
+    iconBg: "bg-lime-500/15",
+    iconBorder: "border-lime-500/30",
+    iconText: "text-lime-300",
+    glow: "rgba(132, 204, 22, 0.28)",
   },
   {
     icon: Shield,
     title: "Multi-usuario seguro",
-    desc: "Permisos por rol, auditoría completa.",
-    glow: "rgba(59, 130, 246, 0.3)",
+    desc: "Cada empleado con su cuenta y permisos. Auditoría completa.",
+    iconBg: "bg-blue-500/15",
+    iconBorder: "border-blue-500/30",
+    iconText: "text-blue-300",
+    glow: "rgba(59, 130, 246, 0.28)",
   },
   {
     icon: Smartphone,
     title: "Funciona en todo",
-    desc: "Celular, tablet, notebook. Sin instalar nada.",
-    glow: "rgba(217, 70, 239, 0.3)",
+    desc: "Celular, tablet, notebook, PC. Sin instalar nada.",
+    iconBg: "bg-purple-500/15",
+    iconBorder: "border-purple-500/30",
+    iconText: "text-purple-300",
+    glow: "rgba(168, 85, 247, 0.28)",
   },
   {
-    icon: Store,
-    title: "Pensado para Argentina",
-    desc: "Pesos argentinos, CUIT, métodos locales.",
-    glow: "rgba(14, 165, 233, 0.3)",
+    icon: FileSpreadsheet,
+    title: "Importar / exportar Excel",
+    desc: "Subí tu lista de productos en CSV o Excel. Exportá ventas, stock, clientes.",
+    iconBg: "bg-green-500/15",
+    iconBorder: "border-green-500/30",
+    iconText: "text-green-300",
+    glow: "rgba(34, 197, 94, 0.28)",
+  },
+  {
+    icon: Keyboard,
+    title: "Atajos de teclado",
+    desc: "F1 buscar producto, F2 cobrar, F3 cliente. Configurable.",
+    iconBg: "bg-yellow-500/15",
+    iconBorder: "border-yellow-500/30",
+    iconText: "text-yellow-300",
+    glow: "rgba(234, 179, 8, 0.28)",
   },
 ]
 
 function BentoGrid() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 auto-rows-[180px] gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {FEATURES.map((f, i) => (
         <BentoCard key={i} feature={f} index={i} />
       ))}
@@ -793,8 +834,10 @@ function BentoCard({ feature, index }: { feature: FeatureItem; index: number }) 
         }}
       />
       <div className="relative h-full flex flex-col">
-        <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-white group-hover:text-black transition-colors">
-          <Icon size={20} />
+        <div
+          className={`w-11 h-11 rounded-xl ${feature.iconBg} border ${feature.iconBorder} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}
+        >
+          <Icon size={20} className={feature.iconText} />
         </div>
         <h3 className="font-semibold text-white mb-2">{feature.title}</h3>
         <p className="text-gray-400 text-sm leading-relaxed">{feature.desc}</p>
@@ -803,50 +846,7 @@ function BentoCard({ feature, index }: { feature: FeatureItem; index: number }) 
   )
 }
 
-function PricingCard({
-  plan,
-  index,
-}: {
-  plan: PlanCard
-  index: number
-}) {
-  const inner = (
-    <div className="relative h-full flex flex-col p-6 rounded-2xl bg-[rgb(8,8,14)]">
-      {plan.highlight && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white text-black text-[10px] font-bold tracking-wider z-10">
-          MÁS POPULAR
-        </div>
-      )}
-      <h3 className="font-semibold text-white">{plan.plan}</h3>
-      <p className="text-gray-500 text-sm mt-1">{plan.desc}</p>
-      <div className="my-5">
-        <div className="flex items-baseline gap-1">
-          <span className="text-4xl font-bold tracking-tight tabular-nums">{fmtARS(plan.price)}</span>
-          {plan.price > 0 && <span className="text-gray-500 text-sm">/mes</span>}
-        </div>
-        {plan.price > 0 && <p className="text-[11px] text-gray-600 mt-1">IVA incluido</p>}
-      </div>
-      <ul className="space-y-2 mb-6 flex-1">
-        {plan.features.map((f, j) => (
-          <li key={j} className="flex items-start gap-2 text-sm text-gray-300">
-            <CheckCircle size={14} className="text-violet-300 mt-0.5 shrink-0" />
-            {f}
-          </li>
-        ))}
-      </ul>
-      <Link
-        href={plan.href}
-        className={`block text-center py-2.5 rounded-lg font-semibold text-sm transition-all hover:scale-[1.02] ${
-          plan.highlight
-            ? "bg-white hover:bg-gray-100 text-black"
-            : "bg-white/5 hover:bg-white/10 border border-white/10 text-white"
-        }`}
-      >
-        {plan.cta}
-      </Link>
-    </div>
-  )
-
+function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -854,15 +854,49 @@ function PricingCard({
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, delay: index * 0.06 }}
       whileHover={{ y: -4 }}
-      className={plan.highlight ? "conic-border" : ""}
+      className={`relative h-full rounded-2xl border transition-colors ${
+        plan.highlight
+          ? "border-amber-400/60 bg-gradient-to-b from-amber-400/[0.08] to-transparent shadow-[0_20px_60px_-20px_rgba(251,191,36,0.45)]"
+          : "border-white/10 bg-white/[0.03] hover:border-white/25"
+      }`}
     >
-      {plan.highlight ? (
-        inner
-      ) : (
-        <div className="h-full rounded-2xl border border-white/10 bg-white/[0.03] hover:border-white/30 transition-colors">
-          {inner}
+      <div className="relative h-full flex flex-col p-6">
+        {plan.highlight && (
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 text-black text-[10px] font-bold tracking-wider shadow-lg shadow-amber-500/30">
+            MÁS POPULAR
+          </div>
+        )}
+        <h3 className="font-semibold text-white">{plan.plan}</h3>
+        <p className="text-gray-500 text-sm mt-1">{plan.desc}</p>
+        <div className="my-5">
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-bold tracking-tight tabular-nums">{fmtARS(plan.price)}</span>
+            {plan.price > 0 && <span className="text-gray-500 text-sm">/mes</span>}
+          </div>
+          {plan.price > 0 && <p className="text-[11px] text-gray-600 mt-1">IVA incluido</p>}
         </div>
-      )}
+        <ul className="space-y-2 mb-6 flex-1">
+          {plan.features.map((f, j) => (
+            <li key={j} className="flex items-start gap-2 text-sm text-gray-300">
+              <CheckCircle
+                size={14}
+                className={`mt-0.5 shrink-0 ${plan.highlight ? "text-amber-300" : "text-emerald-300"}`}
+              />
+              {f}
+            </li>
+          ))}
+        </ul>
+        <Link
+          href={plan.href}
+          className={`block text-center py-2.5 rounded-lg font-semibold text-sm transition-all hover:scale-[1.02] ${
+            plan.highlight
+              ? "bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-black"
+              : "bg-white/5 hover:bg-white/10 border border-white/10 text-white"
+          }`}
+        >
+          {plan.cta}
+        </Link>
+      </div>
     </motion.div>
   )
 }
@@ -924,7 +958,7 @@ function DashboardMock() {
           {[40, 55, 35, 70, 45, 60, 80, 65, 50, 75, 90, 70, 85, 95].map((h, i) => (
             <div
               key={i}
-              className="flex-1 rounded-t bg-gradient-to-t from-violet-500/40 to-violet-500/80"
+              className="flex-1 rounded-t bg-gradient-to-t from-amber-500/50 to-orange-400/90"
               style={{ height: `${h}%` }}
             />
           ))}
