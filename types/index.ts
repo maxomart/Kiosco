@@ -123,49 +123,6 @@ export interface ReportData {
   dailySales: { date: string; total: number; count: number }[]
 }
 
-// ============= ANALYTICS TYPES =============
-export interface ProductMarginAnalysis {
-  productId: string
-  productName: string
-  currentMarginPct: number
-  potentialMarginPct: number
-  salesQuantity30d: number
-  daysToStockout: number
-  rotationRate: number
-  healthStatus: "HIGH" | "MEDIUM" | "LOW" | "DEAD"
-  currentStock: number
-  avgDailySales: number
-}
-
-export interface StockPrediction {
-  productId: string
-  productName: string
-  currentStock: number
-  avgDailySales: number
-  daysUntilStockout: number
-  recommendedQuantity: number
-  estimatedCost: number
-  urgency: "CRITICAL" | "HIGH" | "NORMAL" | "LOW"
-}
-
-export interface InvisibleLoss {
-  id: string
-  type: "EXPIRED" | "CASH_DIFF" | "THEFT" | "DAMAGED"
-  amount: number
-  description: string
-  detectedAt: string
-  estimatedValue: number
-}
-
-export interface DebtorAlert {
-  clientId: string
-  clientName: string
-  totalOwed: number
-  daysOverdue: number
-  lastSaleDate: string | null
-  alertLevel: "CRITICAL" | "WARNING" | "NORMAL"
-}
-
 // next-auth type extensions
 declare module "next-auth" {
   interface Session {
