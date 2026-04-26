@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import { OrvexLogo } from "@/components/shared/OrvexLogo"
 import {
   ArrowRight,
@@ -11,6 +11,7 @@ import {
   Truck,
   AlertTriangle,
   PartyPopper,
+  FileSpreadsheet,
 } from "lucide-react"
 
 interface PlanCard {
@@ -94,42 +95,72 @@ export default function LandingClient({
         professionalHref={professionalHref}
       />
 
-      {/* ─────────── HERO ─────────── */}
+      {/* ─────────── HERO — split asimétrico, sin centro, sin marketing
+          fluff. La columna izquierda es una declaración cruda; la derecha
+          muestra la app ya en acción para que se entienda en 2 segundos
+          de qué se trata. ─────────── */}
       <section
         ref={heroRef}
-        className={`relative ${activePromo ? "pt-32" : "pt-28"} pb-14 sm:pb-20 px-5 sm:px-6 overflow-hidden`}
+        className={`relative ${activePromo ? "pt-28 sm:pt-32" : "pt-24 sm:pt-28"} pb-16 sm:pb-24 px-5 sm:px-6 overflow-hidden`}
       >
-        <motion.div style={{ y: heroY }} className="relative max-w-3xl mx-auto text-center">
-          <p className="inline-flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gray-500 mb-5">
-            <span className="h-px w-6 bg-gray-700" /> hecho en argentina <span className="h-px w-6 bg-gray-700" />
-          </p>
-          <h1 className="text-[2.4rem] leading-[1.05] sm:text-5xl md:text-6xl font-bold tracking-tight mb-5">
-            <span className="block">Manejar el kiosco</span>
-            <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">no debería ser tan complicado.</span>
-          </h1>
-          <p className="text-base sm:text-lg text-gray-400 max-w-xl mx-auto mb-8 leading-relaxed">
-            Mostramos esto mejor con ejemplos. Bajá un poco y mirá cómo se vive un día con Orvex.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center">
-            <Link
-              href={activePromo ? professionalHref : freeHref}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-gray-100 text-black font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              {activePromo
-                ? `Reclamar ${mesesOdias(activePromo.daysGranted)} gratis`
-                : "Empezar gratis"}{" "}
-              <ArrowRight size={16} />
-            </Link>
-            <Link
-              href="#dia"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white font-semibold transition-colors"
-            >
-              Ver cómo funciona
-            </Link>
+        <motion.div
+          style={{ y: heroY }}
+          className="relative max-w-6xl mx-auto grid md:grid-cols-12 gap-10 md:gap-12 items-center"
+        >
+          {/* LEFT — declaración */}
+          <div className="md:col-span-6 lg:col-span-5">
+            <div className="flex items-center gap-2 mb-6">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              <span className="text-[11px] uppercase tracking-[0.2em] text-gray-400 font-medium">
+                en vivo desde un kiosco de san telmo
+              </span>
+            </div>
+
+            <h1 className="text-[2.6rem] leading-[0.98] sm:text-5xl lg:text-[3.7rem] font-bold tracking-tight mb-7">
+              <span className="block">Vos atendés.</span>
+              <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
+                La app cuenta,
+              </span>
+              <span className="block bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-300 bg-clip-text text-transparent">
+                suma y te avisa.
+              </span>
+            </h1>
+
+            <p className="text-base sm:text-lg text-gray-400 mb-7 leading-relaxed max-w-md">
+              Orvex es un sistema para kioscos, almacenes y comercios chicos
+              argentinos. Sin papel, sin Excel del 2009.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 mb-5">
+              <Link
+                href={activePromo ? professionalHref : freeHref}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-gray-100 text-black font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {activePromo
+                  ? `Reclamar ${mesesOdias(activePromo.daysGranted)} gratis`
+                  : "Empezar gratis"}{" "}
+                <ArrowRight size={16} />
+              </Link>
+              <Link
+                href="#dia"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white font-semibold transition-colors"
+              >
+                Ver un día real
+              </Link>
+            </div>
+
+            <p className="text-gray-500 text-xs sm:text-sm">
+              Sin tarjeta · Probás 7 días los planes pagos · Cancelás cuando se te canta
+            </p>
           </div>
-          <p className="text-gray-500 text-xs sm:text-sm mt-5">
-            Sin tarjeta · 7 días de prueba en planes pagos · Cancelás cuando quieras
-          </p>
+
+          {/* RIGHT — la app, viva */}
+          <div className="md:col-span-6 lg:col-span-7 relative">
+            <HeroLiveScreen />
+          </div>
         </motion.div>
       </section>
 
@@ -291,6 +322,162 @@ export default function LandingClient({
 }
 
 /* ============================================================================
+   HERO LIVE SCREEN — la app respirando. Una venta nueva aparece arriba
+   cada ~3.5s, las viejas bajan y se pierden. Total y contador suben con
+   cada venta. Mantiene la sensación de "esto está vivo" sin necesidad
+   de copy explicando que la app funciona.
+   ========================================================================== */
+
+type LiveSale = { id: number; time: string; method: string; product: string; amount: number }
+
+const LIVE_QUEUE: Omit<LiveSale, "id" | "time">[] = [
+  { method: "MODO", product: "Coca 500 + alfajor", amount: 1800 },
+  { method: "Efectivo", product: "Marlboro Box", amount: 2400 },
+  { method: "MP QR", product: "Sándwich miga + agua", amount: 3650 },
+  { method: "Débito", product: "Cargas SUBE", amount: 5000 },
+  { method: "MODO", product: "Galletitas Oreo × 2", amount: 1900 },
+  { method: "Efectivo", product: "Caramelos Sugus", amount: 350 },
+  { method: "Naranja X", product: "Heladera completa", amount: 8200 },
+  { method: "MP QR", product: "Cigarrillos + cerveza", amount: 4750 },
+]
+
+const METHOD_COLOR: Record<string, string> = {
+  MODO: "text-amber-300",
+  "MP QR": "text-sky-300",
+  Efectivo: "text-emerald-300",
+  Débito: "text-violet-300",
+  "Naranja X": "text-orange-300",
+}
+
+function nowAR(offsetMin: number): string {
+  const d = new Date(Date.now() - offsetMin * 60 * 1000)
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`
+}
+
+function HeroLiveScreen() {
+  // Pre-fill with 5 historic-feeling sales so the panel never looks empty.
+  const [sales, setSales] = useState<LiveSale[]>(() =>
+    Array.from({ length: 5 }, (_, i) => {
+      const tpl = LIVE_QUEUE[i % LIVE_QUEUE.length]
+      return { id: i, time: nowAR((i + 1) * 7), ...tpl }
+    })
+  )
+  const [counter, setCounter] = useState({ count: 23, total: 58420 })
+  const idRef = useRef(100)
+  const queueRef = useRef(0)
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const tpl = LIVE_QUEUE[queueRef.current % LIVE_QUEUE.length]
+      queueRef.current += 1
+      const newSale: LiveSale = {
+        id: idRef.current++,
+        time: nowAR(0),
+        ...tpl,
+      }
+      setSales((prev) => [newSale, ...prev].slice(0, 5))
+      setCounter((c) => ({ count: c.count + 1, total: c.total + tpl.amount }))
+    }, 3500)
+    return () => window.clearInterval(id)
+  }, [])
+
+  return (
+    <div className="relative">
+      {/* underglow */}
+      <div
+        aria-hidden
+        className="absolute inset-x-12 -bottom-8 h-32 -z-10 blur-3xl opacity-60"
+        style={{ background: "radial-gradient(closest-side, #6366f1, transparent 70%)" }}
+      />
+      {/* Frame */}
+      <div className="relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-1 backdrop-blur-md shadow-[0_30px_80px_-30px_rgba(99,102,241,0.5)]">
+        <div className="rounded-xl bg-[#08080f] overflow-hidden">
+          {/* Top bar */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/60" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+            </div>
+            <p className="text-[10px] text-gray-500 font-mono truncate">orvex.com / ventas / hoy</p>
+            <span className="w-12" />
+          </div>
+
+          <div className="p-4 sm:p-5">
+            {/* KPI strip */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="rounded-lg bg-white/[0.03] border border-white/5 p-2.5">
+                <p className="text-[10px] text-gray-500 mb-0.5">Ventas hoy</p>
+                <motion.p
+                  key={counter.count}
+                  initial={{ opacity: 0.6, y: -2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="text-base font-bold tabular-nums text-violet-300"
+                >
+                  {counter.count}
+                </motion.p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/5 p-2.5">
+                <p className="text-[10px] text-gray-500 mb-0.5">Ingresos</p>
+                <motion.p
+                  key={counter.total}
+                  initial={{ opacity: 0.6, y: -2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="text-base font-bold tabular-nums text-emerald-300"
+                >
+                  ${(counter.total / 1000).toFixed(1)}k
+                </motion.p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/5 p-2.5">
+                <p className="text-[10px] text-gray-500 mb-0.5">Stock bajo</p>
+                <p className="text-base font-bold tabular-nums text-amber-300">3</p>
+              </div>
+            </div>
+
+            {/* Live sales feed */}
+            <p className="text-[10px] uppercase tracking-[0.18em] text-gray-500 mb-2">
+              últimas operaciones
+            </p>
+            <div className="rounded-lg bg-white/[0.02] border border-white/5 overflow-hidden">
+              <AnimatePresence initial={false}>
+                {sales.map((s) => (
+                  <motion.div
+                    key={s.id}
+                    layout
+                    initial={{ opacity: 0, y: -16, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    className="px-3 py-2.5 border-b border-white/5 last:border-b-0"
+                  >
+                    <div className="flex items-center justify-between gap-3 text-[11px]">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-gray-500 tabular-nums shrink-0">{s.time}</span>
+                        <span className="text-gray-300 truncate">{s.product}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[10px] font-medium ${METHOD_COLOR[s.method] ?? "text-gray-400"}`}>
+                          {s.method}
+                        </span>
+                        <span className="text-white tabular-nums font-semibold w-16 text-right">
+                          ${s.amount.toLocaleString("es-AR")}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================================
    SCENES — el corazón del landing. Cada escena es un momento real del día
    con su pantalla. Si agregás una, mantené el mismo formato.
    ========================================================================== */
@@ -301,7 +488,7 @@ type SceneData = {
   headline: string
   body: string
   note?: string
-  mock: "apertura" | "venta" | "stockBajo" | "gasto" | "cierre" | "reportes"
+  mock: "apertura" | "venta" | "stockBajo" | "ia" | "gasto" | "cierre" | "reportes"
 }
 
 const SCENES: SceneData[] = [
@@ -327,6 +514,14 @@ const SCENES: SceneData[] = [
     body: "Vos no contás stock — la app lo hace por vos. Cuando algo está cerca de cortarse, te aparece arriba sin que lo busques.",
     note: "El umbral lo definís vos por producto.",
     mock: "stockBajo",
+  },
+  {
+    time: "11:35",
+    kicker: "Te llegó el Excel del proveedor",
+    headline: "Lo arrastrás a la app y queda todo cargado.",
+    body: "200 productos sin categoría en la planilla. La IA los lee, los separa por rubro y arma una lista lista para revisar. Si algo lo categorizó mal, lo corregís en un click.",
+    note: "Después aprende de tus correcciones — la próxima vez se equivoca menos.",
+    mock: "ia",
   },
   {
     time: "13:20",
@@ -370,13 +565,13 @@ const HONESTY: { kind: "no" | "yes"; title: string; body: string }[] = [
   },
   {
     kind: "no",
-    title: "«IA revolucionaria»",
-    body: "Usamos GPT-4o-mini para que entienda preguntas en español y arme resúmenes. Funciona bien, no es magia.",
+    title: "«Soporte 24/7 mundial»",
+    body: "Somos un equipo chico. Soporte por mail y WhatsApp en horario comercial argentino. Te respondemos rápido pero no a las 4 AM.",
   },
   {
     kind: "no",
-    title: "«Soporte 24/7 mundial»",
-    body: "Somos un equipo chico. Soporte por mail y WhatsApp en horario comercial argentino. Te respondemos rápido pero no a las 4 AM.",
+    title: "«Cambiamos tu negocio»",
+    body: "El negocio lo cambiás vos. Nosotros sacamos el quilombo de cuadernos, calculadora y planillas — para que tengas tiempo de cambiarlo.",
   },
   {
     kind: "yes",
@@ -496,6 +691,8 @@ function SceneMock({ scene }: { scene: SceneData["mock"] }) {
       return <MockVenta />
     case "stockBajo":
       return <MockStockBajo />
+    case "ia":
+      return <MockIA />
     case "gasto":
       return <MockGasto />
     case "cierre":
@@ -641,6 +838,55 @@ function MockStockBajo() {
                 {p.status === "critical" ? "Crítico" : "Bajo"}
               </span>
             </div>
+          </div>
+        ))}
+      </div>
+    </SceneMockShell>
+  )
+}
+
+function MockIA() {
+  // Show a CSV file dropped in + the AI's grouping result. No magic-wand
+  // icons — just the raw output the user actually sees.
+  const groups = [
+    { name: "Bebidas", count: 47, color: "bg-sky-500/15 text-sky-300 border-sky-500/30" },
+    { name: "Cigarrillos", count: 23, color: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
+    { name: "Galletitas y snacks", count: 38, color: "bg-violet-500/15 text-violet-300 border-violet-500/30" },
+    { name: "Lácteos", count: 12, color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
+    { name: "Limpieza", count: 9, color: "bg-rose-500/15 text-rose-300 border-rose-500/30" },
+    { name: "Sin clasificar", count: 6, color: "bg-gray-500/15 text-gray-300 border-gray-500/30" },
+  ]
+  const total = groups.reduce((s, g) => s + g.count, 0)
+  return (
+    <SceneMockShell>
+      <MockHeader
+        kicker="Inventario · importación"
+        title={`${total} productos detectados`}
+        badge="135 categorizados"
+        badgeTone="emerald"
+      />
+      {/* File drop indicator */}
+      <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-3 mb-3 flex items-center gap-3">
+        <FileSpreadsheet className="w-5 h-5 text-emerald-300 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] text-gray-200 truncate font-medium">lista-proveedor-abril.xlsx</p>
+          <p className="text-[10px] text-gray-500">200 filas · listo en 8s</p>
+        </div>
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">
+          OK
+        </span>
+      </div>
+      {/* AI-detected groups */}
+      <div className="space-y-1.5">
+        {groups.map((g, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between text-[11px] rounded-lg bg-white/[0.03] border border-white/5 p-2.5"
+          >
+            <span className="text-gray-200">{g.name}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded border tabular-nums ${g.color}`}>
+              {g.count}
+            </span>
           </div>
         ))}
       </div>
