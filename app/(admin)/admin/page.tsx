@@ -1,9 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Building2, Users, DollarSign, TrendingUp, Activity, Crown, AlertCircle } from "lucide-react"
-import { formatCurrency } from "@/lib/utils"
+import { Building2, Users, DollarSign, TrendingUp } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
+import AdminAIBrief from "@/components/admin/AdminAIBrief"
+import AdminActivityFeed from "@/components/admin/AdminActivityFeed"
+import AdminHealthCard from "@/components/admin/AdminHealthCard"
 
 interface AdminStats {
   totalTenants: number
@@ -56,8 +58,12 @@ export default function AdminDashboard() {
         <p className="text-gray-400 text-sm mt-1">Métricas generales del SaaS</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* AI Brief — IA-generated 2-3 sentence summary of today */}
+      <AdminAIBrief />
+
+      {/* KPI Cards + System health */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-500 text-sm">Tenants totales</span>
@@ -101,6 +107,11 @@ export default function AdminDashboard() {
           <p className="text-2xl font-bold text-yellow-400">${(stats.monthlyRecurringRevenue * 12).toFixed(0)}</p>
           <p className="text-gray-500 text-xs mt-1">USD / año recurrente</p>
         </div>
+        </div>
+        {/* System health card — last column on lg+ */}
+        <div className="lg:col-span-1">
+          <AdminHealthCard />
+        </div>
       </div>
 
       {/* Charts row */}
@@ -133,32 +144,28 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Recent signups */}
-      <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
-        <h3 className="text-white font-semibold mb-4">Altas recientes</h3>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-gray-400 border-b border-gray-800">
-              <th className="pb-3 text-left font-medium">Negocio</th>
-              <th className="pb-3 text-left font-medium">Plan</th>
-              <th className="pb-3 text-left font-medium">Fecha</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-800">
+      {/* Activity feed (live) + Recent signups side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <AdminActivityFeed />
+        </div>
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+          <h3 className="text-white font-semibold mb-4">Altas recientes</h3>
+          <ul className="divide-y divide-gray-800">
             {stats.recentSignups.map(t => (
-              <tr key={t.id}>
-                <td className="py-2.5 text-white">{t.name}</td>
-                <td className="py-2.5">
-                  <span className="px-2 py-0.5 rounded-full text-xs"
-                    style={{ backgroundColor: (PLAN_COLORS[t.plan] || "#6b7280") + "20", color: PLAN_COLORS[t.plan] || "#9ca3af" }}>
-                    {t.plan}
-                  </span>
-                </td>
-                <td className="py-2.5 text-gray-400">{new Date(t.createdAt).toLocaleDateString("es-AR")}</td>
-              </tr>
+              <li key={t.id} className="py-2.5 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-white text-sm truncate">{t.name}</p>
+                  <p className="text-gray-500 text-xs">{new Date(t.createdAt).toLocaleDateString("es-AR")}</p>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-xs shrink-0"
+                  style={{ backgroundColor: (PLAN_COLORS[t.plan] || "#6b7280") + "20", color: PLAN_COLORS[t.plan] || "#9ca3af" }}>
+                  {t.plan}
+                </span>
+              </li>
             ))}
-          </tbody>
-        </table>
+          </ul>
+        </div>
       </div>
     </div>
   )

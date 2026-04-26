@@ -12,6 +12,8 @@ import {
   CreditCard,
   Receipt,
   ScrollText,
+  Activity,
+  Lock,
 } from "lucide-react"
 
 interface Props {
@@ -27,7 +29,9 @@ export default function AdminNav({ user }: Props) {
     { href: "/admin/usuarios", label: "Usuarios", icon: Users },
     { href: "/admin/suscripciones", label: "Suscripciones", icon: CreditCard },
     { href: "/admin/facturas", label: "Facturas", icon: Receipt },
+    { href: "/admin/salud", label: "Salud", icon: Activity },
     { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
+    { href: "/admin/seguridad", label: "Seguridad", icon: Lock },
   ]
 
   const initial = (user.name || user.email || "?").trim().charAt(0).toUpperCase()

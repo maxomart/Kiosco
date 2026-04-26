@@ -489,6 +489,56 @@ model AuditLog {
   @@index([createdAt])
 }
 
+// ============= ADMIN SECURITY (super-admin only) =============
+// Device-binding for the super-admin panel: any new fingerprint asking
+// for /admin access has to verify with an email code first, then gets
+// added here. See lib/admin-device.ts.
+
+model AdminTrustedDevice {
+  id          String   @id @default(cuid())
+  userId      String
+  fingerprint String   // hex digest of UA + screen + tz + canvas signal
+  label       String?  // user-set, e.g. "MacBook personal"
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime @default(now())
+  revokedAt   DateTime?
+
+  @@unique([userId, fingerprint])
+  @@index([userId])
+}
+
+model AdminDeviceChallenge {
+  id          String   @id @default(cuid())
+  userId      String
+  fingerprint String
+  codeHash    String   // sha256 of the 6-digit code (we never store plaintext)
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Admin-private notes per tenant — internal CRM, not visible to tenants.
+model AdminTenantNote {
+  id        String   @id @default(cuid())
+  tenantId  String
+  authorId  String
+  body      String   @db.Text
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
 // ============= CUENTA CORRIENTE (client credit accounts) =============
 model ClientPayment {
   id          String   @id @default(cuid())

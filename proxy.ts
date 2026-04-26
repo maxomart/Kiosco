@@ -46,7 +46,13 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(new URL("/login", nextUrl))
   }
 
-  return NextResponse.next()
+  // Forward the resolved pathname so server components (e.g. the admin
+  // layout's device-binding check) know which page is rendering. Edge
+  // runtime can't reach Prisma, so the layout does the heavy lifting —
+  // this header just lets it skip its own check on /admin/dispositivo.
+  const requestHeaders = new Headers(req.headers)
+  requestHeaders.set("x-pathname", pathname)
+  return NextResponse.next({ request: { headers: requestHeaders } })
 }) as any
 
 export const config = {
