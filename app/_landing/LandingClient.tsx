@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   PartyPopper,
   FileSpreadsheet,
+  GitMerge,
+  ImageIcon,
 } from "lucide-react"
 
 interface PlanCard {
@@ -119,15 +121,7 @@ export default function LandingClient({
               </span>
             </div>
 
-            <h1 className="text-[2.6rem] leading-[0.98] sm:text-5xl lg:text-[3.7rem] font-bold tracking-tight mb-7">
-              <span className="block">Vos atendés.</span>
-              <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
-                La app cuenta,
-              </span>
-              <span className="block bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-300 bg-clip-text text-transparent">
-                suma y te avisa.
-              </span>
-            </h1>
+            <RotatingHeadline />
 
             <p className="text-base sm:text-lg text-gray-400 mb-7 leading-relaxed max-w-md">
               Orvex es un sistema para kioscos, almacenes y comercios chicos
@@ -322,6 +316,55 @@ export default function LandingClient({
 }
 
 /* ============================================================================
+   ROTATING HEADLINE — el H1 cicla cada ~5s entre cuatro frases que
+   muestran ángulos distintos del producto. La forma se mantiene (3
+   líneas, las dos últimas con gradientes distintos) así no salta el
+   layout. Pausa cuando la pestaña no está visible para no quemar batería.
+   ========================================================================== */
+
+const HEADLINE_PHRASES: [string, string, string][] = [
+  ["Vos atendés.", "La app cuenta,", "suma y te avisa."],
+  ["Vos vendés.", "La app cobra,", "cierra y archiva."],
+  ["Vos pedís stock.", "La app sabe", "qué te falta."],
+  ["Vos abrís el lunes.", "La app sabe", "qué hizo el sábado."],
+]
+
+function RotatingHeadline() {
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    const tick = () => setIdx((i) => (i + 1) % HEADLINE_PHRASES.length)
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") tick()
+    }, 5000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const phrase = HEADLINE_PHRASES[idx]
+  return (
+    <h1 className="text-[2.6rem] leading-[0.98] sm:text-5xl lg:text-[3.7rem] font-bold tracking-tight mb-7 min-h-[10rem] sm:min-h-[12rem] lg:min-h-[14rem]">
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={idx}
+          initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          className="block"
+        >
+          <span className="block">{phrase[0]}</span>
+          <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
+            {phrase[1]}
+          </span>
+          <span className="block bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-300 bg-clip-text text-transparent">
+            {phrase[2]}
+          </span>
+        </motion.span>
+      </AnimatePresence>
+    </h1>
+  )
+}
+
+/* ============================================================================
    HERO LIVE SCREEN — la app respirando. Una venta nueva aparece arriba
    cada ~3.5s, las viejas bajan y se pierden. Total y contador suben con
    cada venta. Mantiene la sensación de "esto está vivo" sin necesidad
@@ -488,7 +531,7 @@ type SceneData = {
   headline: string
   body: string
   note?: string
-  mock: "apertura" | "venta" | "stockBajo" | "ia" | "gasto" | "cierre" | "reportes"
+  mock: "apertura" | "venta" | "stockBajo" | "ia" | "duplicados" | "voucher" | "gasto" | "cierre" | "reportes"
 }
 
 const SCENES: SceneData[] = [
@@ -524,12 +567,28 @@ const SCENES: SceneData[] = [
     mock: "ia",
   },
   {
+    time: "12:08",
+    kicker: "Sin querer cargaste lo mismo dos veces",
+    headline: "«Coca 500ml» y «Coca-Cola 500 ml» son el mismo producto.",
+    body: "La IA revisa tu lista y te marca los repetidos — los que se llaman parecido, los que tienen el mismo código, los que vendiste el mismo día desde dos cuentas. Vos elegís cuál mantener; los otros se fusionan conservando el historial.",
+    note: "También junta clientes duplicados que cargaste con apellidos distintos.",
+    mock: "duplicados",
+  },
+  {
     time: "13:20",
     kicker: "Llegó el de Quilmes",
     headline: "Cargás la factura como gasto.",
     body: "Proveedor, monto, categoría. Tres campos. Queda imputado al margen del día — no es solo facturación bruta.",
     note: "A fin de mes ves cuánto te quedó de verdad.",
     mock: "gasto",
+  },
+  {
+    time: "15:00",
+    kicker: "Cargas virtuales",
+    headline: "Le sacás foto al voucher y queda registrado.",
+    body: "Pasaste una recarga de Personal por $1.000. La IA lee el comprobante: tipo, monto, número, comisión. No tipeás nada. Te queda imputado al efectivo del día.",
+    note: "Funciona con vouchers de Personal, Claro, Movistar, Tuyo, SUBE y más.",
+    mock: "voucher",
   },
   {
     time: "16:05",
@@ -693,6 +752,10 @@ function SceneMock({ scene }: { scene: SceneData["mock"] }) {
       return <MockStockBajo />
     case "ia":
       return <MockIA />
+    case "duplicados":
+      return <MockDuplicados />
+    case "voucher":
+      return <MockVoucher />
     case "gasto":
       return <MockGasto />
     case "cierre":
@@ -887,6 +950,97 @@ function MockIA() {
             <span className={`text-[10px] px-2 py-0.5 rounded border tabular-nums ${g.color}`}>
               {g.count}
             </span>
+          </div>
+        ))}
+      </div>
+    </SceneMockShell>
+  )
+}
+
+function MockDuplicados() {
+  const pairs = [
+    { a: "Coca 500ml", b: "Coca-Cola 500 ml", reason: "Nombre similar · mismo precio", confidence: 96 },
+    { a: "Marlboro Box", b: "Marlboro Box 20", reason: "Nombre + barcode parcial", confidence: 88 },
+    { a: "Galletitas Oreo", b: "Oreo Original 118g", reason: "Misma categoría · misma marca", confidence: 74 },
+  ]
+  return (
+    <SceneMockShell>
+      <MockHeader
+        kicker="Inventario · revisión"
+        title="3 posibles duplicados"
+        badge="IA"
+        badgeTone="violet"
+      />
+      <div className="space-y-2">
+        {pairs.map((p, i) => (
+          <div key={i} className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <GitMerge className="w-3.5 h-3.5 text-violet-300 shrink-0" />
+              <span className="text-[10px] uppercase tracking-wider text-violet-300/70">
+                {p.confidence}% match · {p.reason}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="text-gray-200 truncate flex-1">{p.a}</span>
+              <span className="text-gray-500 text-[10px] shrink-0">≈</span>
+              <span className="text-gray-200 truncate flex-1 text-right">{p.b}</span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-2">
+              <button className="flex-1 text-[10px] font-semibold py-1 rounded bg-violet-500/15 text-violet-200 border border-violet-500/30 pointer-events-none">
+                Fusionar
+              </button>
+              <button className="flex-1 text-[10px] py-1 rounded bg-white/[0.03] text-gray-400 border border-white/5 pointer-events-none">
+                Son distintos
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </SceneMockShell>
+  )
+}
+
+function MockVoucher() {
+  // Simulated camera/photo + extracted fields. The "loaded" state with a
+  // placeholder photo conveys "you snapped a pic" without needing a real
+  // image asset.
+  return (
+    <SceneMockShell>
+      <MockHeader
+        kicker="Cargas · nueva carga"
+        title="Voucher leído"
+        badge="lectura: 1.2s"
+        badgeTone="emerald"
+      />
+      {/* Fake photo card */}
+      <div className="relative rounded-lg overflow-hidden border border-white/10 mb-3 bg-gradient-to-br from-gray-800 via-gray-900 to-black aspect-[16/7] flex items-center justify-center">
+        <div className="absolute inset-0 opacity-40 bg-[linear-gradient(135deg,transparent_45%,rgba(255,255,255,0.06)_50%,transparent_55%)]" />
+        <ImageIcon className="w-8 h-8 text-white/30" />
+        <div className="absolute bottom-2 left-2 text-[9px] uppercase tracking-wider text-white/40 font-mono">
+          IMG_4581.jpg · 2.1MB
+        </div>
+        <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span className="text-[9px] text-emerald-200 font-semibold">PROCESADO</span>
+        </div>
+      </div>
+      {/* Extracted fields */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { label: "Tipo", value: "Personal", strong: true },
+          { label: "Monto", value: "$1.000", strong: true },
+          { label: "Número", value: "1163445567", mono: true },
+          { label: "Comisión", value: "$30" },
+        ].map((f, i) => (
+          <div key={i} className="rounded-lg bg-white/[0.03] border border-white/5 p-2.5">
+            <p className="text-[10px] text-gray-500 mb-0.5">{f.label}</p>
+            <p
+              className={`text-[12px] tabular-nums ${
+                f.strong ? "font-bold text-white" : "text-gray-200"
+              } ${f.mono ? "font-mono" : ""}`}
+            >
+              {f.value}
+            </p>
           </div>
         ))}
       </div>
