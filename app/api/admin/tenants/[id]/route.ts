@@ -126,15 +126,22 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       })
       const userIds = tenantUsers.map((u) => u.id)
 
-      await db.$transaction([
-        // 1) Records that point to users (RESTRICT) — must die first.
-        db.auditLog.deleteMany({ where: { userId: { in: userIds } } }),
-        db.stockMovement.deleteMany({ where: { tenantId: id } }),
+      // Important: StockMovement and AuditLog DON'T have a direct
+      // tenantId column — they relate via product/user. Filter via the
+      // relation so the where clause actually matches a real field.
+      // Empty userIds is fine — `in: []` matches 0 rows.
+      const txOps: any[] = []
+      if (userIds.length > 0) {
+        txOps.push(db.auditLog.deleteMany({ where: { userId: { in: userIds } } }))
+      }
+      txOps.push(
+        // 1) StockMovement → Product → tenantId (no direct tenantId).
+        db.stockMovement.deleteMany({ where: { product: { tenantId: id } } }),
+        // 2) ClientPayment + CashSession have tenantId directly.
         db.clientPayment.deleteMany({ where: { tenantId: id } }),
         db.cashSession.deleteMany({ where: { tenantId: id } }),
-        // 2) LoyaltyTransaction references Sale WITHOUT cascade — would
-        //    block the sale delete below. Fetch via the client→tenant chain
-        //    or sale→tenant chain (same tenantId).
+        // 3) LoyaltyTransaction references Sale WITHOUT cascade — blocks
+        //    sale delete below. Cover both relation paths.
         db.loyaltyTransaction.deleteMany({
           where: {
             OR: [
@@ -143,20 +150,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             ],
           },
         }),
-        // 3) Sales reference both tenant (cascade) and user (restrict).
-        //    Delete by tenantId so SaleItems cascade with them.
+        // 4) Sales reference both tenant (cascade) and user (restrict).
+        //    SaleItems cascade with sales.
         db.sale.deleteMany({ where: { tenantId: id } }),
-        // 4) Recharges + RechargeItems. RechargeItem.product has no cascade
-        //    so deleting Recharges first kills RechargeItem (cascade) before
-        //    Product is wiped by the tenant delete below.
+        // 5) Recharges → RechargeItems cascade. Doing this before tenant
+        //    delete so the RechargeItem.product (no cascade) doesn't
+        //    block the product cascade delete.
         db.recharge.deleteMany({ where: { tenantId: id } }),
-        // 5) ApiKey has a "createdBy" FK to User without cascade.
+        // 6) ApiKey has a "createdBy" FK to User without cascade.
         db.apiKey.deleteMany({ where: { tenantId: id } }),
-        // 6) Now the tenant — onDelete:Cascade handles everything else
+        // 7) Now the tenant — onDelete:Cascade handles everything else
         //    (products, categories, suppliers, clients, expenses, config,
         //    subscription, users, etc.).
         db.tenant.delete({ where: { id } }),
-      ])
+      )
+      await db.$transaction(txOps)
 
       return NextResponse.json({
         ok: true,
