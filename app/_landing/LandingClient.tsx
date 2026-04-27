@@ -111,16 +111,6 @@ export default function LandingClient({
         >
           {/* LEFT — declaración */}
           <div className="md:col-span-6 lg:col-span-5">
-            <div className="flex items-center gap-2 mb-6">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-              </span>
-              <span className="text-[11px] uppercase tracking-[0.2em] text-gray-400 font-medium">
-                en vivo desde un kiosco de san telmo
-              </span>
-            </div>
-
             <RotatingHeadline />
 
             <p className="text-base sm:text-lg text-gray-400 mb-7 leading-relaxed max-w-md">
@@ -1149,8 +1139,6 @@ function MockAsistente() {
       <MockHeader
         kicker="Asistente · pregunta libre"
         title="Hablale como a un colega"
-        badge="gpt-4o-mini"
-        badgeTone="violet"
       />
       <div className="space-y-2">
         {/* User bubble — derecho, color frío */}

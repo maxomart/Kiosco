@@ -1,11 +1,11 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
 import { motion } from "framer-motion"
 import toast from "react-hot-toast"
-import { Eye, EyeOff, Loader2, Sparkles, ArrowRight } from "lucide-react"
+import { Eye, EyeOff, Loader2, Sparkles, ArrowRight, Receipt, Package, TrendingUp } from "lucide-react"
 
 export default function LoginPage() {
   const emailId = useId()
@@ -59,10 +59,16 @@ export default function LoginPage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full max-w-md"
+      className="w-full max-w-5xl grid lg:grid-cols-2 gap-8 lg:gap-14 items-center"
     >
-      {/* Outer glow that bleeds out from under the card */}
-      <div className="relative">
+      {/* LEFT — Product preview, only on lg+. Mobile keeps the form full
+          width because side-by-side at 375px would squeeze both. */}
+      <div className="hidden lg:block">
+        <LoginPreview />
+      </div>
+
+      {/* RIGHT — Login card */}
+      <div className="relative w-full max-w-md mx-auto lg:mx-0">
         <div
           aria-hidden
           className="absolute -inset-px rounded-2xl opacity-60 blur-xl"
@@ -236,5 +242,121 @@ export default function LoginPage() {
         </div>
       </div>
     </motion.div>
+  )
+}
+
+/* ============================================================================
+   LOGIN PREVIEW — la columna izquierda. No es un slogan: es un vistazo a lo
+   que el usuario está a punto de ver. Tres KPIs (que cuentan suavemente al
+   montar) y un live feed de tres ventas que se autorefresca cada ~3.5 s
+   para que la pantalla no se sienta congelada mientras el usuario tipea su
+   contraseña.
+   ========================================================================== */
+
+const SAMPLE_SALES = [
+  { label: "Coca 500 + alfajor", method: "MODO", color: "text-amber-300", amount: 1800 },
+  { label: "Cargas SUBE", method: "Débito", color: "text-violet-300", amount: 5000 },
+  { label: "Sándwich miga + agua", method: "MP QR", color: "text-sky-300", amount: 3650 },
+  { label: "Marlboro Box", method: "Efectivo", color: "text-emerald-300", amount: 2400 },
+  { label: "Galletitas Oreo × 2", method: "MODO", color: "text-amber-300", amount: 1900 },
+  { label: "Caramelos Sugus", method: "Efectivo", color: "text-emerald-300", amount: 350 },
+]
+
+function nowAR(offsetSec = 0): string {
+  const d = new Date(Date.now() - offsetSec * 1000)
+  return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })
+}
+
+function LoginPreview() {
+  // Rolling window of three rows. Every ~3.5s a fresh row pushes in at the
+  // top, oldest falls off. The list never re-renders the form on the right
+  // because each side is its own React subtree.
+  const [feed, setFeed] = useState(() =>
+    SAMPLE_SALES.slice(0, 3).map((s, i) => ({
+      ...s,
+      id: i,
+      time: nowAR(i * 60),
+    })),
+  )
+
+  useEffect(() => {
+    let counter = SAMPLE_SALES.length
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      counter++
+      const next = SAMPLE_SALES[counter % SAMPLE_SALES.length]
+      setFeed((prev) => [{ ...next, id: counter, time: nowAR(0) }, ...prev.slice(0, 2)])
+    }, 3500)
+    return () => window.clearInterval(id)
+  }, [])
+
+  return (
+    <div className="space-y-5 select-none">
+      <div>
+        <p className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-violet-300/80 mb-3">
+          <span className="h-px w-6 bg-violet-300/40" /> tu negocio te espera
+        </p>
+        <h2 className="text-3xl xl:text-4xl font-bold tracking-tight text-white leading-[1.1] mb-3">
+          Mientras tipeás,{" "}
+          <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
+            la app sigue trabajando.
+          </span>
+        </h2>
+        <p className="text-sm text-gray-400 max-w-sm leading-relaxed">
+          Esto es lo que está pasando ahora mismo en un Orvex real. Cuando entres,
+          arriba vas a ver lo tuyo.
+        </p>
+      </div>
+
+      {/* KPI row — three small chips */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { icon: Receipt, label: "Ventas hoy", value: "27", color: "text-violet-300" },
+          { icon: TrendingUp, label: "Ingresos", value: "$71.3k", color: "text-emerald-300" },
+          { icon: Package, label: "Stock bajo", value: "3", color: "text-amber-300" },
+        ].map(({ icon: Icon, label, value, color }) => (
+          <div key={label} className="rounded-xl bg-white/[0.03] border border-white/10 p-3">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Icon className="w-3 h-3 text-gray-500" />
+              <p className="text-[10px] text-gray-500">{label}</p>
+            </div>
+            <p className={`text-lg font-bold tabular-nums ${color}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Live feed */}
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
+          <p className="text-xs text-gray-400 font-medium">Últimas operaciones</p>
+          <span className="flex items-center gap-1.5 text-[10px] text-emerald-300">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+            </span>
+            en vivo
+          </span>
+        </div>
+        <ul className="divide-y divide-white/5">
+          {feed.map((row, i) => (
+            <motion.li
+              key={row.id}
+              layout
+              initial={i === 0 ? { opacity: 0, y: -10 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-center gap-3 px-4 py-2.5 text-[12px]"
+            >
+              <span className="text-gray-500 tabular-nums w-10">{row.time}</span>
+              <span className="text-gray-200 flex-1 truncate">{row.label}</span>
+              <span className={`${row.color} font-medium whitespace-nowrap`}>{row.method}</span>
+              <span className="text-white tabular-nums font-semibold w-16 text-right">
+                ${row.amount.toLocaleString("es-AR")}
+              </span>
+            </motion.li>
+          ))}
+        </ul>
+      </div>
+    </div>
   )
 }
