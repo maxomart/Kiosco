@@ -29,13 +29,34 @@ async function main() {
     const email = (process.env.SUPERADMIN_EMAIL || "admin@retailar.app").toLowerCase().trim()
     const name = process.env.SUPERADMIN_NAME || "Super Admin"
 
+    // Backfill: every existing user predates the email-verification
+    // feature and is by definition a real account. Mark them all as
+    // verified so we don't lock anyone out when the dashboard layout
+    // starts enforcing emailVerified !== null. Idempotent — only
+    // touches rows where the column is still null.
+    try {
+      const backfill = await db.user.updateMany({
+        where: { emailVerified: null },
+        data: { emailVerified: new Date() },
+      })
+      if (backfill.count > 0) {
+        console.log(`[ensure-admin] backfilled emailVerified on ${backfill.count} existing users`)
+      }
+    } catch (e) {
+      console.error("[ensure-admin] emailVerified backfill failed (non-blocking):", e.message)
+    }
+
     const existing = await db.user.findUnique({ where: { email } })
     if (existing) {
+      const patch = {}
       if (existing.role !== "SUPER_ADMIN" || !existing.active) {
-        await db.user.update({
-          where: { email },
-          data: { role: "SUPER_ADMIN", active: true },
-        })
+        patch.role = "SUPER_ADMIN"
+        patch.active = true
+      }
+      // Super-admin must never be blocked by the verification gate.
+      if (!existing.emailVerified) patch.emailVerified = new Date()
+      if (Object.keys(patch).length > 0) {
+        await db.user.update({ where: { email }, data: patch })
       }
       console.log(`[ensure-admin] Super Admin verificado: ${email}`)
       return
@@ -50,7 +71,14 @@ async function main() {
 
     const hashed = await bcrypt.hash(password, 12)
     await db.user.create({
-      data: { name, email, password: hashed, role: "SUPER_ADMIN", active: true },
+      data: {
+        name,
+        email,
+        password: hashed,
+        role: "SUPER_ADMIN",
+        active: true,
+        emailVerified: new Date(),
+      },
     })
 
     console.log("==========================================================")

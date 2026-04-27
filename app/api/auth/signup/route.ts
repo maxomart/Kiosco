@@ -3,6 +3,9 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 import { slugify } from "@/lib/utils"
+import { issueEmailCode, EMAIL_CODE_TTL_MIN } from "@/lib/email-verification"
+import { sendEmail } from "@/lib/email"
+import { renderEmailVerificationCode } from "@/lib/email-templates"
 
 const VALID_BUSINESS_TYPES = [
   "KIOSCO",
@@ -227,6 +230,7 @@ export async function POST(req: Request) {
       periodEnd = null
     }
 
+    let createdUserId: string | null = null
     try {
       await db.$transaction(async (tx) => {
         // 1. Create Tenant
@@ -237,8 +241,10 @@ export async function POST(req: Request) {
           },
         })
 
-        // 2. Create User (OWNER role)
-        await tx.user.create({
+        // 2. Create User (OWNER role) — emailVerified intentionally null
+        //    so the dashboard layout will bounce them to /verificar-email
+        //    until they type the code we send below.
+        const user = await tx.user.create({
           data: {
             name: ownerName,
             email,
@@ -248,6 +254,7 @@ export async function POST(req: Request) {
             tenantId: tenant.id,
           },
         })
+        createdUserId = user.id
 
         // 3. Create Subscription
         await tx.subscription.create({
@@ -286,9 +293,34 @@ export async function POST(req: Request) {
       throw txErr
     }
 
+    // Email verification — fire & forget the email but always return the
+    // userId so the client can land on /verificar-email and either type
+    // the code or hit "reenviar". Failure here doesn't roll back signup;
+    // the user can always request another code from the verify page.
+    if (createdUserId) {
+      try {
+        const codeRes = await issueEmailCode({ userId: createdUserId, force: true })
+        if ("code" in codeRes) {
+          const tpl = renderEmailVerificationCode({
+            name: ownerName,
+            code: codeRes.code,
+            expiresInMin: EMAIL_CODE_TTL_MIN,
+          })
+          await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text })
+          if (!process.env.RESEND_API_KEY) {
+            console.log(`[signup] verification code for ${email}: ${codeRes.code}`)
+          }
+        }
+      } catch (e) {
+        console.error("[signup] failed to issue verification code:", e)
+      }
+    }
+
     return NextResponse.json(
       {
         ok: true,
+        userId: createdUserId,
+        needsEmailVerification: true,
         promoApplied: promoApplied
           ? { plan: promoApplied.planGranted, days: promoApplied.daysGranted }
           : null,

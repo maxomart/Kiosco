@@ -16,6 +16,14 @@ export const proxy = auth((req) => {
     pathname.startsWith("/signup") ||
     pathname.startsWith("/forgot-password")
 
+  // /verificar-email lives in the auth route group but is meant for
+  // freshly-signed-up (and already logged-in but unverified) users —
+  // we don't want the "logged-in → bounce to /inicio" rule below to
+  // apply here, otherwise a verified user could never reach it again
+  // and an unverified-but-logged-in user would get stuck in a loop with
+  // the dashboard layout that bounces unverified users back here.
+  const isVerifyEmailRoute = pathname.startsWith("/verificar-email")
+
   const isDashboard =
     pathname.startsWith("/pos") ||
     pathname.startsWith("/inventario") ||
@@ -30,8 +38,10 @@ export const proxy = auth((req) => {
 
   const isAdminRoute = pathname.startsWith("/admin")
 
-  // Logged-in user on auth pages → send them to their home
-  if (isAuthRoute && isLoggedIn) {
+  // Logged-in user on auth pages → send them to their home. We exclude
+  // /verificar-email because logged-in-but-unverified users need to reach
+  // it from the dashboard redirect.
+  if (isAuthRoute && isLoggedIn && !isVerifyEmailRoute) {
     const target = role === "SUPER_ADMIN" ? "/admin" : "/inicio"
     return NextResponse.redirect(new URL(target, nextUrl))
   }

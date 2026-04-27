@@ -31,6 +31,18 @@ export default async function DashboardLayout({
     redirect("/admin")
   }
 
+  // Block dashboard access until the user has verified their email. Lookup
+  // is one tiny SELECT on a primary key — fine to do unconditionally on
+  // every request. We don't pull the verified status into the JWT yet so
+  // we can flip it without forcing a re-login.
+  const userRow = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { emailVerified: true },
+  })
+  if (!userRow?.emailVerified) {
+    redirect("/verificar-email")
+  }
+
   // Read tenant theme + plan on the server so the first paint already has
   // the correct accent and the sidebar can lock plan-gated items.
   let initialAccent: string | null = null

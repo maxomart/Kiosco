@@ -290,6 +290,17 @@ function SignupForm() {
         }
         return
       }
+      // Email verification: don't auto-login. Bounce to /verificar-email
+      // with the new userId so the page can resend the code without
+      // needing a session (we don't have one until they verify).
+      if (data.needsEmailVerification && data.userId) {
+        toast.success("Cuenta creada. Confirmá tu mail.")
+        window.location.href = `/verificar-email?uid=${encodeURIComponent(data.userId)}`
+        return
+      }
+
+      // Fallback path (shouldn't normally hit) — old auto-login behaviour
+      // in case the verification flow couldn't issue a code for some reason.
       const result = await signIn("credentials", {
         email,
         password: form.password,
