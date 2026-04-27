@@ -46,6 +46,22 @@ async function main() {
       console.error("[ensure-admin] emailVerified backfill failed (non-blocking):", e.message)
     }
 
+    // Same idea for the guided tour: existing users already know how to
+    // use the app, popping a "Bienvenido" overlay would feel weird. Mark
+    // them tour-completed so the dashboard layout skips the overlay. New
+    // signups go through normally.
+    try {
+      const backfill = await db.user.updateMany({
+        where: { tourCompletedAt: null },
+        data: { tourCompletedAt: new Date() },
+      })
+      if (backfill.count > 0) {
+        console.log(`[ensure-admin] backfilled tourCompletedAt on ${backfill.count} existing users`)
+      }
+    } catch (e) {
+      console.error("[ensure-admin] tour backfill failed (non-blocking):", e.message)
+    }
+
     const existing = await db.user.findUnique({ where: { email } })
     if (existing) {
       const patch = {}

@@ -7,10 +7,12 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider"
 import { SurfaceThemeProvider } from "@/components/theme/SurfaceThemeProvider"
 import { AssistantWidget } from "@/components/ai/AssistantWidget"
 import { ConfirmProvider } from "@/components/shared/ConfirmDialog"
+import TourOverlay from "@/components/shared/TourOverlay"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
 import SubscriptionStatusBanner from "@/components/shared/SubscriptionStatusBanner"
 import { deriveBannerState, type BannerData } from "@/lib/subscription-banner"
+import { PLAN_RANK } from "@/lib/tour-steps"
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false, noarchive: true, nocache: true },
@@ -37,7 +39,11 @@ export default async function DashboardLayout({
   // we can flip it without forcing a re-login.
   const userRow = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { emailVerified: true },
+    select: {
+      emailVerified: true,
+      tourCompletedAt: true,
+      lastWelcomedPlan: true,
+    },
   })
   if (!userRow?.emailVerified) {
     redirect("/verificar-email")
@@ -141,6 +147,16 @@ export default async function DashboardLayout({
 
   const aiEnabled = hasFeature(plan as any, "feature:ai_assistant")
 
+  // Tour: fire if the user never finished it, OR if they upgraded to a
+  // higher plan than the one we last welcomed them on. Comparing by
+  // PLAN_RANK so a downgrade doesn't re-trigger.
+  const lastSeen = userRow?.lastWelcomedPlan ?? null
+  const lastRank = lastSeen ? PLAN_RANK[lastSeen as keyof typeof PLAN_RANK] ?? -1 : -1
+  const currentRank = PLAN_RANK[plan as keyof typeof PLAN_RANK] ?? 0
+  const upgraded = lastSeen && currentRank > lastRank
+  const showTour = !userRow?.tourCompletedAt || upgraded
+  const upgradedFrom = upgraded ? (lastSeen as any) : null
+
   return (
     <ThemeProvider initialAccent={initialAccent} initialMode={initialMode}>
       <SurfaceThemeProvider>
@@ -155,6 +171,7 @@ export default async function DashboardLayout({
               </main>
             </div>
             {aiEnabled && <AssistantWidget plan={plan as any} />}
+            {showTour && <TourOverlay plan={plan as any} upgradedFrom={upgradedFrom} />}
           </div>
         </ConfirmProvider>
       </SurfaceThemeProvider>

@@ -143,10 +143,14 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
           // Plan-gated: render but disabled-looking, link to upgrade page
           const locked = !!feature && !hasFeature(plan, feature)
           const targetHref = locked ? "/configuracion/suscripcion" : href
+          // Stable id from the href so the tour can spotlight specific nav
+          // items via [data-tour='nav-pos'], etc.
+          const tourId = `nav-${href.replace(/^\//, "")}`
           return (
             <Link
               key={href}
               href={targetHref}
+              data-tour={tourId}
               className={cn(
                 "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
                 isActive && !locked
@@ -274,6 +278,7 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
 
       {/* Desktop sidebar */}
       <aside
+        data-tour="sidebar"
         className={cn(
           "hidden lg:flex flex-col sidebar-surface border-r border-gray-800 transition-all duration-200 ease-in-out flex-shrink-0",
           collapsed ? "w-16" : "w-56"

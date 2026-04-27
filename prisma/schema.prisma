@@ -71,6 +71,13 @@ model User {
   // we sent at signup). null = pending verification, can't access the
   // dashboard yet. Existing pre-feature users are backfilled at deploy.
   emailVerified DateTime?
+  // null = first-time user, dashboard layout will trigger the guided tour
+  // on next render. Set once they finish or skip the tour. Plan upgrades
+  // re-trigger by clearing this back to null.
+  tourCompletedAt DateTime?
+  // Last plan we showed a "what's new" welcome for. When user upgrades,
+  // we compare this to current plan to know if we should pop the modal.
+  lastWelcomedPlan String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

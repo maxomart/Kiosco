@@ -281,6 +281,7 @@ export function AssistantWidget({ plan = "STARTER" }: { plan?: Plan }) {
     <>
       {/* Floating circular button — tap to open, long-press + drag to move */}
       <button
+        data-tour="ai-button"
         onPointerDown={onFabPointerDown}
         onPointerMove={onFabPointerMove}
         onPointerUp={onFabPointerUp}

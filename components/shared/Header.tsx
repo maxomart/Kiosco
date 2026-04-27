@@ -111,6 +111,7 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
 
   return (
     <header
+      data-tour="header"
       className={cn(
         "nav-surface h-14 flex items-center px-4 gap-3 flex-shrink-0 sticky top-0 z-30",
         "backdrop-blur-md border-b transition-all duration-200",
