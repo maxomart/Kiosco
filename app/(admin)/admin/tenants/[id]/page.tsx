@@ -295,9 +295,9 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
                   Se van a eliminar PERMANENTEMENTE:
                 </p>
                 <ul className="text-xs text-red-200/90 space-y-0.5 list-disc list-inside">
-                  <li>{data._count.users} usuario{data._count.users !== 1 ? "s" : ""} y sus contraseñas</li>
-                  <li>{data._count.products} producto{data._count.products !== 1 ? "s" : ""} e inventario</li>
-                  <li>{data._count.sales} venta{data._count.sales !== 1 ? "s" : ""} y su histórico</li>
+                  <li>{data.counts.users} usuario{data.counts.users !== 1 ? "s" : ""} y sus contraseñas</li>
+                  <li>{data.counts.products} producto{data.counts.products !== 1 ? "s" : ""} e inventario</li>
+                  <li>{data.counts.sales} venta{data.counts.sales !== 1 ? "s" : ""} y su histórico</li>
                   <li>Categorías, proveedores, clientes, gastos, cargas</li>
                   <li>Suscripción, API keys, configuración del tenant</li>
                   <li>Auditoría, sesiones de caja y todos los registros relacionados</li>

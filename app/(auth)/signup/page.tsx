@@ -290,22 +290,25 @@ function SignupForm() {
         }
         return
       }
-      // Email verification: don't auto-login. Bounce to /verificar-email
-      // with the new userId so the page can resend the code without
-      // needing a session (we don't have one until they verify).
-      if (data.needsEmailVerification && data.userId) {
-        toast.success("Cuenta creada. Confirmá tu mail.")
-        window.location.href = `/verificar-email?uid=${encodeURIComponent(data.userId)}`
-        return
-      }
-
-      // Fallback path (shouldn't normally hit) — old auto-login behaviour
-      // in case the verification flow couldn't issue a code for some reason.
+      // Auto-login right after signup so the user has a session, then
+      // bounce to /verificar-email with the new userId. The dashboard
+      // layout enforces emailVerified !== null, so they can't sneak in
+      // even though they're logged in. After they type the code, the
+      // verify page sends them straight to /inicio without needing to
+      // re-enter their password.
       const result = await signIn("credentials", {
         email,
         password: form.password,
         redirect: false,
       })
+      if (data.needsEmailVerification && data.userId) {
+        toast.success("Cuenta creada. Confirmá tu mail para entrar.")
+        window.location.href = `/verificar-email?uid=${encodeURIComponent(data.userId)}`
+        return
+      }
+
+      // Fallback (shouldn't normally hit) — old auto-login behaviour in
+      // case the verification flow couldn't issue a code at all.
       if (result?.ok) {
         if (data.promoApplied) {
           toast.success(

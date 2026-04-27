@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Search, Key, Loader2 } from "lucide-react"
+import { Search, Key, Loader2, Trash2 } from "lucide-react"
 import toast from "react-hot-toast"
 import { formatDate } from "@/lib/utils"
 import Breadcrumbs from "@/components/admin/Breadcrumbs"
@@ -99,6 +99,29 @@ export default function AdminUsersPage() {
     } finally { setBusyId(null) }
   }
 
+  const remove = async (u: User) => {
+    const tenantNote = u.tenant ? ` (${u.tenant.name})` : ""
+    if (
+      !confirm(
+        `¿Borrar a ${u.name}${tenantNote}?\n\nEsto es irreversible. Si tiene ventas o caja asociadas, el sistema te lo va a impedir y tendrás que desactivarlo en su lugar.`
+      )
+    )
+      return
+    setBusyId(u.id)
+    try {
+      const res = await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        toast.success("Usuario eliminado")
+        load()
+      } else {
+        toast.error(data.error ?? "Error al borrar")
+      }
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <Breadcrumbs items={[{ label: "Admin", href: "/admin" }, { label: "Usuarios" }]} />
@@ -188,14 +211,28 @@ export default function AdminUsersPage() {
                 </td>
                 <td className="p-4 text-gray-400">{formatDate(u.createdAt)}</td>
                 <td className="p-4 text-right">
-                  <button
-                    disabled={busyId === u.id}
-                    onClick={() => reset(u)}
-                    title="Resetear contraseña"
-                    className="p-1.5 rounded-lg hover:bg-yellow-500/10 text-gray-400 hover:text-yellow-400 disabled:opacity-50"
-                  >
-                    {busyId === u.id ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      disabled={busyId === u.id}
+                      onClick={() => reset(u)}
+                      title="Resetear contraseña"
+                      className="p-1.5 rounded-lg hover:bg-yellow-500/10 text-gray-400 hover:text-yellow-400 disabled:opacity-50"
+                    >
+                      {busyId === u.id ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
+                    </button>
+                    <button
+                      disabled={busyId === u.id || u.role === "SUPER_ADMIN"}
+                      onClick={() => remove(u)}
+                      title={
+                        u.role === "SUPER_ADMIN"
+                          ? "No se puede borrar un super-admin desde acá"
+                          : "Borrar usuario"
+                      }
+                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

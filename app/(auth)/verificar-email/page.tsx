@@ -59,11 +59,15 @@ function VerifyEmailInner() {
       }
       setSuccess(true)
       toast.success("Email verificado")
+      // Always send them to /inicio. Signup auto-logged-in already, so
+      // the session is in place; the dashboard layout was only blocking
+      // because emailVerified was null, and that flipped just now.
+      // window.location.href forces a fresh server-side render so the
+      // dashboard layout re-reads the user row instead of the cached
+      // (still-unverified) one.
       setTimeout(() => {
-        // If we used a uid (post-signup), force them through /login so
-        // NextAuth issues a session. Otherwise the user already has one.
-        router.replace(uidFromUrl ? "/login?verified=1" : "/inicio")
-      }, 900)
+        window.location.href = "/inicio"
+      }, 700)
     } catch (e: any) {
       setError(e?.message ?? "Algo falló. Probá de nuevo.")
       setBusy(false)
