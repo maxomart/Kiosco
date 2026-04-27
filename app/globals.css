@@ -96,6 +96,18 @@ html[data-theme="light"] {
 }
 
 @layer base {
+  /* Smooth scroll for the whole site (in-page anchors). The landing's
+     sticky navbar is ~68px tall, so we set scroll-padding so #section
+     targets don't end up hidden under the bar. Honor users that prefer
+     reduced motion. */
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
   body {
     background-color: var(--color-bg-base);
     color: var(--color-text-primary);

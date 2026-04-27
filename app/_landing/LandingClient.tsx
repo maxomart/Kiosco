@@ -340,8 +340,20 @@ function RotatingHeadline() {
   }, [])
 
   const phrase = HEADLINE_PHRASES[idx]
+  // Each phrase has 3 logical lines but their wrap width varies — at lg the
+  // 5/12 column is narrow enough that "Vos abrís el lunes." wraps to two
+  // visual lines AND "qué hizo el sábado." also wraps, so the worst case
+  // is 5 visual lines. We reserve that much height once and stack every
+  // phrase absolutely; the hero never grows or shrinks when the phrase
+  // changes, and the live panel on the right stays anchored.
   return (
-    <h1 className="text-[2.6rem] leading-[0.98] sm:text-5xl lg:text-[3.7rem] font-bold tracking-tight mb-7 min-h-[10rem] sm:min-h-[12rem] lg:min-h-[14rem]">
+    <h1
+      className="relative text-[2.6rem] leading-[0.98] sm:text-5xl lg:text-[3.7rem] font-bold tracking-tight mb-7"
+      style={{
+        // 5 max wrap lines × line-height 0.98. Fixed regardless of phrase.
+        height: "calc(5 * 0.98 * 1em)",
+      }}
+    >
       <AnimatePresence mode="wait">
         <motion.span
           key={idx}
@@ -349,7 +361,7 @@ function RotatingHeadline() {
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-          className="block"
+          className="absolute inset-0 block"
         >
           <span className="block">{phrase[0]}</span>
           <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
@@ -372,6 +384,12 @@ function RotatingHeadline() {
    ========================================================================== */
 
 type LiveSale = { id: number; time: string; method: string; product: string; amount: number }
+
+// Pixel height per row + how many rows are visible at once. The container
+// reserves height = ROW × VISIBLE so it never resizes when sales come and
+// go; rows are absolutely positioned at multiples of ROW from the top.
+const LIVE_ROW_HEIGHT = 38
+const LIVE_VISIBLE_ROWS = 5
 
 const LIVE_QUEUE: Omit<LiveSale, "id" | "time">[] = [
   { method: "MODO", product: "Coca 500 + alfajor", amount: 1800 },
@@ -479,23 +497,42 @@ function HeroLiveScreen() {
               </div>
             </div>
 
-            {/* Live sales feed */}
+            {/* Live sales feed — fixed height container so the panel never
+                changes size when a new sale enters. Rows are absolutely
+                positioned at virtual slots; the most recent sits on top
+                and older ones slide down with a soft spring. The newest
+                row gets a brief glow so it reads as "this just happened". */}
             <p className="text-[10px] uppercase tracking-[0.18em] text-gray-500 mb-2">
               últimas operaciones
             </p>
-            <div className="rounded-lg bg-white/[0.02] border border-white/5 overflow-hidden">
+            <div
+              className="relative rounded-lg bg-white/[0.02] border border-white/5 overflow-hidden"
+              style={{ height: `${LIVE_ROW_HEIGHT * LIVE_VISIBLE_ROWS}px` }}
+            >
               <AnimatePresence initial={false}>
-                {sales.map((s) => (
+                {sales.slice(0, LIVE_VISIBLE_ROWS).map((s, i) => (
                   <motion.div
                     key={s.id}
-                    layout
-                    initial={{ opacity: 0, y: -16, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                    className="px-3 py-2.5 border-b border-white/5 last:border-b-0"
+                    initial={{ opacity: 0, y: -LIVE_ROW_HEIGHT, scale: 0.98 }}
+                    animate={{
+                      opacity: 1,
+                      y: i * LIVE_ROW_HEIGHT,
+                      scale: 1,
+                    }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{
+                      // Soft spring for vertical movement, ease for opacity.
+                      // Stagger so the new row settles a beat before the
+                      // older ones finish sliding — feels less synchronized
+                      // and therefore more natural.
+                      y: { type: "spring", stiffness: 280, damping: 32, mass: 0.8 },
+                      opacity: { duration: 0.4, ease: "easeOut" },
+                      scale: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+                    }}
+                    className="absolute inset-x-0 px-3 flex items-center"
+                    style={{ height: LIVE_ROW_HEIGHT, top: 0 }}
                   >
-                    <div className="flex items-center justify-between gap-3 text-[11px]">
+                    <div className="flex items-center justify-between gap-3 text-[11px] w-full border-b border-white/5 pb-2.5">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="text-gray-500 tabular-nums shrink-0">{s.time}</span>
                         <span className="text-gray-300 truncate">{s.product}</span>
@@ -509,6 +546,20 @@ function HeroLiveScreen() {
                         </span>
                       </div>
                     </div>
+                    {/* Subtle "just landed" glow on the top row, fades out */}
+                    {i === 0 && (
+                      <motion.span
+                        aria-hidden
+                        initial={{ opacity: 0.7 }}
+                        animate={{ opacity: 0 }}
+                        transition={{ duration: 1.4, ease: "easeOut" }}
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background:
+                            "linear-gradient(90deg, rgba(99,102,241,0.18) 0%, rgba(139,92,246,0.06) 50%, transparent 100%)",
+                        }}
+                      />
+                    )}
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -614,18 +665,8 @@ const SCENES: SceneData[] = [
 const HONESTY: { kind: "no" | "yes"; title: string; body: string }[] = [
   {
     kind: "no",
-    title: "«+500 comercios usándolo»",
-    body: "Recién arrancamos en 2026. Si te decimos un número falso, después tenemos que sostenerlo. Mejor venimos limpios.",
-  },
-  {
-    kind: "no",
     title: "«Aumentás un 50% tus ventas»",
     body: "Eso depende de tu negocio, no nuestro. Te damos las herramientas — vender, vendés vos.",
-  },
-  {
-    kind: "no",
-    title: "«Soporte 24/7 mundial»",
-    body: "Somos un equipo chico. Soporte por mail y WhatsApp en horario comercial argentino. Te respondemos rápido pero no a las 4 AM.",
   },
   {
     kind: "no",
@@ -1201,10 +1242,10 @@ function Navbar({
           : "bg-transparent border-b border-transparent"
       }`}
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-        <Link href={promoCode ? `/?promo=${promoCode}` : "/"} className="flex items-center gap-2 group min-w-0">
-          <OrvexLogo size={28} gradientId="nav-logo-grad" />
-          <span className="font-bold text-base sm:text-lg tracking-tight truncate">Orvex</span>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 sm:h-[68px] flex items-center justify-between gap-3">
+        <Link href={promoCode ? `/?promo=${promoCode}` : "/"} className="flex items-center gap-2.5 group min-w-0">
+          <OrvexLogo size={40} gradientId="nav-logo-grad" />
+          <span className="font-bold text-lg sm:text-xl tracking-tight truncate">Orvex</span>
         </Link>
         <div className="hidden md:flex items-center gap-7 text-sm text-gray-400">
           <a href="#dia" className="hover:text-white transition-colors">Cómo funciona</a>
