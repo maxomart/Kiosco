@@ -322,11 +322,14 @@ export default function LandingClient({
    layout. Pausa cuando la pestaña no está visible para no quemar batería.
    ========================================================================== */
 
+// Each line ≤ 16 chars so it never wraps to a 4th visual line at the
+// narrowest column we render (mobile, lg's 5/12 split). If you add one,
+// keep that limit — the H1 reserves height for exactly 3 lines.
 const HEADLINE_PHRASES: [string, string, string][] = [
-  ["Vos atendés.", "La app cuenta,", "suma y te avisa."],
-  ["Vos vendés.", "La app cobra,", "cierra y archiva."],
-  ["Vos pedís stock.", "La app sabe", "qué te falta."],
-  ["Vos abrís el lunes.", "La app sabe", "qué hizo el sábado."],
+  ["Vos atendés.", "La app cuenta,", "y te avisa."],
+  ["Vos vendés.", "La app cobra,", "y archiva todo."],
+  ["Vos pedís.", "La app sabe", "qué te falta."],
+  ["Volvés el lunes.", "La app sabe", "qué pasó."],
 ]
 
 function RotatingHeadline() {
@@ -340,11 +343,14 @@ function RotatingHeadline() {
   }, [])
 
   const phrase = HEADLINE_PHRASES[idx]
-  // Each phrase has 3 logical lines but their wrap width varies — at lg the
-  // 5/12 column is narrow enough that "Vos abrís el lunes." wraps to two
-  // visual lines AND "qué hizo el sábado." also wraps, so the worst case
-  // is 5 visual lines. We reserve that much height once and stack every
-  // phrase absolutely.
+  // Phrases are capped at ~16 chars per line, so each <span class="block">
+  // fits on exactly one visual line. We reserve height for 3 lines (not 5
+  // like before) so the H1 looks tight and the panel beside it stays
+  // anchored without a tall empty bottom.
+  //
+  // whitespace-nowrap on each line is a guard rail: if anyone ever adds a
+  // longer phrase by mistake, it'll horizontally clip — loud and obvious —
+  // instead of silently wrapping and breaking the 3-line invariant.
   //
   // Performance: NO filter:blur on the transition. Animating blur on large
   // gradient text (bg-clip-text) forces a full repaint every frame on most
@@ -356,7 +362,7 @@ function RotatingHeadline() {
     <h1
       className="relative text-[2.6rem] leading-[0.98] sm:text-5xl lg:text-[3.7rem] font-bold tracking-tight mb-7"
       style={{
-        height: "calc(5 * 0.98 * 1em)",
+        height: "calc(3 * 0.98 * 1em)",
       }}
     >
       <AnimatePresence mode="wait">
@@ -372,11 +378,11 @@ function RotatingHeadline() {
           style={{ willChange: "transform, opacity" }}
           className="absolute inset-0 block"
         >
-          <span className="block">{phrase[0]}</span>
-          <span className="block bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
+          <span className="block whitespace-nowrap">{phrase[0]}</span>
+          <span className="block whitespace-nowrap bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
             {phrase[1]}
           </span>
-          <span className="block bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-300 bg-clip-text text-transparent">
+          <span className="block whitespace-nowrap bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-300 bg-clip-text text-transparent">
             {phrase[2]}
           </span>
         </motion.span>

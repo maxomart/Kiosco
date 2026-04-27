@@ -113,8 +113,35 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         console.error("[tenant hard-delete] audit log failed:", e)
       }
 
-      // Cascade delete — drops products, sales, users, subs, everything linked
-      await db.tenant.delete({ where: { id } })
+      // Manual delete order. Prisma's onDelete:Cascade on Tenant→User
+      // alone isn't enough because Sale/AuditLog/CashSession/StockMovement/
+      // ClientPayment all reference User WITHOUT cascade — they'd block
+      // the user delete, which would block the tenant delete (P2003).
+      //
+      // Order matters: we have to drop everything that references
+      // users-of-this-tenant before users themselves vanish.
+      const tenantUsers = await db.user.findMany({
+        where: { tenantId: id },
+        select: { id: true },
+      })
+      const userIds = tenantUsers.map((u) => u.id)
+
+      await db.$transaction([
+        // 1) Records that point to users (RESTRICT) — must die first.
+        db.auditLog.deleteMany({ where: { userId: { in: userIds } } }),
+        db.stockMovement.deleteMany({ where: { tenantId: id } }),
+        db.clientPayment.deleteMany({ where: { tenantId: id } }),
+        db.cashSession.deleteMany({ where: { tenantId: id } }),
+        // 2) Sales reference both tenant (cascade) and user (restrict).
+        //    Delete by tenantId so SaleItems cascade with them.
+        db.sale.deleteMany({ where: { tenantId: id } }),
+        // 3) ApiKey has a "createdBy" FK to User without cascade.
+        db.apiKey.deleteMany({ where: { tenantId: id } }),
+        // 4) Now the tenant — onDelete:Cascade handles everything else
+        //    (products, categories, suppliers, clients, expenses, recharges,
+        //    config, subscription, users, etc.).
+        db.tenant.delete({ where: { id } }),
+      ])
 
       return NextResponse.json({
         ok: true,
@@ -127,10 +154,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
           clients: clientCount,
         },
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error("[tenant hard-delete]", err)
+      const msg = err?.message ?? "Error al eliminar."
+      // Surface the actual Prisma error code/text to the admin UI so the
+      // failure is debuggable instead of a generic 500.
       return NextResponse.json(
-        { error: "Error al eliminar. Puede haber relaciones bloqueando el borrado." },
+        {
+          error: "Error al eliminar el tenant. Mirá la consola del servidor.",
+          detail: msg.slice(0, 240),
+          code: err?.code ?? null,
+        },
         { status: 500 }
       )
     }
