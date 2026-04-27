@@ -57,7 +57,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       ticket.messages.find((m) => m.role === "user")?.content ?? "(sin mensaje)"
     await sendEmail({
       to: adminEmail,
-      subject: `[Soporte] ${ticket.subject} — pidió hablar con humano`,
+      subject: `[Soporte] ${ticket.subject.replace(/[\r\n]+/g, " ").slice(0, 200)} — pidió hablar con humano`,
       html: `<div style="font-family:-apple-system;max-width:520px;margin:0 auto;padding:24px;">
         <p style="color:#6b7280;text-transform:uppercase;font-size:11px;font-weight:600;">soporte · escalado por usuario</p>
         <h2 style="margin:8px 0;color:#111827;">${escapeHtml(ticket.subject)}</h2>

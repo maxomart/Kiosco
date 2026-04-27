@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import toast from "react-hot-toast"
 import { LifeBuoy, Loader2, Send, RefreshCw, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -50,29 +51,49 @@ export default function AdminSupportPage() {
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState("")
   const [busy, setBusy] = useState(false)
+  // We track the in-flight request id so a slow response from a
+  // previously-clicked ticket can't overwrite the current selection
+  // (classic stale-response race when the admin clicks A, then B before
+  // A resolves).
+  const loadOneSeq = useRef(0)
 
   async function loadList() {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/support/tickets?filter=${filter}`)
-      if (res.ok) {
-        const data = await res.json()
-        setTickets(data.tickets ?? [])
-        setCounts(data.counts ?? null)
+      if (!res.ok) {
+        toast.error("No pudimos cargar la lista.")
+        return
       }
+      const data = await res.json()
+      setTickets(data.tickets ?? [])
+      setCounts(data.counts ?? null)
+    } catch {
+      toast.error("Sin conexión.")
     } finally {
       setLoading(false)
     }
   }
 
   async function loadOne(id: string) {
+    const seq = ++loadOneSeq.current
     setActiveId(id)
     setActive(null)
     setDraft("")
-    const res = await fetch(`/api/admin/support/tickets/${id}`)
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/admin/support/tickets/${id}`)
+      // Bail if the user clicked another ticket in the meantime — this
+      // response is stale and would clobber the newer selection.
+      if (seq !== loadOneSeq.current) return
+      if (!res.ok) {
+        toast.error("No se pudo abrir el ticket.")
+        return
+      }
       const data = await res.json()
+      if (seq !== loadOneSeq.current) return
       setActive({ ticket: data.ticket, user: data.user })
+    } catch {
+      if (seq === loadOneSeq.current) toast.error("Sin conexión.")
     }
   }
 
@@ -85,11 +106,16 @@ export default function AdminSupportPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: draft, close }),
       })
-      if (res.ok) {
-        setDraft("")
-        await loadOne(activeId)
-        await loadList()
+      if (!res.ok) {
+        toast.error("No se pudo enviar la respuesta.")
+        return
       }
+      setDraft("")
+      toast.success(close ? "Respondido y cerrado" : "Respuesta enviada")
+      await loadOne(activeId)
+      await loadList()
+    } catch {
+      toast.error("Sin conexión.")
     } finally {
       setBusy(false)
     }

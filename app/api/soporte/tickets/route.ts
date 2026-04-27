@@ -46,7 +46,12 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Body inválido" }, { status: 400 })
   }
-  const subject = body.subject?.trim().slice(0, 120)
+  // Strip CR/LF from subject — it ends up in email Subject: headers and
+  // line breaks there enable header injection. Same trim/slice as before.
+  const subject = body.subject
+    ?.replace(/[\r\n]+/g, " ")
+    .trim()
+    .slice(0, 120)
   const message = body.message?.trim().slice(0, 4000)
   if (!subject || subject.length < 3) {
     return NextResponse.json({ error: "El asunto es muy corto." }, { status: 400 })
@@ -160,7 +165,10 @@ async function notifyAdminOfEscalation(opts: {
 }) {
   const adminEmail = process.env.SUPERADMIN_EMAIL ?? process.env.EMAIL_REPLY_TO
   if (!adminEmail) return
-  const subject = `[Soporte] ${opts.subject} — ${opts.plan}`
+  // Defensive — subject is already CR/LF-stripped at write time, but if
+  // a future migration ever loads pre-existing rows that aren't, this
+  // guarantees no header injection.
+  const subject = `[Soporte] ${sanitizeHeader(opts.subject)} — ${opts.plan}`
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
       <p style="margin:0 0 4px;color:#6b7280;text-transform:uppercase;font-size:11px;letter-spacing:0.05em;font-weight:600;">soporte · escalado</p>
@@ -189,4 +197,8 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+}
+
+function sanitizeHeader(s: string): string {
+  return s.replace(/[\r\n]+/g, " ").slice(0, 200)
 }

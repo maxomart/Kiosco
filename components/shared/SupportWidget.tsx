@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
+import toast from "react-hot-toast"
 import { LifeBuoy, X, Send, Loader2, ArrowLeft, UserCheck, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -62,6 +63,33 @@ export default function SupportWidget() {
     return () => window.removeEventListener(OPEN_EVENT, onOpen)
   }, [])
 
+  // Esc closes the panel.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [open])
+
+  // Reset transient state on close so the next open lands on the list
+  // view instead of a stale thread. We delay the reset until after the
+  // exit animation finishes so the user doesn't see the panel flicker
+  // back to the list while it's leaving.
+  useEffect(() => {
+    if (open) return
+    const id = window.setTimeout(() => {
+      setView("list")
+      setActiveId(null)
+      setMessages([])
+      setSubject("")
+      setDraft("")
+      setTicketStatus(null)
+    }, 400)
+    return () => window.clearTimeout(id)
+  }, [open])
+
   // Lazy-load tickets the first time the panel opens
   useEffect(() => {
     if (open && view === "list") void loadTickets()
@@ -72,10 +100,14 @@ export default function SupportWidget() {
     setLoading(true)
     try {
       const res = await fetch("/api/soporte/tickets")
-      if (res.ok) {
-        const data = await res.json()
-        setTickets(data.tickets ?? [])
+      if (!res.ok) {
+        toast.error("No pudimos cargar tus tickets. Probá refrescar.")
+        return
       }
+      const data = await res.json()
+      setTickets(data.tickets ?? [])
+    } catch {
+      toast.error("Sin conexión.")
     } finally {
       setLoading(false)
     }
@@ -87,12 +119,16 @@ export default function SupportWidget() {
     setLoading(true)
     try {
       const res = await fetch(`/api/soporte/tickets/${id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setMessages(data.ticket.messages)
-        setTicketStatus(data.ticket.status)
-        setSubject(data.ticket.subject)
+      if (!res.ok) {
+        toast.error("No pudimos abrir esta consulta.")
+        return
       }
+      const data = await res.json()
+      setMessages(data.ticket.messages)
+      setTicketStatus(data.ticket.status)
+      setSubject(data.ticket.subject)
+    } catch {
+      toast.error("Sin conexión.")
     } finally {
       setLoading(false)
       // scroll to bottom after a frame so the layout settles
@@ -121,13 +157,18 @@ export default function SupportWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, message: draft }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error ?? "No pudimos crear el ticket. Probá de nuevo.")
+        return
+      }
       const data = await res.json()
       setActiveId(data.ticket.id)
       setView("thread")
       setDraft("")
-      // Pull the full thread including the AI reply
       void openThread(data.ticket.id)
+    } catch {
+      toast.error("Sin conexión.")
     } finally {
       setBusy(false)
     }
@@ -137,9 +178,12 @@ export default function SupportWidget() {
     if (!activeId || !draft.trim() || busy) return
     const text = draft
     setDraft("")
-    // Optimistic: append user msg + a typing dot for AI
+    // Optimistic: append the user message immediately. Tag the temp id
+    // so we can roll it back if the request fails — without rollback,
+    // the bubble would stay forever as a phantom.
+    const tempId = `tmp-${Date.now()}`
     const optimistic: Message = {
-      id: `tmp-${Date.now()}`,
+      id: tempId,
       role: "user",
       content: text,
       createdAt: new Date().toISOString(),
@@ -152,10 +196,19 @@ export default function SupportWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: text }),
       })
-      if (res.ok) {
-        // Reload thread for canonical messages
-        await openThread(activeId)
+      if (!res.ok) {
+        // Roll back optimistic UI and restore the draft
+        setMessages((m) => m.filter((msg) => msg.id !== tempId))
+        setDraft(text)
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error ?? "No pudimos enviar tu mensaje.")
+        return
       }
+      await openThread(activeId)
+    } catch {
+      setMessages((m) => m.filter((msg) => msg.id !== tempId))
+      setDraft(text)
+      toast.error("Sin conexión.")
     } finally {
       setBusy(false)
     }
@@ -165,8 +218,15 @@ export default function SupportWidget() {
     if (!activeId || busy) return
     setBusy(true)
     try {
-      await fetch(`/api/soporte/tickets/${activeId}/escalate`, { method: "POST" })
+      const res = await fetch(`/api/soporte/tickets/${activeId}/escalate`, { method: "POST" })
+      if (!res.ok) {
+        toast.error("No pudimos pasar a soporte humano.")
+        return
+      }
+      toast.success("Te paso con Joaco.")
       await openThread(activeId)
+    } catch {
+      toast.error("Sin conexión.")
     } finally {
       setBusy(false)
     }
@@ -176,8 +236,14 @@ export default function SupportWidget() {
     if (!activeId || busy) return
     setBusy(true)
     try {
-      await fetch(`/api/soporte/tickets/${activeId}/close`, { method: "POST" })
+      const res = await fetch(`/api/soporte/tickets/${activeId}/close`, { method: "POST" })
+      if (!res.ok) {
+        toast.error("No se pudo cerrar.")
+        return
+      }
       backToList()
+    } catch {
+      toast.error("Sin conexión.")
     } finally {
       setBusy(false)
     }
@@ -229,7 +295,10 @@ export default function SupportWidget() {
               {view === "thread" && ticketStatus && (
                 <span
                   className={cn(
-                    "text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider whitespace-nowrap",
+                    // Hidden on tiny screens because the back-arrow + title
+                    // + close-X already eat the row at 320px. Status is
+                    // visible inside the thread anyway.
+                    "hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider whitespace-nowrap",
                     ticketStatus === "ESCALATED"
                       ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
                       : ticketStatus === "ANSWERED"

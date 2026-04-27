@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { replyToSupport } from "@/lib/support-ai"
+import { sendEmail } from "@/lib/email"
 import type { Plan } from "@/lib/utils"
 
 // POST /api/soporte/tickets/[id]/message
@@ -36,7 +37,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const ticket = await db.supportTicket.findUnique({
     where: { id },
-    include: { messages: { orderBy: { createdAt: "asc" } } },
+    include: { messages: { orderBy: { createdAt: "asc" }, take: 200 } },
   })
   if (!ticket || ticket.userId !== session.user.id) {
     return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 })
@@ -95,6 +96,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         content: "Mejor te paso con Joaco — él te resuelve esto directo.",
       },
     })
+    // Tell the admin too, otherwise the cap escalation only shows up
+    // as an unread flag in the inbox and could sit there for days.
+    void notifyAdminOfEscalation({
+      ticketId: id,
+      subject: ticket.subject,
+      userEmail: session.user.email,
+      userName: session.user.name,
+      reason: "Después de 5 idas y vueltas con la IA, escalado automáticamente. Revisá la conversación.",
+      plan: (ticket.planSnapshot ?? "FREE") as Plan,
+    })
     return NextResponse.json({
       ok: true,
       escalated: true,
@@ -131,9 +142,55 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }),
   ])
 
+  // Notify admin if the AI escalated mid-thread (we already do this on
+  // the very first message in the create-ticket route).
+  if (reply.shouldEscalate) {
+    void notifyAdminOfEscalation({
+      ticketId: id,
+      subject: ticket.subject,
+      userEmail: session.user.email,
+      userName: session.user.name,
+      reason: "La IA marcó esta consulta como fuera de su alcance.",
+      plan,
+    })
+  }
+
   return NextResponse.json({
     ok: true,
     escalated: reply.shouldEscalate,
     aiReply: reply.content,
   })
+}
+
+async function notifyAdminOfEscalation(opts: {
+  ticketId: string
+  subject: string
+  userEmail: string
+  userName: string
+  reason: string
+  plan: Plan
+}) {
+  const adminEmail = process.env.SUPERADMIN_EMAIL ?? process.env.EMAIL_REPLY_TO
+  if (!adminEmail) return
+  const safeSubject = opts.subject.replace(/[\r\n]+/g, " ").slice(0, 200)
+  await sendEmail({
+    to: adminEmail,
+    subject: `[Soporte] ${safeSubject} — escalado por IA (${opts.plan})`,
+    html: `<div style="font-family:-apple-system;max-width:520px;margin:0 auto;padding:24px;">
+      <p style="color:#6b7280;text-transform:uppercase;font-size:11px;font-weight:600;">soporte · escalado</p>
+      <h2 style="margin:8px 0;color:#111827;">${escapeHtml(opts.subject)}</h2>
+      <p style="color:#4b5563;font-size:14px;">${escapeHtml(opts.userName)} (${escapeHtml(opts.userEmail)}) · plan ${opts.plan}</p>
+      <p style="color:#6b7280;font-size:13px;font-style:italic;margin-top:12px;">${escapeHtml(opts.reason)}</p>
+      <p style="margin-top:16px;font-size:13px;"><a href="${process.env.NEXTAUTH_URL ?? ""}/admin/soporte/${opts.ticketId}" style="color:#2563eb;">Ver hilo en /admin/soporte</a></p>
+    </div>`,
+    text: `Ticket escalado por IA — ${opts.userEmail} (${opts.plan}).\n${opts.reason}\nVer en /admin/soporte/${opts.ticketId}`,
+  })
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
 }

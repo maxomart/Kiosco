@@ -13,7 +13,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
   const ticket = await db.supportTicket.findUnique({
     where: { id },
-    include: { messages: { orderBy: { createdAt: "asc" } } },
+    include: { messages: { orderBy: { createdAt: "asc" }, take: 200 } },
   })
   if (!ticket) return NextResponse.json({ error: "No encontrado" }, { status: 404 })
 
@@ -87,7 +87,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (user?.email) {
     await sendEmail({
       to: user.email,
-      subject: `Te respondieron tu consulta — ${ticket.subject}`,
+      // Strip CR/LF — header injection guard. ticket.subject is user-
+      // controlled and filtered at write time, this is defense-in-depth.
+      subject: `Te respondieron tu consulta — ${ticket.subject.replace(/[\r\n]+/g, " ").slice(0, 200)}`,
       html: `<div style="font-family:-apple-system;max-width:520px;margin:0 auto;padding:24px;">
         <p style="color:#6b7280;text-transform:uppercase;font-size:11px;font-weight:600;">soporte · respuesta nueva</p>
         <h2 style="margin:8px 0;color:#111827;">${escapeHtml(ticket.subject)}</h2>

@@ -14,7 +14,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const ticket = await db.supportTicket.findUnique({
     where: { id },
     include: {
-      messages: { orderBy: { createdAt: "asc" } },
+      // Cap to defend against runaway threads. 200 turns is way more than
+      // any real support conversation; if we hit that we should be
+      // splitting the ticket anyway.
+      messages: { orderBy: { createdAt: "asc" }, take: 200 },
     },
   })
   if (!ticket || ticket.userId !== session.user.id) {
