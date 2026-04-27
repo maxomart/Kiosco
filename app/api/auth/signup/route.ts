@@ -145,30 +145,77 @@ export async function POST(req: Request) {
 
     const phone = normalizePhone(rawPhone)
 
-    // Check if email already exists
+    // ── Existing-account checks ─────────────────────────────────────
+    // Edge case: a user starts signup, the row is created with
+    // emailVerified=null, then they bail (back button, closed tab) before
+    // typing the verification code. The email + phone are now "taken" but
+    // the account is unusable. We let them retry the signup as long as
+    // the orphan is recent (< 24 h) — we'll wipe the tenant + user later
+    // in the transaction below.
+    const ORPHAN_TTL_HOURS = 24
+    const orphanCutoff = new Date(Date.now() - ORPHAN_TTL_HOURS * 60 * 60 * 1000)
+
+    let orphanIdsToWipe: { userId: string; tenantId: string | null }[] = []
+
     const existing = await db.user.findUnique({
       where: { email },
-      select: { id: true },
+      select: { id: true, tenantId: true, emailVerified: true, createdAt: true },
     })
-
     if (existing) {
-      return NextResponse.json(
-        { message: "Este email ya está registrado." },
-        { status: 409 }
-      )
+      const isOrphan =
+        !existing.emailVerified && existing.createdAt > orphanCutoff
+      if (!isOrphan) {
+        return NextResponse.json(
+          { message: "Este email ya está registrado." },
+          { status: 409 }
+        )
+      }
+      orphanIdsToWipe.push({ userId: existing.id, tenantId: existing.tenantId })
     }
 
-    // Check if phone already exists (prevent multiple accounts per number)
     const existingPhone = await db.user.findFirst({
       where: { phone },
-      select: { id: true },
+      select: { id: true, tenantId: true, emailVerified: true, createdAt: true, email: true },
     })
-
     if (existingPhone) {
-      return NextResponse.json(
-        { message: "Este número de celular ya está registrado." },
-        { status: 409 }
-      )
+      const isOrphan =
+        !existingPhone.emailVerified && existingPhone.createdAt > orphanCutoff
+      if (!isOrphan) {
+        return NextResponse.json(
+          { message: "Este número de celular ya está registrado." },
+          { status: 409 }
+        )
+      }
+      // Avoid double-listing the same orphan when both email and phone
+      // collisions point at the same row.
+      if (!orphanIdsToWipe.some((o) => o.userId === existingPhone.id)) {
+        orphanIdsToWipe.push({ userId: existingPhone.id, tenantId: existingPhone.tenantId })
+      }
+    }
+
+    // Wipe orphans BEFORE we try to recreate (otherwise the unique
+    // constraint will still bite). Best-effort — if any orphan delete
+    // fails we abort and tell the user.
+    if (orphanIdsToWipe.length > 0) {
+      try {
+        for (const o of orphanIdsToWipe) {
+          // Tenant cascade takes care of the user too.
+          if (o.tenantId) {
+            await db.tenant.delete({ where: { id: o.tenantId } })
+          } else {
+            await db.user.delete({ where: { id: o.userId } })
+          }
+        }
+      } catch (e) {
+        console.error("[signup] orphan wipe failed:", e)
+        return NextResponse.json(
+          {
+            message:
+              "Hay un registro previo bloqueando este email. Esperá unos minutos o usá otro mail.",
+          },
+          { status: 409 }
+        )
+      }
     }
 
     // ── Claim promo slot BEFORE creating tenant ─────────────────
@@ -316,6 +363,19 @@ export async function POST(req: Request) {
       }
     }
 
+    // Notify the platform admin about the new signup. Best-effort,
+    // doesn't block. Subject is sanitized to dodge header injection
+    // even though businessName is regex-validated upstream.
+    void notifyAdminOfSignup({
+      businessName,
+      businessType,
+      ownerName,
+      email,
+      phone,
+      plan,
+      promoApplied: !!promoApplied,
+    })
+
     return NextResponse.json(
       {
         ok: true,
@@ -333,5 +393,48 @@ export async function POST(req: Request) {
       { message: "Error interno del servidor. Intentá de nuevo." },
       { status: 500 }
     )
+  }
+}
+
+async function notifyAdminOfSignup(opts: {
+  businessName: string
+  businessType: string
+  ownerName: string
+  email: string
+  phone: string
+  plan: string
+  promoApplied: boolean
+}) {
+  const adminEmail = process.env.SUPERADMIN_EMAIL ?? process.env.EMAIL_REPLY_TO
+  if (!adminEmail) return
+  const sanitize = (s: string) => s.replace(/[\r\n]+/g, " ").slice(0, 200)
+  const escapeHtml = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+  try {
+    await sendEmail({
+      to: adminEmail,
+      subject: `[Orvex] Signup nuevo: ${sanitize(opts.businessName)} (${opts.plan})`,
+      html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
+        <p style="margin:0;color:#6b7280;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">orvex · alta nueva</p>
+        <h2 style="margin:6px 0 14px;color:#111827;font-size:18px;">${escapeHtml(opts.businessName)}</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#111827;">
+          <tr><td style="padding:6px 0;color:#6b7280;">Dueño</td><td style="padding:6px 0;text-align:right;">${escapeHtml(opts.ownerName)}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">Mail</td><td style="padding:6px 0;text-align:right;"><a href="mailto:${escapeHtml(opts.email)}" style="color:#2563eb;">${escapeHtml(opts.email)}</a></td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">Celular</td><td style="padding:6px 0;text-align:right;"><a href="https://wa.me/${escapeHtml(opts.phone.replace(/\D/g, ""))}" style="color:#2563eb;">${escapeHtml(opts.phone)}</a></td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">Tipo de negocio</td><td style="padding:6px 0;text-align:right;">${escapeHtml(opts.businessType)}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;">Plan</td><td style="padding:6px 0;text-align:right;font-weight:600;">${opts.plan}${opts.promoApplied ? " (con promo)" : ""}</td></tr>
+        </table>
+        <p style="margin-top:16px;font-size:13px;color:#6b7280;">
+          Mirá el detalle en <a href="${process.env.NEXTAUTH_URL ?? ""}/admin/tenants" style="color:#2563eb;">/admin/tenants</a>.
+        </p>
+      </div>`,
+      text: `Signup nuevo: ${opts.businessName} (${opts.plan}${opts.promoApplied ? " con promo" : ""})\n\nDueño: ${opts.ownerName}\nMail: ${opts.email}\nCelular: ${opts.phone}\nTipo: ${opts.businessType}\n\nVer en /admin/tenants`,
+    })
+  } catch (e) {
+    console.error("[signup] admin notification failed:", e)
   }
 }

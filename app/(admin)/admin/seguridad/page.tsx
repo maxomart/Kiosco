@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, Monitor, ShieldCheck, Trash2, Pencil, Check, X } from "lucide-react"
+import toast from "react-hot-toast"
+import { signOut } from "next-auth/react"
+import { Loader2, Monitor, ShieldCheck, Trash2, Pencil, Check, X, Mail, Key } from "lucide-react"
 
 interface TrustedDevice {
   id: string
@@ -93,7 +95,18 @@ export default function AdminSecurityPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Dispositivos confiables</h1>
+        <h1 className="text-2xl font-bold text-white">Seguridad de tu cuenta</h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Cambiá tu mail/contraseña y gestioná las computadoras que pueden acceder al admin.
+        </p>
+      </div>
+
+      {/* Cuenta del admin */}
+      <AccountSection />
+
+      {/* Dispositivos confiables — header */}
+      <div className="pt-4 border-t border-gray-800">
+        <h2 className="text-lg font-semibold text-white">Dispositivos confiables</h2>
         <p className="text-gray-400 text-sm mt-1">
           Sólo desde estas computadoras se puede entrar al panel sin verificación por mail.
           Cualquier login desde una distinta queda bloqueado hasta que confirmes con un código de 6 dígitos.
@@ -234,5 +247,161 @@ export default function AdminSecurityPage() {
         </div>
       )}
     </div>
+  )
+}
+
+/* ============================================================================
+   Account section — change email / password from /admin/seguridad.
+   Pre-fills from the current session. After a sensitive change the user
+   gets logged out so the new credentials take effect cleanly.
+   ========================================================================== */
+
+function AccountSection() {
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [originalEmail, setOriginalEmail] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/admin/account")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.user) {
+          setName(d.user.name ?? "")
+          setEmail(d.user.email ?? "")
+          setOriginalEmail(d.user.email ?? "")
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy) return
+    const sensitive =
+      email.toLowerCase() !== originalEmail.toLowerCase() ||
+      newPassword.length > 0
+    if (sensitive && !currentPassword) {
+      toast.error("Ingresá tu contraseña actual para confirmar.")
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch("/api/admin/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          currentPassword: sensitive ? currentPassword : undefined,
+          newPassword: newPassword || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "No pudimos guardar.")
+        return
+      }
+      toast.success("Listo. Datos actualizados.")
+      setCurrentPassword("")
+      setNewPassword("")
+      if (data.requiresReauth) {
+        // Logout so the new email/password takes effect on next login.
+        toast("Volvé a entrar con tu mail/contraseña nueva.", { duration: 4000 })
+        setTimeout(() => signOut({ callbackUrl: "/login" }), 1500)
+      } else {
+        // Refresh the form's "original" email to the new one and clear
+        // sensitive inputs.
+        setOriginalEmail(email)
+      }
+    } catch {
+      toast.error("Sin conexión.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="rounded-xl border border-gray-800 bg-gray-900/60 p-5 space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-white">Tu cuenta de admin</h2>
+        <p className="text-gray-500 text-xs mt-0.5">
+          Para cambiar mail o contraseña tenés que confirmar con tu contraseña actual.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label="Nombre">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/60"
+          />
+        </Field>
+        <Field label="Email">
+          <div className="flex items-center gap-2 bg-gray-950 border border-gray-800 rounded-lg px-3">
+            <Mail className="w-4 h-4 text-gray-500 shrink-0" />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              className="flex-1 bg-transparent py-2 text-sm text-white placeholder-gray-600 focus:outline-none"
+            />
+          </div>
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-800">
+        <Field label="Contraseña actual">
+          <div className="flex items-center gap-2 bg-gray-950 border border-gray-800 rounded-lg px-3">
+            <Key className="w-4 h-4 text-gray-500 shrink-0" />
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              className="flex-1 bg-transparent py-2 text-sm text-white placeholder-gray-600 focus:outline-none"
+            />
+          </div>
+        </Field>
+        <Field label="Contraseña nueva (opcional)">
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+            placeholder="Dejá vacío si no querés cambiarla"
+            minLength={10}
+            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/60"
+          />
+        </Field>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 disabled:opacity-50 text-white text-sm font-semibold"
+        >
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Guardar cambios"}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] uppercase tracking-wider text-gray-500 font-medium block mb-1.5">
+        {label}
+      </span>
+      {children}
+    </label>
   )
 }

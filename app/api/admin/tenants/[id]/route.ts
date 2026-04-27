@@ -132,14 +132,29 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         db.stockMovement.deleteMany({ where: { tenantId: id } }),
         db.clientPayment.deleteMany({ where: { tenantId: id } }),
         db.cashSession.deleteMany({ where: { tenantId: id } }),
-        // 2) Sales reference both tenant (cascade) and user (restrict).
+        // 2) LoyaltyTransaction references Sale WITHOUT cascade — would
+        //    block the sale delete below. Fetch via the client→tenant chain
+        //    or sale→tenant chain (same tenantId).
+        db.loyaltyTransaction.deleteMany({
+          where: {
+            OR: [
+              { client: { tenantId: id } },
+              { sale: { tenantId: id } },
+            ],
+          },
+        }),
+        // 3) Sales reference both tenant (cascade) and user (restrict).
         //    Delete by tenantId so SaleItems cascade with them.
         db.sale.deleteMany({ where: { tenantId: id } }),
-        // 3) ApiKey has a "createdBy" FK to User without cascade.
+        // 4) Recharges + RechargeItems. RechargeItem.product has no cascade
+        //    so deleting Recharges first kills RechargeItem (cascade) before
+        //    Product is wiped by the tenant delete below.
+        db.recharge.deleteMany({ where: { tenantId: id } }),
+        // 5) ApiKey has a "createdBy" FK to User without cascade.
         db.apiKey.deleteMany({ where: { tenantId: id } }),
-        // 4) Now the tenant — onDelete:Cascade handles everything else
-        //    (products, categories, suppliers, clients, expenses, recharges,
-        //    config, subscription, users, etc.).
+        // 6) Now the tenant — onDelete:Cascade handles everything else
+        //    (products, categories, suppliers, clients, expenses, config,
+        //    subscription, users, etc.).
         db.tenant.delete({ where: { id } }),
       ])
 
