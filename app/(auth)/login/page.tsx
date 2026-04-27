@@ -1,11 +1,22 @@
 "use client"
 
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import toast from "react-hot-toast"
-import { Eye, EyeOff, Loader2, Sparkles, ArrowRight, Receipt, Package, TrendingUp } from "lucide-react"
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  Sparkles,
+  ArrowRight,
+  Receipt,
+  Package,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react"
 
 export default function LoginPage() {
   const emailId = useId()
@@ -246,11 +257,12 @@ export default function LoginPage() {
 }
 
 /* ============================================================================
-   LOGIN PREVIEW — la columna izquierda. No es un slogan: es un vistazo a lo
-   que el usuario está a punto de ver. Tres KPIs (que cuentan suavemente al
-   montar) y un live feed de tres ventas que se autorefresca cada ~3.5 s
-   para que la pantalla no se sienta congelada mientras el usuario tipea su
-   contraseña.
+   LOGIN PREVIEW — la columna izquierda del login. Es un carrusel: cada ~9s
+   cambia entre cuatro paneles distintos del producto (live feed, alerta de
+   stock, asistente IA, reporte semanal) para que el usuario que está
+   tipeando vea de qué se trata desde cuatro ángulos. Cada panel maneja su
+   propia animación interna. El carrusel se pausa cuando la pestaña no está
+   visible.
    ========================================================================== */
 
 const SAMPLE_SALES = [
@@ -268,30 +280,110 @@ function nowAR(offsetSec = 0): string {
 }
 
 function formatARS(n: number): string {
-  // Compact-ish: $71.3k vs $213.8k vs $1.2M for big numbers, plain otherwise.
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
   if (n >= 10_000) return `$${(n / 1_000).toFixed(1)}k`
   return `$${n.toLocaleString("es-AR")}`
 }
 
+const PREVIEW_PANELS = [
+  { id: "live", kicker: "lo de hoy", title: "Mientras tipeás,", titleAccent: "la app sigue trabajando." },
+  { id: "stock", kicker: "te ahorra una llamada", title: "Te avisa", titleAccent: "antes de que se corte." },
+  { id: "chat", kicker: "preguntás, te responde", title: "Tu negocio,", titleAccent: "explicado en castellano." },
+  { id: "report", kicker: "el lunes a la mañana", title: "Sabés", titleAccent: "qué pasó mientras dormías." },
+] as const
+
+const PANEL_INTERVAL_MS = 9000
+
 function LoginPreview() {
-  // Three things change together every ~3.5s: a new row pushes into the feed
-  // at the top, "Ventas hoy" bumps by 1, and "Ingresos" adds the sale amount.
-  // That makes the panel feel like a real dashboard instead of a static
-  // marketing image. We mark which KPI just changed so we can flash it
-  // briefly (green pulse + slight scale) — the eye picks up the change
-  // without needing a callout.
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      setIdx((i) => (i + 1) % PREVIEW_PANELS.length)
+    }, PANEL_INTERVAL_MS)
+    return () => window.clearInterval(id)
+  }, [])
+  const panel = PREVIEW_PANELS[idx]
+
+  return (
+    <div className="space-y-5 select-none">
+      {/* Heading rotates with the panel so the copy fits whatever scene is
+          on screen below. Same fade transition as the body so they swap as
+          one unit. */}
+      <div className="min-h-[152px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={panel.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            style={{ willChange: "transform, opacity" }}
+          >
+            <p className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-violet-300/80 mb-3">
+              <span className="h-px w-6 bg-violet-300/40" /> {panel.kicker}
+            </p>
+            <h2 className="text-3xl xl:text-4xl font-bold tracking-tight text-white leading-[1.1]">
+              {panel.title}{" "}
+              <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
+                {panel.titleAccent}
+              </span>
+            </h2>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Body — each panel in its own subtree so internal state (timers,
+          intervals) gets torn down on switch and the next panel mounts
+          fresh. Min height is the tallest panel so the form on the right
+          doesn't shift when scenes swap. */}
+      <div className="relative min-h-[340px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={panel.id}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            style={{ willChange: "transform, opacity" }}
+          >
+            {panel.id === "live" && <PanelLive />}
+            {panel.id === "stock" && <PanelStock />}
+            {panel.id === "chat" && <PanelChat />}
+            {panel.id === "report" && <PanelReport />}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Pagination dots so the user knows there are more panels coming */}
+      <div className="flex items-center gap-1.5 pt-1">
+        {PREVIEW_PANELS.map((p, i) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setIdx(i)}
+            aria-label={`Ver panel ${i + 1}`}
+            className="h-1 rounded-full transition-all"
+            style={{
+              width: i === idx ? 24 : 6,
+              background: i === idx ? "rgba(167,139,250,0.85)" : "rgba(255,255,255,0.15)",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* -------- Panel 1: Live feed + KPIs ---------- */
+function PanelLive() {
   const [feed, setFeed] = useState(() =>
-    SAMPLE_SALES.slice(0, 3).map((s, i) => ({
-      ...s,
-      id: i,
-      time: nowAR(i * 60),
-    })),
+    SAMPLE_SALES.slice(0, 3).map((s, i) => ({ ...s, id: i, time: nowAR(i * 60) })),
   )
   const [ventas, setVentas] = useState(27)
   const [ingresos, setIngresos] = useState(71_300)
   const [stockBajo, setStockBajo] = useState(3)
-  const [bumpKey, setBumpKey] = useState(0) // re-keying the KPIs triggers the flash anim
+  const [bumpKey, setBumpKey] = useState(0)
 
   useEffect(() => {
     let counter = SAMPLE_SALES.length
@@ -302,8 +394,6 @@ function LoginPreview() {
       setFeed((prev) => [{ ...next, id: counter, time: nowAR(0) }, ...prev.slice(0, 2)])
       setVentas((v) => v + 1)
       setIngresos((i) => i + next.amount)
-      // Stock bajo drifts slowly: drop one occasionally so it feels alive
-      // but doesn't grow forever. Bias toward 2-4.
       setStockBajo((s) => {
         const r = Math.random()
         if (r < 0.15 && s > 1) return s - 1
@@ -315,51 +405,16 @@ function LoginPreview() {
     return () => window.clearInterval(id)
   }, [])
 
-  return (
-    <div className="space-y-5 select-none">
-      <div>
-        <p className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-violet-300/80 mb-3">
-          <span className="h-px w-6 bg-violet-300/40" /> tu negocio te espera
-        </p>
-        <h2 className="text-3xl xl:text-4xl font-bold tracking-tight text-white leading-[1.1] mb-3">
-          Mientras tipeás,{" "}
-          <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">
-            la app sigue trabajando.
-          </span>
-        </h2>
-        <p className="text-sm text-gray-400 max-w-sm leading-relaxed">
-          Esto es lo que está pasando ahora mismo en un Orvex real. Cuando entres,
-          arriba vas a ver lo tuyo.
-        </p>
-      </div>
+  const kpis = [
+    { icon: Receipt, label: "Ventas hoy", value: ventas.toString(), color: "text-violet-300", ringColor: "rgba(167,139,250,0.45)" },
+    { icon: TrendingUp, label: "Ingresos", value: formatARS(ingresos), color: "text-emerald-300", ringColor: "rgba(110,231,183,0.45)" },
+    { icon: Package, label: "Stock bajo", value: stockBajo.toString(), color: "text-amber-300", ringColor: "rgba(252,211,77,0.40)" },
+  ]
 
-      {/* KPI row — three small chips. Values bump every time a new sale
-          lands in the feed below. The motion.span keys on bumpKey so each
-          tick triggers a tiny scale + glow flash on the number itself. */}
+  return (
+    <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2">
-        {[
-          {
-            icon: Receipt,
-            label: "Ventas hoy",
-            value: ventas.toString(),
-            color: "text-violet-300",
-            ringColor: "rgba(167,139,250,0.45)",
-          },
-          {
-            icon: TrendingUp,
-            label: "Ingresos",
-            value: formatARS(ingresos),
-            color: "text-emerald-300",
-            ringColor: "rgba(110,231,183,0.45)",
-          },
-          {
-            icon: Package,
-            label: "Stock bajo",
-            value: stockBajo.toString(),
-            color: "text-amber-300",
-            ringColor: "rgba(252,211,77,0.40)",
-          },
-        ].map(({ icon: Icon, label, value, color, ringColor }) => (
+        {kpis.map(({ icon: Icon, label, value, color, ringColor }) => (
           <div key={label} className="relative rounded-xl bg-white/[0.03] border border-white/10 p-3 overflow-hidden">
             <div className="flex items-center gap-1.5 mb-1">
               <Icon className="w-3 h-3 text-gray-500" />
@@ -368,13 +423,7 @@ function LoginPreview() {
             <motion.p
               key={`${label}-${bumpKey}-${value}`}
               initial={{ scale: 1, textShadow: `0 0 0 ${ringColor}` }}
-              animate={{
-                scale: [1.06, 1],
-                textShadow: [
-                  `0 0 16px ${ringColor}`,
-                  `0 0 0 transparent`,
-                ],
-              }}
+              animate={{ scale: [1.06, 1], textShadow: [`0 0 16px ${ringColor}`, `0 0 0 transparent`] }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className={`text-lg font-bold tabular-nums ${color}`}
             >
@@ -383,8 +432,6 @@ function LoginPreview() {
           </div>
         ))}
       </div>
-
-      {/* Live feed */}
       <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
         <div className="px-4 py-2.5 border-b border-white/5 flex items-center justify-between">
           <p className="text-xs text-gray-400 font-medium">Últimas operaciones</p>
@@ -415,6 +462,223 @@ function LoginPreview() {
             </motion.li>
           ))}
         </ul>
+      </div>
+    </div>
+  )
+}
+
+/* -------- Panel 2: Low-stock alert ---------- */
+function PanelStock() {
+  // Stock counts decrement slightly while the panel is on screen so the user
+  // sees real-time-ish movement. They never reach 0 — the panel rotates away
+  // first.
+  const [items, setItems] = useState([
+    { name: "Marlboro Box 20", stock: 4, min: 12, status: "critical" as const },
+    { name: "Coca Cola 500ml", stock: 6, min: 12, status: "low" as const },
+    { name: "Alfajor Jorgito triple", stock: 3, min: 10, status: "critical" as const },
+    { name: "Agua Villavicencio 1.5L", stock: 18, min: 8, status: "ok" as const },
+  ])
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      setItems((arr) => {
+        const next = [...arr]
+        const i = Math.floor(Math.random() * next.length)
+        if (next[i].stock > 1) next[i] = { ...next[i], stock: next[i].stock - 1 }
+        return next
+      })
+    }, 2500)
+    return () => window.clearInterval(id)
+  }, [])
+
+  return (
+    <div className="space-y-3">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.45 }}
+        className="flex items-start gap-3 rounded-xl bg-amber-500/10 border border-amber-500/30 p-3.5"
+      >
+        <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+          <AlertTriangle className="w-4 h-4 text-amber-200" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-amber-100">Stock bajo · 3 productos</p>
+          <p className="text-xs text-amber-200/70 mt-0.5">
+            Reabastecé antes del finde — son tu top de ventas.
+          </p>
+        </div>
+      </motion.div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+        <ul className="divide-y divide-white/5">
+          {items.map((p) => (
+            <li key={p.name} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
+              <div className="min-w-0 flex-1">
+                <p className="text-gray-100 truncate">{p.name}</p>
+                <p className="text-[10px] text-gray-500">Mínimo: {p.min}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <motion.span
+                  key={`${p.name}-${p.stock}`}
+                  initial={{ scale: 1.15 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-gray-200 tabular-nums font-medium"
+                >
+                  {p.stock}
+                </motion.span>
+                <span
+                  className={`text-[9px] px-1.5 py-0.5 rounded border whitespace-nowrap font-semibold ${
+                    p.status === "critical"
+                      ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                      : p.status === "low"
+                        ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                        : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                  }`}
+                >
+                  {p.status === "critical" ? "Crítico" : p.status === "low" ? "Bajo" : "OK"}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+/* -------- Panel 3: AI assistant typing chat ---------- */
+function PanelChat() {
+  const QUESTION = "¿Cuánto vendí ayer?"
+  const ANSWER = [
+    { l: "Ayer", v: "$84.250 · 41 ventas" },
+    { l: "Top 1", v: "Coca 500 ml · 28 u." },
+    { l: "Margen", v: "31% (vs 28% mes ant.)" },
+  ]
+  const [typed, setTyped] = useState("")
+  const [revealed, setRevealed] = useState(0)
+  const cancelled = useRef(false)
+
+  useEffect(() => {
+    cancelled.current = false
+    let timer: number | null = null
+    const run = async () => {
+      // type the question
+      for (let i = 0; i < QUESTION.length; i++) {
+        if (cancelled.current) return
+        await new Promise<void>((r) => (timer = window.setTimeout(r, 55)))
+        setTyped(QUESTION.slice(0, i + 1))
+      }
+      await new Promise<void>((r) => (timer = window.setTimeout(r, 600)))
+      for (let i = 1; i <= ANSWER.length; i++) {
+        if (cancelled.current) return
+        setRevealed(i)
+        await new Promise<void>((r) => (timer = window.setTimeout(r, 350)))
+      }
+    }
+    run()
+    return () => {
+      cancelled.current = true
+      if (timer) window.clearTimeout(timer)
+    }
+  }, [])
+
+  const cursor = typed.length < QUESTION.length
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-violet-500/[0.05] to-fuchsia-500/[0.02] p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.2em] bg-violet-500/15 border border-violet-400/40 text-violet-200">
+          <span className="text-fuchsia-300">✦</span> ia
+        </span>
+        <p className="text-xs text-gray-400">Asistente · pregunta libre</p>
+      </div>
+      {/* User bubble */}
+      <div className="flex justify-end">
+        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-blue-500/15 border border-blue-400/25 px-3 py-2 text-[12px] text-blue-50 leading-snug">
+          {typed || "\u00A0"}
+          {cursor && <span className="inline-block w-[2px] h-3.5 bg-blue-200 align-[-2px] ml-0.5 animate-pulse" />}
+        </div>
+      </div>
+      {/* Assistant bubble */}
+      <div className="flex justify-start">
+        <div className="max-w-[88%] rounded-2xl rounded-bl-md bg-white/[0.04] border border-violet-400/20 px-3 py-2.5 text-[12px] leading-snug w-full">
+          {revealed === 0 ? (
+            <div className="flex items-center gap-1.5 text-violet-200/70 text-[11px]">
+              <span className="w-1 h-1 rounded-full bg-violet-300 animate-pulse" />
+              <span className="w-1 h-1 rounded-full bg-violet-300 animate-pulse" style={{ animationDelay: "150ms" }} />
+              <span className="w-1 h-1 rounded-full bg-violet-300 animate-pulse" style={{ animationDelay: "300ms" }} />
+              pensando
+            </div>
+          ) : (
+            <ul className="space-y-1.5">
+              {ANSWER.slice(0, revealed).map((row, i) => (
+                <motion.li
+                  key={i}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <span className="text-gray-400">{row.l}</span>
+                  <span className="text-white font-medium tabular-nums">{row.v}</span>
+                </motion.li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* -------- Panel 4: Weekly report with growing bars ---------- */
+function PanelReport() {
+  // Bars grow from 0 to their target on mount — when the panel rotates back
+  // in, the bars animate again because the entire subtree remounts.
+  const data = [40, 55, 35, 70, 45, 60, 80, 65, 50, 75, 90, 70, 85, 95]
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] text-gray-500 uppercase tracking-wider">Reportes · semana</p>
+          <p className="text-base font-semibold text-white mt-0.5">Cerraste con +23%</p>
+        </div>
+        <span className="text-[10px] px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 whitespace-nowrap font-semibold">
+          vs semana anterior
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { label: "Ingresos", value: "$1.284k" },
+          { label: "Ventas", value: "287" },
+          { label: "Margen", value: "32%" },
+          { label: "Ticket prom.", value: "$4.475" },
+        ].map((k) => (
+          <div key={k.label} className="rounded-lg bg-white/[0.03] border border-white/10 p-2.5">
+            <p className="text-[10px] text-gray-500">{k.label}</p>
+            <p className="text-base font-bold text-white tabular-nums">{k.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl bg-white/[0.02] border border-white/10 p-3 h-24 flex items-end gap-1">
+        {data.map((h, i) => (
+          <motion.div
+            key={i}
+            initial={{ height: 0 }}
+            animate={{ height: `${h}%` }}
+            transition={{ duration: 0.7, delay: i * 0.025, ease: [0.16, 1, 0.3, 1] }}
+            className="flex-1 rounded-t bg-gradient-to-t from-blue-500/50 to-violet-400/90"
+            style={{ willChange: "height" }}
+          />
+        ))}
+      </div>
+      {/* Tiny IA brief */}
+      <div className="flex items-start gap-2 rounded-lg bg-violet-500/[0.06] border border-violet-400/20 p-2.5">
+        <CheckCircle2 className="w-3.5 h-3.5 text-violet-300 shrink-0 mt-0.5" />
+        <p className="text-[11px] text-violet-100/85 leading-snug">
+          La IA detectó que el martes vendiste 40% más por la promo de Coca + alfajor.
+        </p>
       </div>
     </div>
   )
