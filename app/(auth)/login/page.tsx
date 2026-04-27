@@ -267,10 +267,20 @@ function nowAR(offsetSec = 0): string {
   return d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })
 }
 
+function formatARS(n: number): string {
+  // Compact-ish: $71.3k vs $213.8k vs $1.2M for big numbers, plain otherwise.
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 10_000) return `$${(n / 1_000).toFixed(1)}k`
+  return `$${n.toLocaleString("es-AR")}`
+}
+
 function LoginPreview() {
-  // Rolling window of three rows. Every ~3.5s a fresh row pushes in at the
-  // top, oldest falls off. The list never re-renders the form on the right
-  // because each side is its own React subtree.
+  // Three things change together every ~3.5s: a new row pushes into the feed
+  // at the top, "Ventas hoy" bumps by 1, and "Ingresos" adds the sale amount.
+  // That makes the panel feel like a real dashboard instead of a static
+  // marketing image. We mark which KPI just changed so we can flash it
+  // briefly (green pulse + slight scale) — the eye picks up the change
+  // without needing a callout.
   const [feed, setFeed] = useState(() =>
     SAMPLE_SALES.slice(0, 3).map((s, i) => ({
       ...s,
@@ -278,6 +288,10 @@ function LoginPreview() {
       time: nowAR(i * 60),
     })),
   )
+  const [ventas, setVentas] = useState(27)
+  const [ingresos, setIngresos] = useState(71_300)
+  const [stockBajo, setStockBajo] = useState(3)
+  const [bumpKey, setBumpKey] = useState(0) // re-keying the KPIs triggers the flash anim
 
   useEffect(() => {
     let counter = SAMPLE_SALES.length
@@ -286,6 +300,17 @@ function LoginPreview() {
       counter++
       const next = SAMPLE_SALES[counter % SAMPLE_SALES.length]
       setFeed((prev) => [{ ...next, id: counter, time: nowAR(0) }, ...prev.slice(0, 2)])
+      setVentas((v) => v + 1)
+      setIngresos((i) => i + next.amount)
+      // Stock bajo drifts slowly: drop one occasionally so it feels alive
+      // but doesn't grow forever. Bias toward 2-4.
+      setStockBajo((s) => {
+        const r = Math.random()
+        if (r < 0.15 && s > 1) return s - 1
+        if (r > 0.92 && s < 6) return s + 1
+        return s
+      })
+      setBumpKey((k) => k + 1)
     }, 3500)
     return () => window.clearInterval(id)
   }, [])
@@ -308,19 +333,53 @@ function LoginPreview() {
         </p>
       </div>
 
-      {/* KPI row — three small chips */}
+      {/* KPI row — three small chips. Values bump every time a new sale
+          lands in the feed below. The motion.span keys on bumpKey so each
+          tick triggers a tiny scale + glow flash on the number itself. */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { icon: Receipt, label: "Ventas hoy", value: "27", color: "text-violet-300" },
-          { icon: TrendingUp, label: "Ingresos", value: "$71.3k", color: "text-emerald-300" },
-          { icon: Package, label: "Stock bajo", value: "3", color: "text-amber-300" },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="rounded-xl bg-white/[0.03] border border-white/10 p-3">
+          {
+            icon: Receipt,
+            label: "Ventas hoy",
+            value: ventas.toString(),
+            color: "text-violet-300",
+            ringColor: "rgba(167,139,250,0.45)",
+          },
+          {
+            icon: TrendingUp,
+            label: "Ingresos",
+            value: formatARS(ingresos),
+            color: "text-emerald-300",
+            ringColor: "rgba(110,231,183,0.45)",
+          },
+          {
+            icon: Package,
+            label: "Stock bajo",
+            value: stockBajo.toString(),
+            color: "text-amber-300",
+            ringColor: "rgba(252,211,77,0.40)",
+          },
+        ].map(({ icon: Icon, label, value, color, ringColor }) => (
+          <div key={label} className="relative rounded-xl bg-white/[0.03] border border-white/10 p-3 overflow-hidden">
             <div className="flex items-center gap-1.5 mb-1">
               <Icon className="w-3 h-3 text-gray-500" />
               <p className="text-[10px] text-gray-500">{label}</p>
             </div>
-            <p className={`text-lg font-bold tabular-nums ${color}`}>{value}</p>
+            <motion.p
+              key={`${label}-${bumpKey}-${value}`}
+              initial={{ scale: 1, textShadow: `0 0 0 ${ringColor}` }}
+              animate={{
+                scale: [1.06, 1],
+                textShadow: [
+                  `0 0 16px ${ringColor}`,
+                  `0 0 0 transparent`,
+                ],
+              }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className={`text-lg font-bold tabular-nums ${color}`}
+            >
+              {value}
+            </motion.p>
           </div>
         ))}
       </div>
