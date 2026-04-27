@@ -182,6 +182,53 @@ export default function LandingClient({
         </div>
       </section>
 
+      {/* ─────────── IA EN CADA PARTE ─────────── */}
+      <section className="relative py-20 sm:py-28 px-4 sm:px-6 overflow-hidden">
+        {/* Subtle accent backdrop so the AI section feels distinct without
+            screaming. Two soft radial blobs in the brand violet/cyan. */}
+        <div aria-hidden className="absolute inset-0 pointer-events-none">
+          <div
+            className="absolute top-1/4 -left-20 w-80 h-80 rounded-full opacity-50"
+            style={{
+              background: "radial-gradient(circle, rgba(139,92,246,0.20), transparent 65%)",
+            }}
+          />
+          <div
+            className="absolute bottom-0 right-0 w-96 h-96 rounded-full opacity-50"
+            style={{
+              background: "radial-gradient(circle, rgba(34,211,238,0.14), transparent 65%)",
+            }}
+          />
+        </div>
+        <div className="relative max-w-5xl mx-auto">
+          <div className="text-center mb-10 sm:mb-14">
+            <p className="inline-flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.25em] text-violet-300/80 mb-3">
+              <span className="h-px w-6 bg-violet-300/40" /> ✦ ia en cada parte <span className="h-px w-6 bg-violet-300/40" />
+            </p>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
+              <span className="block sm:inline">No es un chatbot pegado al costado.</span>{" "}
+              <span className="block sm:inline bg-gradient-to-r from-violet-300 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent">
+                Está adentro de cada pantalla.
+              </span>
+            </h2>
+            <p className="text-gray-400 mt-3 sm:mt-4 max-w-xl mx-auto text-sm sm:text-base">
+              Cada función de IA acá la usás todos los días sin pensarlo. No tenés que abrir nada
+              especial — está en el lugar donde la necesitás.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {AI_FEATURES.map((f, i) => (
+              <AIFeatureCard key={i} feature={f} index={i} />
+            ))}
+          </div>
+
+          <p className="text-center text-xs text-gray-500 mt-8 sm:mt-10 max-w-md mx-auto">
+            Por debajo usamos GPT-4o-mini. No es magia — pero está bien usado.
+          </p>
+        </div>
+      </section>
+
       {/* ─────────── HONESTIDAD ─────────── */}
       <section className="relative py-20 sm:py-28 px-4 sm:px-6 border-y border-white/5 bg-black/40">
         <div className="max-w-3xl mx-auto">
@@ -597,7 +644,10 @@ type SceneData = {
   headline: string
   body: string
   note?: string
-  mock: "apertura" | "venta" | "stockBajo" | "ia" | "duplicados" | "voucher" | "gasto" | "cierre" | "reportes"
+  mock: "apertura" | "venta" | "stockBajo" | "ia" | "duplicados" | "voucher" | "gasto" | "cierre" | "reportes" | "asistente"
+  /** When true the scene gets a "✨ IA" badge next to the time so users see
+      at a glance which moments are AI-powered. */
+  ia?: boolean
 }
 
 const SCENES: SceneData[] = [
@@ -617,6 +667,15 @@ const SCENES: SceneData[] = [
     mock: "venta",
   },
   {
+    time: "09:30",
+    kicker: "Te tomás un café",
+    headline: "«¿Cuánto vendí ayer? ¿Y mi top del mes?»",
+    body: "Le preguntás como si fuera un colega. La IA mira tus datos reales y te contesta en castellano: número exacto, productos top, comparación con la semana anterior. No tenés que abrir reportes ni filtrar nada.",
+    note: "Vive en cualquier pantalla — el mismo botón ✨ siempre a mano.",
+    mock: "asistente",
+    ia: true,
+  },
+  {
     time: "10:42",
     kicker: "Mientras vendés",
     headline: "Te avisa que te quedan 4 Marlboro Box.",
@@ -631,6 +690,7 @@ const SCENES: SceneData[] = [
     body: "200 productos sin categoría en la planilla. La IA los lee, los separa por rubro y arma una lista lista para revisar. Si algo lo categorizó mal, lo corregís en un click.",
     note: "Después aprende de tus correcciones — la próxima vez se equivoca menos.",
     mock: "ia",
+    ia: true,
   },
   {
     time: "12:08",
@@ -639,6 +699,7 @@ const SCENES: SceneData[] = [
     body: "La IA revisa tu lista y te marca los repetidos — los que se llaman parecido, los que tienen el mismo código, los que vendiste el mismo día desde dos cuentas. Vos elegís cuál mantener; los otros se fusionan conservando el historial.",
     note: "También junta clientes duplicados que cargaste con apellidos distintos.",
     mock: "duplicados",
+    ia: true,
   },
   {
     time: "13:20",
@@ -655,6 +716,7 @@ const SCENES: SceneData[] = [
     body: "Pasaste una recarga de Personal por $1.000. La IA lee el comprobante: tipo, monto, número, comisión. No tipeás nada. Te queda imputado al efectivo del día.",
     note: "Funciona con vouchers de Personal, Claro, Movistar, Tuyo, SUBE y más.",
     mock: "voucher",
+    ia: true,
   },
   {
     time: "16:05",
@@ -667,11 +729,101 @@ const SCENES: SceneData[] = [
     time: "Domingo",
     kicker: "Mientras tomás un mate",
     headline: "Vendiste 23% más que la semana pasada.",
-    body: "Abrís reportes y ya está. Las cuentas las hace la app. Vos mirás el gráfico y decidís qué pedir el lunes.",
+    body: "Abrís reportes y ya está. Las cuentas las hace la app. Vos mirás el gráfico y decidís qué pedir el lunes. La IA arma un brief en castellano explicando lo más importante.",
     note: "Si querés más detalle, le preguntás en español: «¿qué se vendió ayer?» y te responde.",
     mock: "reportes",
+    ia: true,
   },
 ]
+
+/* ============================================================================
+   AI FEATURES — todas las funciones IA reales del producto, una línea cada
+   una. No agregar nada que no esté en el código.
+   ========================================================================== */
+
+type AIFeature = {
+  title: string
+  body: string
+  where: string
+  glyph: string
+}
+
+const AI_FEATURES: AIFeature[] = [
+  {
+    glyph: "?",
+    title: "Asistente que entiende español",
+    body: "Le hacés preguntas tipo «¿qué se vendió ayer?» o «¿cuál es mi top del mes?» y te contesta con tus datos reales.",
+    where: "En cualquier pantalla, botón ✦",
+  },
+  {
+    glyph: "⊞",
+    title: "Auto-categorizar productos",
+    body: "Le tirás un Excel del proveedor sin categorías y te lo separa por rubro. Aprende de tus correcciones.",
+    where: "Inventario · Auto-organizar",
+  },
+  {
+    glyph: "≈",
+    title: "Detectar duplicados",
+    body: "Encuentra productos que cargaste dos veces con nombres parecidos y te ofrece fusionarlos sin perder historial.",
+    where: "Inventario · Más · Duplicados",
+  },
+  {
+    glyph: "📷",
+    title: "Leer voucher de carga",
+    body: "Le sacás foto al comprobante de Personal/Movistar/SUBE y la IA lee tipo, monto y número. No tipeás nada.",
+    where: "Cargas · Nueva carga",
+  },
+  {
+    glyph: "✎",
+    title: "Brief diario",
+    body: "Cada mañana te resume en 2 oraciones lo que pasó: ventas, stock crítico, alertas. En castellano, no robótico.",
+    where: "Inicio del dashboard",
+  },
+  {
+    glyph: "📊",
+    title: "Insights de reportes",
+    body: "Mira tus números y te marca lo importante: «el martes vendiste 40% más que la semana pasada» con explicación.",
+    where: "Reportes · Insights",
+  },
+]
+
+function AIFeatureCard({ feature, index }: { feature: AIFeature; index: number }) {
+  // Stagger the entrance — feels alive without being busy. Hover lift is
+  // GPU-cheap (transform only) so it stays smooth.
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.45, delay: index * 0.05, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -3 }}
+      className="group relative rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-violet-400/30 backdrop-blur transition-colors overflow-hidden"
+    >
+      {/* Soft glow that grows on hover — stays GPU-composited. */}
+      <div
+        aria-hidden
+        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-0 group-hover:opacity-60 transition-opacity duration-500"
+        style={{
+          background: "radial-gradient(circle, rgba(139,92,246,0.30), transparent 70%)",
+          filter: "blur(20px)",
+        }}
+      />
+      <div className="relative p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 border border-violet-400/30 flex items-center justify-center text-violet-200 font-mono text-base">
+            {feature.glyph}
+          </div>
+          <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.2em] text-violet-300/80">
+            <span className="text-fuchsia-300">✦</span> ia
+          </span>
+        </div>
+        <h3 className="text-white font-semibold leading-snug mb-1.5">{feature.title}</h3>
+        <p className="text-sm text-gray-400 leading-relaxed">{feature.body}</p>
+        <p className="mt-3 text-[11px] text-gray-500 font-mono">{feature.where}</p>
+      </div>
+    </motion.div>
+  )
+}
 
 /* ============================================================================
    HONESTIDAD
@@ -756,13 +908,21 @@ function Scene({ scene, index }: { scene: SceneData; index: number }) {
           reversed ? "md:row-start-1" : ""
         }`}
       >
-        <div className="flex items-baseline gap-3 mb-3">
+        <div className="flex items-baseline gap-3 mb-3 flex-wrap">
           <span className="font-mono text-2xl sm:text-3xl font-bold text-white tabular-nums">
             {scene.time}
           </span>
           <span className="text-[10px] uppercase tracking-[0.25em] text-violet-300/70">
             {scene.kicker}
           </span>
+          {scene.ia && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 text-violet-200 border border-violet-400/40 shadow-[0_0_12px_rgba(139,92,246,0.25)]"
+              title="Esta función usa inteligencia artificial"
+            >
+              <span className="text-fuchsia-300">✦</span> IA
+            </span>
+          )}
         </div>
         <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-tight mb-3">
           {scene.headline}
@@ -804,6 +964,8 @@ function SceneMock({ scene }: { scene: SceneData["mock"] }) {
       return <MockApertura />
     case "venta":
       return <MockVenta />
+    case "asistente":
+      return <MockAsistente />
     case "stockBajo":
       return <MockStockBajo />
     case "ia":
@@ -913,6 +1075,119 @@ function MockVenta() {
         <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-400 to-orange-400 text-black text-xs font-bold shadow-lg shadow-amber-500/30 pointer-events-none">
           Cobrar (F2)
         </button>
+      </div>
+    </SceneMockShell>
+  )
+}
+
+// Asistente IA: una conversación que se escribe sola en bucle. La pregunta
+// del usuario aparece tipeada letra por letra, después salen los bullets de
+// la respuesta uno por uno con un fade. Se reinicia cada ~9 s. Pausa cuando
+// la pestaña no está visible (no quema CPU al pedo).
+function MockAsistente() {
+  const QUESTION = "¿Cuánto vendí ayer y cuál fue mi top?"
+  const ANSWER_LINES = [
+    { l: "Ayer", v: "$84.250 · 41 ventas" },
+    { l: "Ticket promedio", v: "$2.054" },
+    { l: "Top 1", v: "Coca 500 ml · 28 u." },
+    { l: "Top 2", v: "Marlboro Box · 19 u." },
+  ]
+  const TYPE_SPEED_MS = 55
+  const ANSWER_STAGGER_MS = 320
+  const PAUSE_AFTER_ANSWER_MS = 4500
+
+  const [typed, setTyped] = useState("")
+  const [revealedLines, setRevealedLines] = useState(0)
+  const cycle = useRef(0)
+
+  useEffect(() => {
+    let cancelled = false
+    let timer: number | null = null
+
+    const run = async () => {
+      while (!cancelled) {
+        // Skip ticking while the tab is hidden — saves battery, comes back
+        // smoothly because we always restart from frame 0 of a cycle.
+        if (document.visibilityState !== "visible") {
+          await new Promise<void>((r) => {
+            timer = window.setTimeout(r, 600)
+          })
+          continue
+        }
+        cycle.current++
+        // 1. type the question
+        setTyped("")
+        setRevealedLines(0)
+        for (let i = 0; i < QUESTION.length; i++) {
+          if (cancelled) return
+          await new Promise<void>((r) => (timer = window.setTimeout(r, TYPE_SPEED_MS)))
+          setTyped(QUESTION.slice(0, i + 1))
+        }
+        // 2. small think pause
+        await new Promise<void>((r) => (timer = window.setTimeout(r, 600)))
+        // 3. reveal answer lines with stagger
+        for (let i = 1; i <= ANSWER_LINES.length; i++) {
+          if (cancelled) return
+          setRevealedLines(i)
+          await new Promise<void>((r) => (timer = window.setTimeout(r, ANSWER_STAGGER_MS)))
+        }
+        // 4. hold then loop
+        await new Promise<void>((r) => (timer = window.setTimeout(r, PAUSE_AFTER_ANSWER_MS)))
+      }
+    }
+    run()
+    return () => {
+      cancelled = true
+      if (timer) window.clearTimeout(timer)
+    }
+  }, [])
+
+  const cursor = typed.length < QUESTION.length
+
+  return (
+    <SceneMockShell>
+      <MockHeader
+        kicker="Asistente · pregunta libre"
+        title="Hablale como a un colega"
+        badge="gpt-4o-mini"
+        badgeTone="violet"
+      />
+      <div className="space-y-2">
+        {/* User bubble — derecho, color frío */}
+        <div className="flex justify-end">
+          <div className="max-w-[80%] rounded-2xl rounded-br-md bg-blue-500/15 border border-blue-400/25 px-3 py-2 text-[12px] text-blue-50 leading-snug">
+            {typed || "\u00A0"}
+            {cursor && <span className="inline-block w-[2px] h-3.5 bg-blue-200 align-[-2px] ml-0.5 animate-pulse" />}
+          </div>
+        </div>
+        {/* Assistant bubble — izquierda, gradient sutil */}
+        <div className="flex justify-start">
+          <div className="max-w-[88%] rounded-2xl rounded-bl-md bg-gradient-to-br from-violet-500/[0.08] to-fuchsia-500/[0.04] border border-violet-400/20 px-3 py-2.5 text-[12px] leading-snug">
+            {revealedLines === 0 ? (
+              <div className="flex items-center gap-1.5 text-violet-200/70 text-[11px]">
+                <span className="w-1 h-1 rounded-full bg-violet-300 animate-pulse" style={{ animationDelay: "0ms" }} />
+                <span className="w-1 h-1 rounded-full bg-violet-300 animate-pulse" style={{ animationDelay: "150ms" }} />
+                <span className="w-1 h-1 rounded-full bg-violet-300 animate-pulse" style={{ animationDelay: "300ms" }} />
+                pensando
+              </div>
+            ) : (
+              <ul className="space-y-1">
+                {ANSWER_LINES.slice(0, revealedLines).map((row, i) => (
+                  <motion.li
+                    key={`${cycle.current}-${i}`}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span className="text-gray-400">{row.l}</span>
+                    <span className="text-white font-medium tabular-nums">{row.v}</span>
+                  </motion.li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       </div>
     </SceneMockShell>
   )
