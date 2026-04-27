@@ -553,6 +553,55 @@ model EmailVerificationCode {
   @@index([expiresAt])
 }
 
+// ============= SUPPORT TICKETS =============
+// In-app support: a tenant user opens the help widget, asks a question,
+// the AI tries first, and if it can't help (or the user explicitly asks
+// for a human) the ticket gets escalated to the super-admin's inbox at
+// /admin/soporte. Ticket lifecycle:
+//   OPEN     — user wrote, AI hasn't replied yet
+//   AI_REPLIED — AI answered, awaiting user follow-up
+//   ESCALATED  — user asked for human OR AI tagged it as out-of-scope
+//   ANSWERED   — admin replied, awaiting user
+//   CLOSED     — user marked as solved, or auto-closed after 7 days idle
+model SupportTicket {
+  id            String   @id @default(cuid())
+  tenantId      String?
+  userId        String
+  subject       String
+  status        String   @default("OPEN")
+  priority      String   @default("NORMAL") // LOW | NORMAL | HIGH
+  escalatedAt   DateTime?
+  closedAt      DateTime?
+  unreadByAdmin Boolean  @default(true)
+  unreadByUser  Boolean  @default(false)
+  // Snapshot of user's plan at creation time, helps the AI tune answers
+  // and helps the admin triage without joining tables.
+  planSnapshot  String?
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  messages SupportMessage[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "ai" | "admin"
+  content   String   @db.Text
+  authorId  String?  // null for AI; userId for user/admin
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([createdAt])
+}
+
 // Admin-private notes per tenant — internal CRM, not visible to tenants.
 model AdminTenantNote {
   id        String   @id @default(cuid())

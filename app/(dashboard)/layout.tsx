@@ -8,6 +8,7 @@ import { SurfaceThemeProvider } from "@/components/theme/SurfaceThemeProvider"
 import { AssistantWidget } from "@/components/ai/AssistantWidget"
 import { ConfirmProvider } from "@/components/shared/ConfirmDialog"
 import TourOverlay from "@/components/shared/TourOverlay"
+import SupportWidget from "@/components/shared/SupportWidget"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
 import SubscriptionStatusBanner from "@/components/shared/SubscriptionStatusBanner"
@@ -171,6 +172,7 @@ export default async function DashboardLayout({
               </main>
             </div>
             {aiEnabled && <AssistantWidget plan={plan as any} />}
+            <SupportWidget />
             {showTour && <TourOverlay plan={plan as any} upgradedFrom={upgradedFrom} />}
           </div>
         </ConfirmProvider>

@@ -6,12 +6,14 @@ import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
   ChevronDown,
+  LifeBuoy,
   LogOut,
   Menu,
   Settings as SettingsIcon,
   Sparkles,
   UserCircle,
 } from "lucide-react"
+import { openSupportWidget } from "@/components/shared/SupportWidget"
 import { AnimatePresence, motion } from "framer-motion"
 import { cn, PLAN_LABELS } from "@/lib/utils"
 import type { Plan } from "@/lib/utils"
@@ -233,6 +235,20 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
                     icon={<SettingsIcon size={15} />}
                     label="Usuarios y permisos"
                   />
+                </div>
+                <div className="p-1.5 border-t border-gray-800">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      openSupportWidget()
+                    }}
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-200 hover:bg-white/5 hover:text-white transition-colors"
+                    role="menuitem"
+                  >
+                    <span className="text-violet-300"><LifeBuoy size={15} /></span>
+                    Soporte
+                  </button>
                 </div>
                 <div className="p-1.5 border-t border-gray-800">
                   <button
