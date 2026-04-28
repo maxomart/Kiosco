@@ -133,46 +133,6 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
     return cleanup
   }, [open])
 
-  // Click en NUESTRO botón "Pagar" → pedir formData al Brick (que está
-  // con hidePaymentButton:true) → si valida, llamamos a handleSubmit con el
-  // token. Timeout de 12s para no quedar colgado si el SDK MP no responde.
-  const triggerBrickSubmit = async () => {
-    const controller = (typeof window !== "undefined"
-      ? (window as any).cardPaymentBrickController
-      : null)
-    if (!controller || typeof controller.getFormData !== "function") {
-      setError("El formulario aún no está listo. Esperá un segundo y volvé a intentar.")
-      return
-    }
-    setSubmitting(true)
-    setError(null)
-    try {
-      console.log("[MP] requesting formData from Brick...")
-      // Timeout para evitar quedar colgado si el SDK MP nunca devuelve
-      const timeoutP = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("BRICK_TIMEOUT")), 12_000)
-      )
-      const formData: any = await Promise.race([
-        controller.getFormData(),
-        timeoutP,
-      ])
-      console.log("[MP] formData received:", { hasToken: !!formData?.token, paymentMethodId: formData?.payment_method_id })
-      if (!formData?.token) {
-        setError("La tarjeta no se pudo procesar. Revisá los datos e intentá de nuevo.")
-        setSubmitting(false)
-        return
-      }
-      await handleSubmit(formData)
-    } catch (err: any) {
-      const isTimeout = err?.message === "BRICK_TIMEOUT"
-      console.warn("[MP] form validation failed", err)
-      if (isTimeout) {
-        setError("Mercado Pago tardó demasiado. Probá de nuevo o usá otra tarjeta.")
-      }
-      setSubmitting(false)
-    }
-  }
-
   const handleSubmit = async (formData: any) => {
     setSubmitting(true)
     setError(null)
@@ -470,11 +430,12 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                                   buttonTextColor: "#ffffff",
                                 },
                               },
-                              // Escondemos el botón nativo del Brick — usamos
-                              // el nuestro abajo para tener control de spacing,
-                              // copy ("Pagar $X") y separación del último input.
+                              // Botón nativo del Brick visible. hidePaymentButton:true
+                              // tira "postMessage origin mismatch" en el SDK actual
+                              // y getFormData() nunca devuelve → timeout. El botón
+                              // nativo va pegado al último input pero al menos cobra.
                               hideFormTitle: true,
-                              hidePaymentButton: true,
+                              hidePaymentButton: false,
                             },
                             paymentMethods: { maxInstallments: 1 },
                           }}
@@ -500,33 +461,6 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                         </div>
                       )}
                     </div>
-                  )}
-
-                  {/* Botón propio "Pagar" — separado del Brick con margen
-                      generoso. Dispara la validación + tokenización del Brick
-                      vía controller.getFormData(). */}
-                  {!missingKey && sdkReady && (
-                    <motion.button
-                      type="button"
-                      onClick={triggerBrickSubmit}
-                      disabled={submitting || success || !brickReady}
-                      whileTap={{ scale: 0.985 }}
-                      className="mt-8 w-full py-4 px-5 rounded-xl bg-accent hover:bg-accent-hover active:bg-accent-hover text-accent-foreground font-bold text-base flex items-center justify-center gap-2.5 shadow-lg shadow-purple-900/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {submitting ? (
-                        <>
-                          <Loader2 size={18} className="animate-spin" /> Procesando...
-                        </>
-                      ) : !brickReady ? (
-                        <>
-                          <Loader2 size={18} className="animate-spin" /> Cargando formulario...
-                        </>
-                      ) : (
-                        <>
-                          <Lock size={16} /> Pagar {formatCurrency(amount)} ahora
-                        </>
-                      )}
-                    </motion.button>
                   )}
 
                   {/* Footer trust */}
