@@ -68,6 +68,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sdkReady, setSdkReady] = useState(false)
+  const [brickReady, setBrickReady] = useState(false)
   const [missingKey, setMissingKey] = useState(false)
   const [success, setSuccess] = useState(false)
 
@@ -76,6 +77,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
       setError(null)
       setSubmitting(false)
       setSuccess(false)
+      setBrickReady(false)
       return
     }
     const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY
@@ -112,6 +114,32 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose, submitting, success])
+
+  // Click en NUESTRO botón "Pagar" → pedir formData al Brick (que está
+  // con hidePaymentButton:true) → si valida, MP nos lo manda por onSubmit
+  // automáticamente. Si la validación falla, el Brick muestra los errores.
+  const triggerBrickSubmit = async () => {
+    const controller = (typeof window !== "undefined"
+      ? (window as any).cardPaymentBrickController
+      : null)
+    if (!controller || typeof controller.getFormData !== "function") {
+      setError("El formulario aún no está listo. Esperá un segundo y volvé a intentar.")
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      // getFormData valida + devuelve { token, payer, payment_method_id, ... }
+      // Si hay errores el Brick los muestra debajo de cada campo y rejecta.
+      const formData = await controller.getFormData()
+      await handleSubmit(formData)
+    } catch (err: any) {
+      // Validación falló — el Brick ya mostró los errores en cada campo.
+      // Sólo limpiamos el estado de submitting.
+      console.warn("[MP] form validation failed", err)
+      setSubmitting(false)
+    }
+  }
 
   const handleSubmit = async (formData: any) => {
     setSubmitting(true)
@@ -379,35 +407,32 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                                   borderRadiusLarge: "14px",
                                   borderRadiusFull: "9999px",
                                   formInputsBorderRadius: "12px",
-                                  // Espaciado MUY generoso — separa botón del último input
                                   formPadding: "0px",
                                   inputVerticalPadding: "18px",
                                   inputHorizontalPadding: "18px",
-                                  horizontalPaddingComponents: "0px",
-                                  verticalPaddingComponents: "32px",
-                                  // Tipografía bold y legible
                                   fontSizeExtraSmall: "12px",
                                   fontSizeSmall: "14px",
                                   fontSizeMedium: "16px",
                                   fontSizeLarge: "17px",
-                                  fontWeightNormal: "500",
+                                  fontWeightRegular: "500",
                                   fontWeightSemiBold: "700",
                                   formInputsTextTransform: "none",
-                                  // Estados
                                   errorColor: "#f87171",
                                   successColor: "#34d399",
-                                  // Botón
-                                  buttonTextColor: "#ffffff",
                                   outlinePrimaryColor: "#8b5cf6",
                                   outlineSecondaryColor: "#7c3aed",
                                 },
                               },
+                              // Escondemos el botón nativo del Brick — usamos
+                              // el nuestro abajo para tener control de spacing,
+                              // copy ("Pagar $X") y separación del último input.
                               hideFormTitle: true,
-                              hidePaymentButton: false,
+                              hidePaymentButton: true,
                             },
                             paymentMethods: { maxInstallments: 1 },
                           }}
                           onSubmit={handleSubmit}
+                          onReady={() => setBrickReady(true)}
                           onError={(err) => {
                             console.error("[MP brick error]", err)
                             const msg =
@@ -428,6 +453,33 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                         </div>
                       )}
                     </div>
+                  )}
+
+                  {/* Botón propio "Pagar" — separado del Brick con margen
+                      generoso. Dispara la validación + tokenización del Brick
+                      vía controller.getFormData(). */}
+                  {!missingKey && sdkReady && (
+                    <motion.button
+                      type="button"
+                      onClick={triggerBrickSubmit}
+                      disabled={submitting || success || !brickReady}
+                      whileTap={{ scale: 0.985 }}
+                      className="mt-8 w-full py-4 px-5 rounded-xl bg-accent hover:bg-accent-hover active:bg-accent-hover text-accent-foreground font-bold text-base flex items-center justify-center gap-2.5 shadow-lg shadow-purple-900/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" /> Procesando...
+                        </>
+                      ) : !brickReady ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" /> Cargando formulario...
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={16} /> Pagar {formatCurrency(amount)} ahora
+                        </>
+                      )}
+                    </motion.button>
                   )}
 
                   {/* Footer trust */}
