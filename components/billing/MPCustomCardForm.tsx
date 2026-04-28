@@ -17,7 +17,7 @@
  *      (sin cambios — el flow viejo ya funcionaba).
  */
 
-import { useEffect, useState, useRef, useImperativeHandle, forwardRef } from "react"
+import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { Check, AlertCircle } from "lucide-react"
 
@@ -97,6 +97,25 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
   useEffect(() => { onTokenErrorRef.current = onTokenError })
   useEffect(() => { onReadyRef.current = onReady })
 
+  // Name estable del input trampa anti-autofill — calculado UNA sola vez al
+  // mount. Antes lo calculaba con Math.random() en el render inline, lo que
+  // hacía que cambiara en cada render → re-mount del DOM → los iframes de
+  // los Secure Fields se reposicionaban mal y los datos del user se borraban.
+  const [trapName] = useState(() => `fake-cc-${Math.random().toString(36).slice(2, 8)}`)
+
+  // Callbacks estables — sin esto los Secure Fields se re-mountaban en cada
+  // tipeo de los inputs HTML (porque las arrow functions inline cambiaban
+  // de referencia y el SDK MP las trataba como handlers nuevos).
+  const handleCardValidity = useCallback((arg: { errorMessages: any[] }) => {
+    setCardNumberValid(arg.errorMessages.length === 0)
+  }, [])
+  const handleExpirationValidity = useCallback((arg: { errorMessages: any[] }) => {
+    setExpirationValid(arg.errorMessages.length === 0)
+  }, [])
+  const handleSecurityCodeValidity = useCallback((arg: { errorMessages: any[] }) => {
+    setSecurityCodeValid(arg.errorMessages.length === 0)
+  }, [])
+
   // Init SDK — se hace una sola vez al mount
   useEffect(() => {
     let cancelled = false
@@ -116,8 +135,10 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
     return () => { cancelled = true }
   }, [publicKey])
 
-  // Detectar marca cuando cambia el BIN (primeros 6 dígitos del card number)
-  const handleBinChange = async (arg: { bin?: string }) => {
+  // Detectar marca cuando cambia el BIN (primeros 6 dígitos del card number).
+  // useCallback porque va al onBinChange del Secure Field — si cambia de
+  // referencia, el SDK MP re-monta el iframe y los datos se pierden.
+  const handleBinChange = useCallback(async (arg: { bin?: string }) => {
     const bin = arg.bin
     setBinError(null)
     if (!bin || bin.length < 6) {
@@ -144,7 +165,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
       console.warn("[MP custom] getPaymentMethods failed", e)
       setBinError("No pudimos validar la tarjeta. Verificá tu conexión.")
     }
-  }
+  }, [])
 
   // Validez total del form — el botón se habilita cuando todo está OK
   const formValid =
@@ -189,15 +210,18 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
     },
   }), [sdkReady, paymentMethodId, formValid, cardholderName, docType, docNumber, payerEmail])
 
+  // onSubmit estable para que el <form> no re-monte en cada render del padre
+  const onFormSubmit = useCallback((e: React.FormEvent) => e.preventDefault(), [])
+
+  // autoComplete="off" + name random evita que Chrome/Galicia/etc ofrezcan
+  // tarjetas guardadas que no pueden insertarse en los iframes de los
+  // Secure Fields — el dropdown del navegador quedaba flotando encima del
+  // form. role="presentation" ayuda a que algunos browsers lo respeten más.
   return (
-    // autoComplete="off" + name random evita que Chrome/Galicia/etc ofrezcan
-    // tarjetas guardadas que no pueden insertarse en los iframes de los
-    // Secure Fields — el dropdown del navegador quedaba flotando encima del
-    // form. role="presentation" ayuda a que algunos browsers lo respeten más.
     <form
       autoComplete="off"
       role="presentation"
-      onSubmit={(e) => e.preventDefault()}
+      onSubmit={onFormSubmit}
       className="space-y-4"
     >
       {/* Trampa anti-autofill: input invisible que Chrome rellena en lugar
@@ -205,7 +229,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
           no alcanza. */}
       <input
         type="text"
-        name={`fake-cc-${Math.random().toString(36).slice(2, 8)}`}
+        name={trapName}
         autoComplete="cc-number"
         tabIndex={-1}
         aria-hidden="true"
@@ -219,7 +243,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
               placeholder="1234 1234 1234 1234"
               style={SECURE_FIELD_STYLE}
               onBinChange={handleBinChange}
-              onValidityChange={(arg) => setCardNumberValid(arg.errorMessages.length === 0)}
+              onValidityChange={handleCardValidity}
             />
           ) : (
             <SkeletonInput />
@@ -253,7 +277,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
                 placeholder="MM/AA"
                 mode="short"
                 style={SECURE_FIELD_STYLE}
-                onValidityChange={(arg) => setExpirationValid(arg.errorMessages.length === 0)}
+                onValidityChange={handleExpirationValidity}
               />
             ) : (
               <SkeletonInput />
@@ -267,7 +291,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
               <SecurityCode
                 placeholder="CVV"
                 style={SECURE_FIELD_STYLE}
-                onValidityChange={(arg) => setSecurityCodeValid(arg.errorMessages.length === 0)}
+                onValidityChange={handleSecurityCodeValidity}
               />
             ) : (
               <SkeletonInput />
