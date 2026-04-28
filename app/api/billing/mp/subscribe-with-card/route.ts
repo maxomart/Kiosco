@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
   }
 
   let preapproval: any
+  console.log(`[mp/subscribe-with-card] tenant=${tenantId} plan=${plan} amount=${amount} starting MP request...`)
   try {
     const res = await fetch(`${MP_API}/preapproval`, {
       method: "POST",
@@ -105,8 +106,10 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(mpBody),
+      signal: AbortSignal.timeout(20_000),
     })
     const text = await res.text()
+    console.log(`[mp/subscribe-with-card] MP responded status=${res.status} bodyLen=${text.length}`)
     if (!res.ok) {
       console.error("[mp/subscribe-with-card] MP error:", res.status, text)
       let friendly = "No se pudo procesar el pago. Probá con otra tarjeta."
@@ -121,9 +124,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: friendly, detail: text }, { status: 502 })
     }
     preapproval = JSON.parse(text)
+    console.log(`[mp/subscribe-with-card] preapproval created id=${preapproval?.id} status=${preapproval?.status}`)
   } catch (err: any) {
-    console.error("[mp/subscribe-with-card] network error:", err?.message)
-    return NextResponse.json({ error: "Error de red con Mercado Pago" }, { status: 502 })
+    console.error("[mp/subscribe-with-card] network error:", err?.message, err?.name)
+    const isTimeout = err?.name === "TimeoutError" || err?.name === "AbortError"
+    return NextResponse.json({
+      error: isTimeout
+        ? "Mercado Pago tardó demasiado en responder. Probá de nuevo."
+        : "Error de red con Mercado Pago",
+    }, { status: 502 })
   }
 
   // Persist subscription as ACTIVE + provider=mercadopago + plan upgraded.

@@ -134,8 +134,8 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
   }, [open])
 
   // Click en NUESTRO botón "Pagar" → pedir formData al Brick (que está
-  // con hidePaymentButton:true) → si valida, MP nos lo manda por onSubmit
-  // automáticamente. Si la validación falla, el Brick muestra los errores.
+  // con hidePaymentButton:true) → si valida, llamamos a handleSubmit con el
+  // token. Timeout de 12s para no quedar colgado si el SDK MP no responde.
   const triggerBrickSubmit = async () => {
     const controller = (typeof window !== "undefined"
       ? (window as any).cardPaymentBrickController
@@ -147,14 +147,28 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
     setSubmitting(true)
     setError(null)
     try {
-      // getFormData valida + devuelve { token, payer, payment_method_id, ... }
-      // Si hay errores el Brick los muestra debajo de cada campo y rejecta.
-      const formData = await controller.getFormData()
+      console.log("[MP] requesting formData from Brick...")
+      // Timeout para evitar quedar colgado si el SDK MP nunca devuelve
+      const timeoutP = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("BRICK_TIMEOUT")), 12_000)
+      )
+      const formData: any = await Promise.race([
+        controller.getFormData(),
+        timeoutP,
+      ])
+      console.log("[MP] formData received:", { hasToken: !!formData?.token, paymentMethodId: formData?.payment_method_id })
+      if (!formData?.token) {
+        setError("La tarjeta no se pudo procesar. Revisá los datos e intentá de nuevo.")
+        setSubmitting(false)
+        return
+      }
       await handleSubmit(formData)
     } catch (err: any) {
-      // Validación falló — el Brick ya mostró los errores en cada campo.
-      // Sólo limpiamos el estado de submitting.
+      const isTimeout = err?.message === "BRICK_TIMEOUT"
       console.warn("[MP] form validation failed", err)
+      if (isTimeout) {
+        setError("Mercado Pago tardó demasiado. Probá de nuevo o usá otra tarjeta.")
+      }
       setSubmitting(false)
     }
   }
@@ -163,6 +177,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
     setSubmitting(true)
     setError(null)
     try {
+      console.log("[MP] POST /api/billing/mp/subscribe-with-card...")
       const res = await fetch("/api/billing/mp/subscribe-with-card", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -174,7 +189,10 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
           paymentMethodId: formData.payment_method_id,
           issuerId: formData.issuer_id,
         }),
+        // Timeout 30s para no colgar el botón eternamente si MP/backend tarda
+        signal: AbortSignal.timeout(30_000),
       })
+      console.log("[MP] backend responded:", res.status)
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? "No se pudo procesar el pago")
@@ -188,8 +206,12 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
         onSuccess()
         onClose()
       }, 1800)
-    } catch (err) {
-      setError("Error de red. Probá de nuevo.")
+    } catch (err: any) {
+      console.error("[MP] backend fetch failed", err)
+      const msg = err?.name === "TimeoutError" || err?.name === "AbortError"
+        ? "El cobro tardó demasiado. Si tu tarjeta fue cobrada, refrescá la página."
+        : "Error de red. Probá de nuevo."
+      setError(msg)
       setSubmitting(false)
     }
   }
