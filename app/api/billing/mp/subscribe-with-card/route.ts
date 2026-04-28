@@ -136,10 +136,66 @@ export async function POST(req: NextRequest) {
     }, { status: 502 })
   }
 
-  // Persist subscription as ACTIVE + provider=mercadopago + plan upgraded.
-  // El webhook va a recibir el `payment` event después y crear el Invoice
-  // (con dedupe por stripeInvoiceId), pero podemos crear uno preliminar
-  // acá para no esperar al webhook. El dedupe lo cubre.
+  // ── VERIFICAR EL PRIMER COBRO REAL ──────────────────────────────────
+  // Crear el preapproval NO significa que MP haya cobrado — sólo que la
+  // tarjeta es válida y MP la guardó. El primer pago se procesa async.
+  // Polleamos el endpoint de payments hasta confirmar que el primer
+  // payment está "approved", o reportamos error al user.
+  console.log(`[mp/subscribe-with-card] polling payments for preapproval ${preapproval.id}...`)
+  let firstPayment: any = null
+  const maxAttempts = 8 // hasta ~16s
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, 2000))
+    try {
+      const payRes = await fetch(
+        `${MP_API}/preapproval/${encodeURIComponent(preapproval.id)}/payment`,
+        { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8_000) }
+      )
+      if (payRes.ok) {
+        const payData = await payRes.json()
+        const results = payData?.results ?? payData?.payments ?? []
+        if (results.length > 0) {
+          firstPayment = results[0]
+          console.log(`[mp/subscribe-with-card] payment found attempt=${i + 1} status=${firstPayment.status}`)
+          if (firstPayment.status === "approved" || firstPayment.status === "rejected") break
+        } else {
+          console.log(`[mp/subscribe-with-card] no payments yet attempt=${i + 1}`)
+        }
+      }
+    } catch (e) {
+      console.warn(`[mp/subscribe-with-card] payment poll attempt=${i + 1} failed`, e)
+    }
+  }
+
+  if (!firstPayment) {
+    // MP nunca generó un payment — la suscripción quedó pending. Mejor
+    // cancelar el preapproval y avisar al user.
+    console.error(`[mp/subscribe-with-card] no payment after ${maxAttempts * 2}s`)
+    return NextResponse.json({
+      error: "Mercado Pago no procesó el cobro. Probá de nuevo o usá otra tarjeta.",
+    }, { status: 502 })
+  }
+
+  if (firstPayment.status !== "approved") {
+    // El cobro fue rechazado (insufficient funds, banco rechazó, etc).
+    const detail = firstPayment.status_detail ?? firstPayment.status
+    let friendly = "La tarjeta fue rechazada por Mercado Pago."
+    const lower = String(detail).toLowerCase()
+    if (lower.includes("insufficient_amount")) friendly = "La tarjeta no tiene fondos suficientes."
+    else if (lower.includes("call_for_authorize")) friendly = "El banco rechazó el pago. Llamalo o usá otra tarjeta."
+    else if (lower.includes("high_risk")) friendly = "Mercado Pago rechazó el pago por seguridad. Probá con otra tarjeta."
+    else if (lower.includes("bad_filled")) friendly = "Hay un dato incorrecto en la tarjeta (CVV o vencimiento)."
+    else if (lower.includes("rejected")) friendly = "La tarjeta fue rechazada. Probá con otra."
+    console.error(`[mp/subscribe-with-card] payment rejected status=${firstPayment.status} detail=${detail}`)
+    return NextResponse.json({
+      error: friendly,
+      detail: `MP payment status: ${firstPayment.status} (${detail})`,
+    }, { status: 402 })
+  }
+
+  // ── COBRO CONFIRMADO ────────────────────────────────────────────────
+  // Recién acá marcamos la suscripción como ACTIVE y creamos el invoice.
+  console.log(`[mp/subscribe-with-card] payment APPROVED id=${firstPayment.id} amount=${firstPayment.transaction_amount}`)
   const now = new Date()
   const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
 
@@ -167,8 +223,9 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Crear Invoice preliminar — el webhook lo deduplica por stripeInvoiceId si llega después.
-  const externalId = `mp_initial_${preapproval.id}`
+  // Crear Invoice con el ID real del payment de MP — el webhook lo deduplica
+  // por stripeInvoiceId si llega después.
+  const externalId = `mp_${firstPayment.id}`
   const existing = await db.invoice.findFirst({ where: { stripeInvoiceId: externalId } })
   if (!existing) {
     try {
@@ -177,18 +234,18 @@ export async function POST(req: NextRequest) {
         const inv = await db.invoice.create({
           data: {
             subscriptionId: sub.id,
-            number: `MP-${preapproval.id.slice(0, 10).toUpperCase()}`,
+            number: `MP-${firstPayment.id}`,
             stripeInvoiceId: externalId,
-            amount,
-            currency: "ARS",
+            amount: Number(firstPayment.transaction_amount ?? amount),
+            currency: (firstPayment.currency_id ?? "ARS").toUpperCase(),
             status: "PAID",
-            paidAt: now,
+            paidAt: firstPayment.date_approved ? new Date(firstPayment.date_approved) : now,
           },
         })
         syncPaymentToSheet(inv.id)
       }
     } catch (e) {
-      console.error("[mp/subscribe-with-card] preliminary invoice failed:", e)
+      console.error("[mp/subscribe-with-card] invoice insert failed:", e)
     }
   }
 
