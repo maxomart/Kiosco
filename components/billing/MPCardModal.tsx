@@ -357,14 +357,17 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                     </div>
                   )}
 
-                  {/* Botón Pagar — separado del form con margen claro */}
+                  {/* Botón Pagar — separado del form con margen claro.
+                      Hardcodeamos purple para que matchee con el resto del
+                      modal (que también usa purple-* hardcoded) y no varíe
+                      con el themeColor del tenant. */}
                   {!missingKey && (
                     <motion.button
                       type="button"
                       onClick={handlePay}
                       disabled={submitting || success || !formReady}
                       whileTap={{ scale: 0.985 }}
-                      className="mt-7 w-full py-4 px-5 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold text-base flex items-center justify-center gap-2.5 shadow-lg shadow-purple-900/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="mt-7 w-full py-4 px-5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-base flex items-center justify-center gap-2.5 shadow-lg shadow-purple-900/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {submitting ? (
                         <>

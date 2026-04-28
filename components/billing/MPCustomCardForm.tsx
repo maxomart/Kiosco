@@ -190,7 +190,27 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
   }), [sdkReady, paymentMethodId, formValid, cardholderName, docType, docNumber, payerEmail])
 
   return (
-    <div className="space-y-4">
+    // autoComplete="off" + name random evita que Chrome/Galicia/etc ofrezcan
+    // tarjetas guardadas que no pueden insertarse en los iframes de los
+    // Secure Fields — el dropdown del navegador quedaba flotando encima del
+    // form. role="presentation" ayuda a que algunos browsers lo respeten más.
+    <form
+      autoComplete="off"
+      role="presentation"
+      onSubmit={(e) => e.preventDefault()}
+      className="space-y-4"
+    >
+      {/* Trampa anti-autofill: input invisible que Chrome rellena en lugar
+          de los reales. Truco recomendado por OWASP cuando autoComplete:off
+          no alcanza. */}
+      <input
+        type="text"
+        name={`fake-cc-${Math.random().toString(36).slice(2, 8)}`}
+        autoComplete="cc-number"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="absolute opacity-0 pointer-events-none w-0 h-0"
+      />
       {/* Número de tarjeta */}
       <FieldWrapper label="Número de tarjeta">
         <div className="relative bg-[#0d0f15] border border-gray-800 hover:border-gray-700 focus-within:border-purple-500 rounded-xl px-4 py-[15px] transition-colors h-[52px]">
@@ -263,7 +283,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
           value={cardholderName}
           onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
           placeholder="MARÍA LÓPEZ"
-          autoComplete="cc-name"
+          autoComplete="off"
           className="w-full bg-[#0d0f15] border border-gray-800 hover:border-gray-700 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 rounded-xl px-4 h-[52px] text-white placeholder-gray-500 text-[15px] font-medium transition-colors"
         />
       </FieldWrapper>
@@ -306,7 +326,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
           className="w-full bg-[#0d0f15] border border-gray-800 hover:border-gray-700 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 rounded-xl px-4 h-[52px] text-white placeholder-gray-500 text-[15px] font-medium transition-colors"
         />
       </FieldWrapper>
-    </div>
+    </form>
   )
 })
 
