@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { initMercadoPago } from "@mercadopago/sdk-react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   X,
@@ -86,17 +85,20 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
       return
     }
     setMissingKey(false)
-    if (!sdkInitialized) {
-      try {
-        initMercadoPago(publicKey, { locale: "es-AR" })
-        sdkInitialized = true
-      } catch (e) {
+    // Import dinámico — sólo cliente, evita que el SDK toque window
+    // durante SSR (causa raíz del React #418 hydration mismatch).
+    import("@mercadopago/sdk-react")
+      .then(({ initMercadoPago }) => {
+        if (!sdkInitialized) {
+          initMercadoPago(publicKey, { locale: "es-AR" })
+          sdkInitialized = true
+        }
+        setSdkReady(true)
+      })
+      .catch((e) => {
         console.error("[MP] initMercadoPago failed", e)
         setError("No se pudo inicializar Mercado Pago. Refrescá la página.")
-        return
-      }
-    }
-    setSdkReady(true)
+      })
   }, [open])
 
   useEffect(() => {
@@ -115,17 +117,20 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose, submitting, success])
 
-  // Cleanup explícito del Brick MP cuando el modal se cierra. Sin esto, el SDK
-  // queda con referencias DOM viejas y al re-abrir tira "Failed to execute
-  // removeChild on Node" + React error #418 (hydration).
+  // Cleanup explícito del Brick MP cuando el modal se cierra Y al desmontarse
+  // el componente. Sin esto, el SDK queda con refs DOM viejas y al re-abrir
+  // tira "Failed to execute removeChild on Node" + React error #418.
   useEffect(() => {
-    if (open) return
-    const controller = (typeof window !== "undefined"
-      ? (window as any).cardPaymentBrickController
-      : null)
-    if (controller && typeof controller.unmount === "function") {
-      try { controller.unmount() } catch (e) { /* ignore */ }
+    const cleanup = () => {
+      const controller = (typeof window !== "undefined"
+        ? (window as any).cardPaymentBrickController
+        : null)
+      if (controller && typeof controller.unmount === "function") {
+        try { controller.unmount() } catch { /* ignore */ }
+      }
     }
+    if (!open) cleanup()
+    return cleanup
   }, [open])
 
   // Click en NUESTRO botón "Pagar" → pedir formData al Brick (que está
