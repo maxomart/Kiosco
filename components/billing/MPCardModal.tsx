@@ -115,6 +115,19 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose, submitting, success])
 
+  // Cleanup explícito del Brick MP cuando el modal se cierra. Sin esto, el SDK
+  // queda con referencias DOM viejas y al re-abrir tira "Failed to execute
+  // removeChild on Node" + React error #418 (hydration).
+  useEffect(() => {
+    if (open) return
+    const controller = (typeof window !== "undefined"
+      ? (window as any).cardPaymentBrickController
+      : null)
+    if (controller && typeof controller.unmount === "function") {
+      try { controller.unmount() } catch (e) { /* ignore */ }
+    }
+  }, [open])
+
   // Click en NUESTRO botón "Pagar" → pedir formData al Brick (que está
   // con hidePaymentButton:true) → si valida, MP nos lo manda por onSubmit
   // automáticamente. Si la validación falla, el Brick muestra los errores.
@@ -381,7 +394,9 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                         </div>
                       ) : (
                         <CardPayment
-                          key={`${plan}-${amount}-${period}`}
+                          // Sólo re-mount si cambia el plan — re-mount excesivo
+                          // genera el error "removeChild" del SDK MP.
+                          key={plan}
                           initialization={{ amount }}
                           customization={{
                             visual: {
