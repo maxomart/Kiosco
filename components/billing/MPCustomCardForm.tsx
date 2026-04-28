@@ -93,12 +93,33 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
     let cancelled = false
     const mountedFields: any[] = []
 
+    // Cargar el script global de MP v2 (no el SDK React) — sólo el v2
+    // expone window.MercadoPago para la API imperativa.
+    const loadMpScript = (): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        if ((window as any).MercadoPago) return resolve()
+        const existing = document.getElementById("mp-sdk-v2") as HTMLScriptElement | null
+        if (existing) {
+          if ((window as any).MercadoPago) return resolve()
+          existing.addEventListener("load", () => resolve(), { once: true })
+          existing.addEventListener("error", () => reject(new Error("MP script failed")), { once: true })
+          return
+        }
+        const script = document.createElement("script")
+        script.id = "mp-sdk-v2"
+        script.src = "https://sdk.mercadopago.com/js/v2"
+        script.async = true
+        script.onload = () => resolve()
+        script.onerror = () => reject(new Error("MP script failed to load"))
+        document.head.appendChild(script)
+      })
+    }
+
     ;(async () => {
       try {
-        await import("@mercadopago/sdk-react")
+        await loadMpScript()
         if (cancelled) return
 
-        // El SDK expone window.MercadoPago como constructor global
         const MP = (window as any).MercadoPago
         if (!MP) throw new Error("Window.MercadoPago no disponible")
 
@@ -123,8 +144,8 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
             return
           }
           try {
-            const m: any = await import("@mercadopago/sdk-react")
-            const res = await m.getPaymentMethods({ bin })
+            // mp.getPaymentMethods existe en la instancia del SDK v2
+            const res: any = await mp.getPaymentMethods({ bin })
             const result = res?.results?.[0]
             if (result) {
               setPaymentMethodId(result.id)
