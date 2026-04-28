@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -16,12 +16,13 @@ import {
 } from "lucide-react"
 import toast from "react-hot-toast"
 import { formatCurrency } from "@/lib/utils"
+import type { MPCustomCardFormHandle } from "@/components/billing/MPCustomCardForm"
 
-// SSR-off para el Brick — el SDK toca window al inicializar.
-const CardPayment = dynamic(
-  () => import("@mercadopago/sdk-react").then((m) => m.CardPayment),
+// El form custom toca window (Secure Fields) — ssr off.
+const MPCustomCardForm = dynamic(
+  () => import("@/components/billing/MPCustomCardForm").then((m) => m.MPCustomCardForm),
   { ssr: false, loading: () => null }
-)
+) as any // forwardRef + dynamic — TS no infiere el ref bien sin esto
 
 type PaidPlan = "STARTER" | "PROFESSIONAL" | "BUSINESS"
 
@@ -61,50 +62,38 @@ const PLAN_BENEFITS: Record<PaidPlan, string[]> = {
   ],
 }
 
-let sdkInitialized = false
-
 export function MPCardModal({ open, onClose, plan, planLabel, amount, period, onSuccess }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [sdkReady, setSdkReady] = useState(false)
-  const [brickReady, setBrickReady] = useState(false)
   const [missingKey, setMissingKey] = useState(false)
   const [success, setSuccess] = useState(false)
-  // Cada error genera un attempt nuevo → fuerza re-mount del Brick para
-  // que MP genere un card_token fresco (cada token es single-use).
+  // Cada error genera un attempt nuevo → re-mount del form para que el SDK
+  // genere un card_token fresco (cada token es single-use).
   const [attemptId, setAttemptId] = useState(0)
+  // Tracking de cuándo el form se montó y cargó el SDK — el botón "Pagar"
+  // queda deshabilitado hasta entonces (sin esto, si el user clickea
+  // antes de que el chunk dinámico cargue, formRef.current es null).
+  const [formReady, setFormReady] = useState(false)
+
+  const formRef = useRef<MPCustomCardFormHandle | null>(null)
+  const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? ""
 
   useEffect(() => {
     if (!open) {
       setError(null)
       setSubmitting(false)
       setSuccess(false)
-      setBrickReady(false)
       setAttemptId(0)
+      setFormReady(false)
       return
     }
-    const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY
-    if (!publicKey) {
-      setMissingKey(true)
-      return
-    }
-    setMissingKey(false)
-    // Import dinámico — sólo cliente, evita que el SDK toque window
-    // durante SSR (causa raíz del React #418 hydration mismatch).
-    import("@mercadopago/sdk-react")
-      .then(({ initMercadoPago }) => {
-        if (!sdkInitialized) {
-          initMercadoPago(publicKey, { locale: "es-AR" })
-          sdkInitialized = true
-        }
-        setSdkReady(true)
-      })
-      .catch((e) => {
-        console.error("[MP] initMercadoPago failed", e)
-        setError("No se pudo inicializar Mercado Pago. Refrescá la página.")
-      })
-  }, [open])
+    setMissingKey(!publicKey)
+  }, [open, publicKey])
 
+  // formReady se resetea al re-mount tras error (key cambia)
+  useEffect(() => { setFormReady(false) }, [attemptId])
+
+  // Bloquear scroll del body mientras está abierto
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -112,6 +101,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
     return () => { document.body.style.overflow = prev }
   }, [open])
 
+  // Esc para cerrar
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -121,25 +111,23 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onClose, submitting, success])
 
-  // Cleanup explícito del Brick MP cuando el modal se cierra Y al desmontarse
-  // el componente. Sin esto, el SDK queda con refs DOM viejas y al re-abrir
-  // tira "Failed to execute removeChild on Node" + React error #418.
-  useEffect(() => {
-    const cleanup = () => {
-      const controller = (typeof window !== "undefined"
-        ? (window as any).cardPaymentBrickController
-        : null)
-      if (controller && typeof controller.unmount === "function") {
-        try { controller.unmount() } catch { /* ignore */ }
-      }
+  const handlePay = async () => {
+    if (!formRef.current) {
+      setError("El formulario aún no está listo. Esperá un segundo.")
+      return
     }
-    if (!open) cleanup()
-    return cleanup
-  }, [open])
-
-  const handleSubmit = async (formData: any) => {
     setSubmitting(true)
     setError(null)
+
+    // 1. Generar token vía Secure Fields
+    const tokenResult = await formRef.current.submit()
+    if ("error" in tokenResult) {
+      setError(tokenResult.error)
+      setSubmitting(false)
+      return
+    }
+
+    // 2. POST al backend (sin cambios respecto al flow actual)
     try {
       console.log("[MP] POST /api/billing/mp/subscribe-with-card...")
       const res = await fetch("/api/billing/mp/subscribe-with-card", {
@@ -148,21 +136,18 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
         body: JSON.stringify({
           plan,
           period,
-          cardTokenId: formData.token,
-          payerEmail: formData.payer?.email,
-          paymentMethodId: formData.payment_method_id,
-          issuerId: formData.issuer_id,
+          cardTokenId: tokenResult.cardTokenId,
+          payerEmail: tokenResult.payerEmail,
+          paymentMethodId: tokenResult.paymentMethodId,
         }),
-        // Timeout 30s para no colgar el botón eternamente si MP/backend tarda
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(35_000),
       })
       console.log("[MP] backend responded:", res.status)
       const data = await res.json()
       if (!res.ok) {
         console.error("[MP] backend error", { status: res.status, error: data.error, detail: data.detail })
-        // Re-mount del Brick → token fresco para el próximo intento
+        // Re-mount del form → token fresco para el próximo intento
         setAttemptId((n) => n + 1)
-        setBrickReady(false)
         setError(data.error ?? "No se pudo procesar el pago")
         toast.error(data.error ?? "Error al cobrar")
         setSubmitting(false)
@@ -179,9 +164,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
       const msg = err?.name === "TimeoutError" || err?.name === "AbortError"
         ? "El cobro tardó demasiado. Si tu tarjeta fue cobrada, refrescá la página."
         : "Error de red. Probá de nuevo."
-      // Re-mount también en errores de red — el token ya se gastó
       setAttemptId((n) => n + 1)
-      setBrickReady(false)
       setError(msg)
       setSubmitting(false)
     }
@@ -258,29 +241,23 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
               <div className="grid md:grid-cols-[320px_1fr] gap-0 min-h-full">
                 {/* ───── COLUMNA IZQUIERDA ───── */}
                 <aside className="bg-gradient-to-br from-purple-950/50 via-gray-900 to-gray-950 p-7 md:p-8 border-b md:border-b-0 md:border-r border-gray-800/80 relative overflow-hidden">
-                  {/* Glow decorativo */}
                   <div className="absolute -top-24 -right-24 w-56 h-56 bg-purple-600/25 blur-3xl rounded-full pointer-events-none" />
                   <div className="absolute -bottom-32 -left-16 w-56 h-56 bg-violet-600/15 blur-3xl rounded-full pointer-events-none" />
 
                   <div className="relative space-y-6">
-                    {/* Plan badge */}
                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-200 text-[10px] font-bold uppercase tracking-[0.12em]">
                       <Sparkles size={11} /> Plan {planLabel}
                     </div>
 
-                    {/* Precio */}
                     <div>
-                      <div className="flex items-baseline gap-1.5">
-                        <p className="text-4xl font-bold text-white tracking-tight tabular-nums">
-                          {formatCurrency(amount)}
-                        </p>
-                      </div>
+                      <p className="text-4xl font-bold text-white tracking-tight tabular-nums">
+                        {formatCurrency(amount)}
+                      </p>
                       <p className="text-xs text-gray-400 mt-2">
                         {period === "annual" ? "Por año" : "Por mes"} · Pesos argentinos
                       </p>
                     </div>
 
-                    {/* Features */}
                     <div className="space-y-2.5 pt-3 border-t border-purple-900/30">
                       <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500 font-bold mb-3">
                         Qué incluye
@@ -301,7 +278,6 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                       ))}
                     </div>
 
-                    {/* Trust */}
                     <div className="pt-4 border-t border-purple-900/30 space-y-2.5">
                       <TrustItem icon={Calendar} text={`Renovación ${period === "annual" ? "anual" : "mensual"} automática`} />
                       <TrustItem icon={CircleSlash2} text="Cancelable cuando quieras" />
@@ -312,7 +288,6 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
 
                 {/* ───── COLUMNA DERECHA ───── */}
                 <main className="p-6 sm:p-8 md:p-10 flex flex-col">
-                  {/* Header con resumen del cobro */}
                   <header className="mb-6 pb-6 border-b border-gray-800/80">
                     <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500 font-bold mb-2">
                       Paso final
@@ -333,20 +308,6 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                         </p>
                       </div>
                     </div>
-
-                    {/* Tarjetas aceptadas */}
-                    <div className="flex items-center gap-3 mt-5">
-                      <span className="text-[10px] uppercase tracking-[0.12em] text-gray-500 font-bold">
-                        Aceptamos
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <CardBadge>VISA</CardBadge>
-                        <CardBadge>MC</CardBadge>
-                        <CardBadge>AMEX</CardBadge>
-                        <CardBadge>NARANJA</CardBadge>
-                        <CardBadge>+</CardBadge>
-                      </div>
-                    </div>
                   </header>
 
                   {/* Banners */}
@@ -360,7 +321,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                       >
                         <AlertCircle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
                         <p className="text-amber-200">
-                          Falta la <strong>NEXT_PUBLIC_MP_PUBLIC_KEY</strong> en Railway. Agregala y redeployá.
+                          Falta la <strong>NEXT_PUBLIC_MP_PUBLIC_KEY</strong> en Railway.
                         </p>
                       </motion.div>
                     )}
@@ -382,100 +343,47 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                     )}
                   </AnimatePresence>
 
-                  {/* Brick */}
-                  {!missingKey && (
-                    <div className="mp-card-form-wrapper relative flex-1 min-h-[460px]">
-                      {!sdkReady ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 gap-3">
-                          <Loader2 size={22} className="animate-spin text-accent" />
-                          <p className="text-sm">Cargando formulario seguro...</p>
-                        </div>
-                      ) : (
-                        <CardPayment
-                          // Re-mount tras cada error para que el SDK MP genere
-                          // un card_token fresco (cada token es single-use).
-                          key={`${plan}-${attemptId}`}
-                          initialization={{ amount }}
-                          customization={{
-                            visual: {
-                              style: {
-                                theme: "dark",
-                                // Sólo variables válidas del SDK MP. Las que no
-                                // existen (inputFocusedBorderColor, fontWeightRegular,
-                                // formInputsBorderRadius, textPrimaryColor, etc) las
-                                // eliminé porque tiraban warnings y no aplicaban.
-                                customVariables: {
-                                  // Colores principales
-                                  baseColor: "#8b5cf6",
-                                  baseColorFirstVariant: "#7c3aed",
-                                  baseColorSecondVariant: "#a78bfa",
-                                  // Fondos
-                                  formBackgroundColor: "transparent",
-                                  inputBackgroundColor: "#0d0f15",
-                                  // Bordes (NOTA: MP no expone color de focus —
-                                  // sólo width. El color hereda de baseColor)
-                                  inputBorderWidth: "1px",
-                                  inputFocusedBorderWidth: "2px",
-                                  borderRadiusSmall: "10px",
-                                  borderRadiusMedium: "12px",
-                                  borderRadiusLarge: "14px",
-                                  borderRadiusFull: "9999px",
-                                  // Espaciado
-                                  formPadding: "0px",
-                                  inputVerticalPadding: "18px",
-                                  inputHorizontalPadding: "18px",
-                                  // Tipografía
-                                  fontSizeExtraSmall: "12px",
-                                  fontSizeSmall: "14px",
-                                  fontSizeMedium: "16px",
-                                  fontSizeLarge: "17px",
-                                  fontWeightSemiBold: "700",
-                                  formInputsTextTransform: "none",
-                                  // Estados
-                                  errorColor: "#f87171",
-                                  successColor: "#34d399",
-                                  // Botón (aunque está oculto, MP lee estos
-                                  // valores para otros componentes internos)
-                                  outlinePrimaryColor: "#8b5cf6",
-                                  outlineSecondaryColor: "#7c3aed",
-                                  buttonTextColor: "#ffffff",
-                                },
-                              },
-                              // Botón nativo del Brick visible. hidePaymentButton:true
-                              // tira "postMessage origin mismatch" en el SDK actual
-                              // y getFormData() nunca devuelve → timeout. El botón
-                              // nativo va pegado al último input pero al menos cobra.
-                              hideFormTitle: true,
-                              hidePaymentButton: false,
-                            },
-                            paymentMethods: { maxInstallments: 1 },
-                          }}
-                          onSubmit={handleSubmit}
-                          onReady={() => setBrickReady(true)}
-                          onError={(err) => {
-                            console.error("[MP brick error]", err)
-                            const msg =
-                              (err as any)?.message ??
-                              (err as any)?.cause?.[0]?.description ??
-                              "Hubo un problema con el formulario de tarjeta."
-                            setError(msg)
-                          }}
-                        />
-                      )}
-                      {submitting && (
-                        <div className="absolute inset-0 bg-gray-950/85 backdrop-blur-sm flex items-center justify-center rounded-xl z-10">
-                          <div className="flex flex-col items-center gap-3">
-                            <Loader2 size={32} className="animate-spin text-accent" />
-                            <p className="text-sm text-gray-300 font-medium">Procesando pago...</p>
-                            <p className="text-xs text-gray-500">No cierres esta ventana</p>
-                          </div>
-                        </div>
-                      )}
+                  {/* Form custom */}
+                  {!missingKey && publicKey && (
+                    <div className="flex-1">
+                      <MPCustomCardForm
+                        ref={formRef}
+                        key={attemptId}
+                        amount={amount}
+                        publicKey={publicKey}
+                        onTokenError={(msg: string) => setError(msg)}
+                        onReady={() => setFormReady(true)}
+                      />
                     </div>
                   )}
 
+                  {/* Botón Pagar — separado del form con margen claro */}
+                  {!missingKey && (
+                    <motion.button
+                      type="button"
+                      onClick={handlePay}
+                      disabled={submitting || success || !formReady}
+                      whileTap={{ scale: 0.985 }}
+                      className="mt-7 w-full py-4 px-5 rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground font-bold text-base flex items-center justify-center gap-2.5 shadow-lg shadow-purple-900/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" /> Procesando pago...
+                        </>
+                      ) : !formReady ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" /> Cargando formulario...
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={16} /> Pagar {formatCurrency(amount)} ahora
+                        </>
+                      )}
+                    </motion.button>
+                  )}
+
                   {/* Footer trust */}
-                  <div className="mt-6 pt-5 border-t border-gray-800/60 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-gray-500">
+                  <div className="mt-5 pt-4 border-t border-gray-800/60 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-gray-500">
                     <div className="flex items-center gap-1.5">
                       <Lock size={11} /> Encriptado SSL
                     </div>
@@ -502,14 +410,6 @@ function TrustItem({ icon: Icon, text }: { icon: React.ElementType; text: string
       <Icon size={13} className="text-purple-300/70 flex-shrink-0" />
       <span>{text}</span>
     </div>
-  )
-}
-
-function CardBadge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center justify-center min-w-[36px] h-6 px-1.5 rounded bg-gray-800/80 border border-gray-700/80 text-[9px] font-bold text-gray-400 tracking-wider">
-      {children}
-    </span>
   )
 }
 
