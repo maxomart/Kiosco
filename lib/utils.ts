@@ -103,7 +103,7 @@ export type Plan = keyof typeof PLAN_LIMITS
 // Stripe legacy paths still consume the USD column (kept for international fallback).
 export const PLAN_PRICES_ARS: Record<Plan, number> = {
   STARTER: 9999,        // Básico — anchor at "10 lucas"
-  PROFESSIONAL: 24900,  // Pro
+  PROFESSIONAL: 500,    // ⚠️ TEMPORAL — bajado a $500 para test del fix de payment verification. Volver a 24900 cuando termine.
   BUSINESS: 59900,      // Negocio
   ENTERPRISE: 0,        // Custom — talk to sales
 }
