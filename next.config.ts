@@ -3,36 +3,62 @@ import type { NextConfig } from "next"
 const isDev = process.env.NODE_ENV !== "production"
 
 // Content Security Policy — ajustar connect-src según integraciones
+//
+// Mercado Pago Brick necesita ~10 dominios distintos: sdk + assets +
+// telemetría + anti-fraude (mercadolibre.com hace device fingerprinting
+// para detectar tarjetas robadas). Sin todos estos el formulario carga
+// pero se traba al enviar.
+const MP_DOMAINS = {
+  scripts: [
+    "https://sdk.mercadopago.com",
+    "https://http2.mlstatic.com",
+    "https://www.mercadolibre.com",
+  ],
+  styles: ["https://http2.mlstatic.com"],
+  fonts: ["https://http2.mlstatic.com"],
+  connect: [
+    "https://api.mercadopago.com",
+    "https://api.mercadolibre.com",
+    "https://events.mercadopago.com",
+    "https://http2.mlstatic.com",
+    "https://www.mercadolibre.com",
+    "https://www.mercadopago.com",
+    "https://www.mercadopago.com.ar",
+  ],
+  frames: [
+    "https://www.mercadopago.com",
+    "https://www.mercadopago.com.ar",
+    "https://www.mercadolibre.com",
+    "https://sdk.mercadopago.com",
+    "https://http2.mlstatic.com",
+  ],
+}
+
 const cspDirectives: Record<string, string[]> = {
   "default-src": ["'self'"],
   "script-src": [
     "'self'",
     "'unsafe-inline'",
-    "https://sdk.mercadopago.com",
-    "https://http2.mlstatic.com",
+    ...MP_DOMAINS.scripts,
     ...(isDev ? ["'unsafe-eval'"] : []),
   ],
-  "style-src": ["'self'", "'unsafe-inline'", "https://http2.mlstatic.com"],
+  "style-src": ["'self'", "'unsafe-inline'", ...MP_DOMAINS.styles],
   "img-src": ["'self'", "data:", "blob:", "https:"],
-  "font-src": ["'self'", "data:", "https://http2.mlstatic.com"],
+  "font-src": ["'self'", "data:", ...MP_DOMAINS.fonts],
   "connect-src": [
     "'self'",
     "https://api.openai.com",
     "https://api.anthropic.com",
-    "https://api.mercadopago.com",
-    "https://api.mercadolibre.com",
-    "https://events.mercadopago.com",
     "https://api.stripe.com",
     "https://api.twilio.com",
+    ...MP_DOMAINS.connect,
     ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
   ],
   "frame-src": [
     "'self'",
     "https://js.stripe.com",
     "https://hooks.stripe.com",
-    "https://www.mercadopago.com",
-    "https://www.mercadopago.com.ar",
-    "https://sdk.mercadopago.com",
+    ...MP_DOMAINS.frames,
   ],
   "frame-ancestors": ["'none'"],
   "form-action": ["'self'"],
