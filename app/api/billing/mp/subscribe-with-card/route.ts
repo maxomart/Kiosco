@@ -109,9 +109,10 @@ export async function POST(req: NextRequest) {
       signal: AbortSignal.timeout(20_000),
     })
     const text = await res.text()
-    console.log(`[mp/subscribe-with-card] MP responded status=${res.status} bodyLen=${text.length}`)
+    console.log(`[mp/subscribe-with-card] MP responded status=${res.status} body=${text}`)
     if (!res.ok) {
       console.error("[mp/subscribe-with-card] MP error:", res.status, text)
+      console.error("[mp/subscribe-with-card] MP request body was:", JSON.stringify(mpBody))
       let friendly = "No se pudo procesar el pago. Probá con otra tarjeta."
       const lower = text.toLowerCase()
       if (lower.includes("cc_rejected_insufficient_amount")) friendly = "Fondos insuficientes en la tarjeta."

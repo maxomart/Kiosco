@@ -155,6 +155,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
       console.log("[MP] backend responded:", res.status)
       const data = await res.json()
       if (!res.ok) {
+        console.error("[MP] backend error", { status: res.status, error: data.error, detail: data.detail })
         setError(data.error ?? "No se pudo procesar el pago")
         toast.error(data.error ?? "Error al cobrar")
         setSubmitting(false)
