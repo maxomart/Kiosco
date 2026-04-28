@@ -18,6 +18,7 @@ import {
   LifeBuoy,
   FileSpreadsheet,
   ChevronDown,
+  Clock,
 } from "lucide-react"
 
 interface Props {
@@ -38,6 +39,7 @@ export default function AdminNav({ user }: Props) {
     { href: "/admin/exportar", label: "Exportar", icon: FileSpreadsheet },
     { href: "/admin/soporte", label: "Soporte", icon: LifeBuoy },
     { href: "/admin/salud", label: "Salud", icon: Activity },
+    { href: "/admin/cron", label: "Cron", icon: Clock },
     { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
     { href: "/admin/seguridad", label: "Seguridad", icon: Lock },
   ]
