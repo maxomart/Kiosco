@@ -23,7 +23,11 @@ export type ShortcutHandlers = Partial<Record<string, () => void>>
  */
 export function useShortcuts(handlers: ShortcutHandlers, enabled = true) {
   const mapRef = useRef<Record<string, string>>({})
+  const handlersRef = useRef<ShortcutHandlers>(handlers)
   const [, forceUpdate] = useState({})
+
+  // Always read the latest handlers from the ref so the listener is stable.
+  useEffect(() => { handlersRef.current = handlers })
 
   // Load the map once (client-side only)
   useEffect(() => {
@@ -51,7 +55,7 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled = true) {
         if (combo !== configured) continue
         // If editable is focused, only trigger if the action explicitly allows it
         if (editable && !action.captureInInput) continue
-        const fn = handlers[action.id]
+        const fn = handlersRef.current[action.id]
         if (fn) {
           e.preventDefault()
           fn()
@@ -62,7 +66,7 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled = true) {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [handlers, enabled])
+  }, [enabled])
 }
 
 /** Returns the current user-configured key for an action. */

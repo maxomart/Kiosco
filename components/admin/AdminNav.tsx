@@ -15,6 +15,7 @@ import {
   Activity,
   Lock,
   LifeBuoy,
+  FileSpreadsheet,
 } from "lucide-react"
 
 interface Props {
@@ -30,6 +31,7 @@ export default function AdminNav({ user }: Props) {
     { href: "/admin/usuarios", label: "Usuarios", icon: Users },
     { href: "/admin/suscripciones", label: "Suscripciones", icon: CreditCard },
     { href: "/admin/facturas", label: "Facturas", icon: Receipt },
+    { href: "/admin/exportar", label: "Exportar", icon: FileSpreadsheet },
     { href: "/admin/soporte", label: "Soporte", icon: LifeBuoy },
     { href: "/admin/salud", label: "Salud", icon: Activity },
     { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },

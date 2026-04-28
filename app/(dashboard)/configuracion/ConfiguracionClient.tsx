@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, QrCode, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon } from "lucide-react"
 import { PageTip } from "@/components/shared/PageTip"
 import { BUSINESS_TYPES, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
@@ -150,7 +150,6 @@ export default function ConfiguracionPage() {
     { icon: CreditCard, label: "Suscripción y planes", href: "/configuracion/suscripcion", desc: "Plan actual, facturación, upgrades", color: "text-accent", bg: "bg-accent-soft", border: "border-accent/30" },
     { icon: Users, label: "Usuarios y permisos", href: "/configuracion/usuarios", desc: "Agregar usuarios y roles", color: "text-sky-400", bg: "bg-sky-900/40", border: "border-sky-700/40" },
     { icon: Keyboard, label: "Atajos de teclado", href: "/configuracion/atajos", desc: "Personalizar F1, F2, etc.", color: "text-emerald-400", bg: "bg-emerald-900/40", border: "border-emerald-700/40" },
-    { icon: QrCode, label: "Mercado Pago", href: "/configuracion/mercadopago", desc: "Cobrá con QR desde el POS", color: "text-cyan-400", bg: "bg-cyan-900/40", border: "border-cyan-700/40", requiredPlan: "PROFESSIONAL" as const },
     { icon: FileCheck2, label: "Facturación AFIP", href: "/configuracion/afip", desc: "Emití facturas A/B/C con CAE", color: "text-amber-400", bg: "bg-amber-900/40", border: "border-amber-700/40", requiredPlan: "STARTER" as const },
     { icon: Building2, label: "Multi-tienda", href: "/configuracion/multi-tienda", desc: "Gestionar varias sucursales", color: "text-purple-400", bg: "bg-purple-900/40", border: "border-purple-700/40", requiredPlan: "BUSINESS" as const },
   ]
@@ -164,7 +163,7 @@ export default function ConfiguracionPage() {
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
       <PageTip id="configuracion:intro" tone="accent">
-        Acá personalizás tu negocio, agregás usuarios, configurás cobros con MP/AFIP y ajustás los atajos de teclado.
+        Acá personalizás tu negocio, agregás usuarios, configurás facturación AFIP y ajustás los atajos de teclado.
         Cada cambio se guarda al toque.
       </PageTip>
 

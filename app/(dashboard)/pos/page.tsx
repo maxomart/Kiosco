@@ -33,9 +33,13 @@ export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [showPayment, setShowPayment] = useState(false)
-  const [barcodeBuffer, setBarcodeBuffer] = useState("")
-  const [lastKeyTime, setLastKeyTime] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
+  // Doble Enter en search → cobrar (sin tener que presionar el atajo)
+  const lastEnterRef = useRef<number>(0)
+  // Barcode-scanner buffer en refs (no state) para evitar re-renders en cada
+  // keystroke — esos re-renders re-montaban useShortcuts y trababan los atajos.
+  const barcodeBufRef = useRef<string>("")
+  const lastKeyTimeRef = useRef<number>(0)
   const debouncedQuery = useDebounce(query, 280)
   const { addToCart, cart, setCashSession, clearCart, total } = usePOSStore()
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
@@ -95,6 +99,14 @@ export default function POSPage() {
     const t = setInterval(checkCash, 60000)
     return () => clearInterval(t)
   }, [checkCash])
+
+  // Auto-focus search bar al entrar al POS — el usuario quiere empezar a tipear
+  // / escanear sin tocar el mouse. Lo hacemos en un microtask para esperar a que
+  // el input esté en el DOM.
+  useEffect(() => {
+    const id = window.setTimeout(() => searchRef.current?.focus(), 80)
+    return () => window.clearTimeout(id)
+  }, [])
 
   // Cache full product catalog on mount so search/scanner work offline.
   // Also used to populate the grid before any search: users see products
@@ -174,23 +186,31 @@ export default function POSPage() {
     toast.success(`${p.name} agregado`, { duration: 1200, icon: "🛒" })
   }, [addToCart, cart])
 
+  // Barcode-scanner detector. Listener montado una sola vez — usa refs para no
+  // disparar re-renders en cada tecla (lo que trababa los atajos del POS).
+  // handleBarcodeScan se lee desde una ref para tener siempre la última versión.
+  const handleBarcodeScanRef = useRef(handleBarcodeScan)
+  useEffect(() => { handleBarcodeScanRef.current = handleBarcodeScan }, [handleBarcodeScan])
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const now = Date.now()
+      // No interferir con tipeo manual ni con atajos (F1-F12, etc).
       if (document.activeElement === searchRef.current) return
-      if (e.key === "Enter" && barcodeBuffer.length >= 4) {
-        handleBarcodeScan(barcodeBuffer.trim())
-        setBarcodeBuffer("")
-      } else if (e.key.length === 1 && now - lastKeyTime < 80) {
-        setBarcodeBuffer(prev => prev + e.key)
+      if (e.key.length !== 1 && e.key !== "Enter") return
+      const now = Date.now()
+      if (e.key === "Enter" && barcodeBufRef.current.length >= 4) {
+        handleBarcodeScanRef.current(barcodeBufRef.current.trim())
+        barcodeBufRef.current = ""
+      } else if (e.key.length === 1 && now - lastKeyTimeRef.current < 80) {
+        barcodeBufRef.current += e.key
       } else if (e.key.length === 1) {
-        setBarcodeBuffer(e.key)
+        barcodeBufRef.current = e.key
       }
-      setLastKeyTime(now)
+      lastKeyTimeRef.current = now
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
-  }, [barcodeBuffer, lastKeyTime, handleBarcodeScan])
+  }, [])
 
   const handleAddProduct = (p: Product) => {
     if (p.stock <= 0 && !p.soldByWeight) { toast.error(`Sin stock: ${p.name}`); return }
@@ -281,6 +301,29 @@ export default function POSPage() {
             ref={searchRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              // Doble Enter (dos pulsaciones <500ms): cobrar directo
+              if (e.key === "Enter") {
+                const now = Date.now()
+                if (now - lastEnterRef.current < 500) {
+                  e.preventDefault()
+                  lastEnterRef.current = 0
+                  if (cart.length === 0) { toast.error("El carrito está vacío"); return }
+                  if (!cashOpen) { toast.error("Abrí la caja primero"); return }
+                  setShowPayment(true)
+                  return
+                }
+                lastEnterRef.current = now
+                // Single Enter en search: si hay un único resultado, agregarlo
+                if (visibleProducts.length === 1 && isSearching) {
+                  e.preventDefault()
+                  handleAddProduct(visibleProducts[0])
+                }
+              }
+              if (e.key === "Escape") {
+                setQuery("")
+              }
+            }}
             placeholder="Buscar por nombre, código o barcode..."
             className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-28 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
           />
