@@ -368,8 +368,8 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                                   formBackgroundColor: "transparent",
                                   inputBackgroundColor: "#0d0f15",
                                   // Texto
-                                  textPrimaryColor: "#f9fafb",
-                                  textSecondaryColor: "#9ca3af",
+                                  textPrimaryColor: "#ffffff",
+                                  textSecondaryColor: "#d1d5db",
                                   // Bordes
                                   inputBorderWidth: "1px",
                                   inputFocusedBorderColor: "#8b5cf6",
@@ -379,19 +379,20 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                                   borderRadiusLarge: "14px",
                                   borderRadiusFull: "9999px",
                                   formInputsBorderRadius: "12px",
-                                  // Espaciado generoso
+                                  // Espaciado MUY generoso — separa botón del último input
                                   formPadding: "0px",
-                                  inputVerticalPadding: "16px",
-                                  inputHorizontalPadding: "16px",
+                                  inputVerticalPadding: "18px",
+                                  inputHorizontalPadding: "18px",
                                   horizontalPaddingComponents: "0px",
-                                  verticalPaddingComponents: "12px",
-                                  // Tipografía
+                                  verticalPaddingComponents: "32px",
+                                  // Tipografía bold y legible
                                   fontSizeExtraSmall: "12px",
-                                  fontSizeSmall: "13px",
-                                  fontSizeMedium: "15px",
-                                  fontSizeLarge: "16px",
+                                  fontSizeSmall: "14px",
+                                  fontSizeMedium: "16px",
+                                  fontSizeLarge: "17px",
                                   fontWeightNormal: "500",
-                                  fontWeightSemiBold: "600",
+                                  fontWeightSemiBold: "700",
+                                  formInputsTextTransform: "none",
                                   // Estados
                                   errorColor: "#f87171",
                                   successColor: "#34d399",
