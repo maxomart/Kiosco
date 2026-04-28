@@ -70,6 +70,9 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
   const [brickReady, setBrickReady] = useState(false)
   const [missingKey, setMissingKey] = useState(false)
   const [success, setSuccess] = useState(false)
+  // Cada error genera un attempt nuevo → fuerza re-mount del Brick para
+  // que MP genere un card_token fresco (cada token es single-use).
+  const [attemptId, setAttemptId] = useState(0)
 
   useEffect(() => {
     if (!open) {
@@ -77,6 +80,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
       setSubmitting(false)
       setSuccess(false)
       setBrickReady(false)
+      setAttemptId(0)
       return
     }
     const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY
@@ -156,6 +160,9 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
       const data = await res.json()
       if (!res.ok) {
         console.error("[MP] backend error", { status: res.status, error: data.error, detail: data.detail })
+        // Re-mount del Brick → token fresco para el próximo intento
+        setAttemptId((n) => n + 1)
+        setBrickReady(false)
         setError(data.error ?? "No se pudo procesar el pago")
         toast.error(data.error ?? "Error al cobrar")
         setSubmitting(false)
@@ -172,6 +179,9 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
       const msg = err?.name === "TimeoutError" || err?.name === "AbortError"
         ? "El cobro tardó demasiado. Si tu tarjeta fue cobrada, refrescá la página."
         : "Error de red. Probá de nuevo."
+      // Re-mount también en errores de red — el token ya se gastó
+      setAttemptId((n) => n + 1)
+      setBrickReady(false)
       setError(msg)
       setSubmitting(false)
     }
@@ -382,9 +392,9 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                         </div>
                       ) : (
                         <CardPayment
-                          // Sólo re-mount si cambia el plan — re-mount excesivo
-                          // genera el error "removeChild" del SDK MP.
-                          key={plan}
+                          // Re-mount tras cada error para que el SDK MP genere
+                          // un card_token fresco (cada token es single-use).
+                          key={`${plan}-${attemptId}`}
                           initialization={{ amount }}
                           customization={{
                             visual: {
