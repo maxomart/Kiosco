@@ -1,39 +1,26 @@
 "use client"
 
 /**
- * Form de tarjeta 100% custom: nosotros controlamos el HTML, layout y
- * estilos de TODOS los campos. MP solo se encarga de los 3 campos PCI-
- * sensibles (número, CVV, vencimiento) vía sus Secure Fields — son
- * iframes mini que renderizan dentro de divs nuestros.
+ * Form de tarjeta 100% custom usando el SDK MP imperativamente (no los
+ * componentes React). Los componentes React tenían un bug donde los
+ * iframes de los Secure Fields se posicionaban en el wrapper equivocado
+ * porque cada chunk dinámico cargaba en orden distinto.
+ *
+ * Solución: divs con IDs fijos (#mp-card-number, #mp-expiration-date,
+ * #mp-security-code) y `mp.fields.create().mount("#id")` desde un
+ * useEffect — así el SDK sabe exactamente dónde poner cada iframe.
  *
  * Flow:
- *   1. User completa: nombre, doc, email (HTML nuestro) + tarjeta, CVV,
- *      vencimiento (Secure Fields de MP).
- *   2. CardNumber dispara onBinChange → llamamos getPaymentMethods() para
- *      detectar marca (Visa/MC/Amex/Naranja/etc) y guardamos paymentMethodId.
- *   3. Submit → createCardToken({ cardholderName, doc }) → MP toma los
- *      valores de los Secure Fields automáticamente y devuelve un token.
- *   4. Pasamos token + paymentMethodId al endpoint /api/billing/mp/subscribe-with-card
- *      (sin cambios — el flow viejo ya funcionaba).
+ *   1. SDK carga → creamos instancia mp + montamos los 3 Secure Fields
+ *      en sus contenedores específicos.
+ *   2. CardNumber dispara binChange → getPaymentMethods() → marca detectada.
+ *   3. Submit → mp.fields.createCardToken({ cardholderName, doc }) →
+ *      el SDK toma número/cvv/exp de los iframes y devuelve un token.
+ *   4. POST al backend (sin cambios).
  */
 
-import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback, useMemo } from "react"
-import dynamic from "next/dynamic"
+import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useCallback } from "react"
 import { Check, AlertCircle } from "lucide-react"
-
-// SSR off — los Secure Fields tocan window.
-const CardNumber = dynamic(
-  () => import("@mercadopago/sdk-react").then((m) => m.CardNumber),
-  { ssr: false, loading: () => null }
-)
-const ExpirationDate = dynamic(
-  () => import("@mercadopago/sdk-react").then((m) => m.ExpirationDate),
-  { ssr: false, loading: () => null }
-)
-const SecurityCode = dynamic(
-  () => import("@mercadopago/sdk-react").then((m) => m.SecurityCode),
-  { ssr: false, loading: () => null }
-)
 
 type IdType = "DNI" | "CUIL" | "CUIT" | "LE" | "LC"
 
@@ -51,13 +38,12 @@ interface Props {
   amount: number
   publicKey: string
   onTokenError?: (msg: string) => void
-  /** Disparado una vez cuando el SDK terminó de cargar y el form puede recibir input. */
   onReady?: () => void
 }
 
-// Estilos compartidos para los iframes de Secure Fields. MP renderiza un
-// <input> dentro del iframe usando estos estilos — tienen que matchear
-// los inputs HTML nuestros para que se vea consistente.
+// Estilos para los iframes de Secure Fields. MP renderiza un <input> dentro
+// del iframe usando estos estilos — tienen que matchear los inputs HTML
+// nuestros para que se vea consistente.
 const SECURE_FIELD_STYLE = {
   color: "#ffffff",
   fontSize: "16px",
@@ -76,7 +62,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
   const [docNumber, setDocNumber] = useState("")
   const [payerEmail, setPayerEmail] = useState("")
 
-  // Estado de los Secure Fields (validez)
+  // Validez de los Secure Fields
   const [cardNumberValid, setCardNumberValid] = useState(false)
   const [expirationValid, setExpirationValid] = useState(false)
   const [securityCodeValid, setSecurityCodeValid] = useState(false)
@@ -90,84 +76,116 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
   const [paymentMethodThumbnail, setPaymentMethodThumbnail] = useState<string | null>(null)
   const [binError, setBinError] = useState<string | null>(null)
 
-  // Refs para callbacks — evita re-correr el useEffect de init cuando el
-  // padre re-renderiza con funciones nuevas en cada render.
+  // Refs internas para callbacks volátiles del padre
   const onTokenErrorRef = useRef(onTokenError)
   const onReadyRef = useRef(onReady)
   useEffect(() => { onTokenErrorRef.current = onTokenError })
   useEffect(() => { onReadyRef.current = onReady })
 
-  // Name estable del input trampa anti-autofill — calculado UNA sola vez al
-  // mount. Antes lo calculaba con Math.random() en el render inline, lo que
-  // hacía que cambiara en cada render → re-mount del DOM → los iframes de
-  // los Secure Fields se reposicionaban mal y los datos del user se borraban.
+  // Instancia MP guardada para usar en submit
+  const mpInstanceRef = useRef<any>(null)
+
+  // Name estable del input trampa anti-autofill
   const [trapName] = useState(() => `fake-cc-${Math.random().toString(36).slice(2, 8)}`)
 
-  // Callbacks estables — sin esto los Secure Fields se re-mountaban en cada
-  // tipeo de los inputs HTML (porque las arrow functions inline cambiaban
-  // de referencia y el SDK MP las trataba como handlers nuevos).
-  const handleCardValidity = useCallback((arg: { errorMessages: any[] }) => {
-    setCardNumberValid(arg.errorMessages.length === 0)
-  }, [])
-  const handleExpirationValidity = useCallback((arg: { errorMessages: any[] }) => {
-    setExpirationValid(arg.errorMessages.length === 0)
-  }, [])
-  const handleSecurityCodeValidity = useCallback((arg: { errorMessages: any[] }) => {
-    setSecurityCodeValid(arg.errorMessages.length === 0)
-  }, [])
-
-  // Init SDK — se hace una sola vez al mount
+  // Cargar SDK + montar los 3 Secure Fields imperativamente
   useEffect(() => {
     let cancelled = false
-    import("@mercadopago/sdk-react")
-      .then(async (m) => {
+    const mountedFields: any[] = []
+
+    ;(async () => {
+      try {
+        await import("@mercadopago/sdk-react")
         if (cancelled) return
-        try {
-          m.initMercadoPago(publicKey, { locale: "es-AR" })
-        } catch { /* idempotente */ }
+
+        // El SDK expone window.MercadoPago como constructor global
+        const MP = (window as any).MercadoPago
+        if (!MP) throw new Error("Window.MercadoPago no disponible")
+
+        const mp = new MP(publicKey, { locale: "es-AR" })
+        mpInstanceRef.current = mp
+
+        // Crear y montar los 3 fields en orden, cada uno en su contenedor
+        const cardNumberField = mp.fields.create("cardNumber", {
+          placeholder: "1234 1234 1234 1234",
+          style: SECURE_FIELD_STYLE,
+        })
+        cardNumberField.mount("mp-card-number")
+        mountedFields.push(cardNumberField)
+
+        cardNumberField.on("binChange", async (arg: { bin?: string }) => {
+          const bin = arg.bin
+          setBinError(null)
+          if (!bin || bin.length < 6) {
+            setPaymentMethodId(null)
+            setPaymentMethodName(null)
+            setPaymentMethodThumbnail(null)
+            return
+          }
+          try {
+            const m: any = await import("@mercadopago/sdk-react")
+            const res = await m.getPaymentMethods({ bin })
+            const result = res?.results?.[0]
+            if (result) {
+              setPaymentMethodId(result.id)
+              setPaymentMethodName(result.name)
+              setPaymentMethodThumbnail(result.thumbnail ?? result.secure_thumbnail ?? null)
+            } else {
+              setPaymentMethodId(null)
+              setPaymentMethodName(null)
+              setPaymentMethodThumbnail(null)
+              setBinError("No reconocemos esta tarjeta. Probá con otra.")
+            }
+          } catch {
+            setBinError("No pudimos validar la tarjeta. Verificá tu conexión.")
+          }
+        })
+        cardNumberField.on("validityChange", (arg: { errorMessages: any[] }) => {
+          setCardNumberValid(arg.errorMessages.length === 0)
+        })
+
+        const expirationField = mp.fields.create("expirationDate", {
+          placeholder: "MM/AA",
+          style: SECURE_FIELD_STYLE,
+        })
+        expirationField.mount("mp-expiration-date")
+        mountedFields.push(expirationField)
+        expirationField.on("validityChange", (arg: { errorMessages: any[] }) => {
+          setExpirationValid(arg.errorMessages.length === 0)
+        })
+
+        const securityField = mp.fields.create("securityCode", {
+          placeholder: "CVV",
+          style: SECURE_FIELD_STYLE,
+        })
+        securityField.mount("mp-security-code")
+        mountedFields.push(securityField)
+        securityField.on("validityChange", (arg: { errorMessages: any[] }) => {
+          setSecurityCodeValid(arg.errorMessages.length === 0)
+        })
+
+        if (cancelled) {
+          mountedFields.forEach((f) => { try { f.unmount() } catch {} })
+          return
+        }
+
         setSdkReady(true)
         onReadyRef.current?.()
-      })
-      .catch((e) => {
-        console.error("[MP custom] init failed", e)
+      } catch (e: any) {
+        console.error("[MP custom] init/mount failed", e)
         onTokenErrorRef.current?.("No se pudo inicializar Mercado Pago.")
-      })
-    return () => { cancelled = true }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      // Cleanup: unmount cada field para liberar los iframes
+      mountedFields.forEach((f) => { try { f.unmount() } catch {} })
+      mpInstanceRef.current = null
+    }
   }, [publicKey])
 
-  // Detectar marca cuando cambia el BIN (primeros 6 dígitos del card number).
-  // useCallback porque va al onBinChange del Secure Field — si cambia de
-  // referencia, el SDK MP re-monta el iframe y los datos se pierden.
-  const handleBinChange = useCallback(async (arg: { bin?: string }) => {
-    const bin = arg.bin
-    setBinError(null)
-    if (!bin || bin.length < 6) {
-      setPaymentMethodId(null)
-      setPaymentMethodName(null)
-      setPaymentMethodThumbnail(null)
-      return
-    }
-    try {
-      const m = await import("@mercadopago/sdk-react")
-      const res: any = await m.getPaymentMethods({ bin })
-      const result = res?.results?.[0]
-      if (result) {
-        setPaymentMethodId(result.id)
-        setPaymentMethodName(result.name)
-        setPaymentMethodThumbnail(result.thumbnail ?? result.secure_thumbnail ?? null)
-      } else {
-        setPaymentMethodId(null)
-        setPaymentMethodName(null)
-        setPaymentMethodThumbnail(null)
-        setBinError("No reconocemos esta tarjeta. Probá con otra.")
-      }
-    } catch (e) {
-      console.warn("[MP custom] getPaymentMethods failed", e)
-      setBinError("No pudimos validar la tarjeta. Verificá tu conexión.")
-    }
-  }, [])
-
-  // Validez total del form — el botón se habilita cuando todo está OK
+  // Validez total — el botón se habilita cuando todo está OK
   const formValid =
     cardNumberValid &&
     expirationValid &&
@@ -177,19 +195,19 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payerEmail.trim()) &&
     !!paymentMethodId
 
-  // Submit programático — lo dispara el botón del modal padre
+  // Submit programático que llama el botón del modal padre
   useImperativeHandle(ref, () => ({
     submit: async (): Promise<CardFormData | { error: string }> => {
       if (!sdkReady) return { error: "Mercado Pago todavía está cargando." }
       if (!paymentMethodId) return { error: "No pudimos identificar la tarjeta. Revisá el número." }
       if (!formValid) return { error: "Faltan datos o son incorrectos. Revisá los campos." }
+      const mp = mpInstanceRef.current
+      if (!mp) return { error: "El formulario perdió la conexión con MP. Refrescá la página." }
 
       try {
-        const m = await import("@mercadopago/sdk-react")
-        // El método de createCardToken para Secure Fields toma SOLO los
-        // datos no sensibles — el SDK lee los valores de los iframes
-        // internamente, así nosotros nunca tocamos número/cvv/exp.
-        const token: any = await m.createCardToken({
+        // Con Secure Fields, createCardToken solo recibe los datos NO sensibles
+        // — el SDK lee internamente número/cvv/exp de los iframes.
+        const token: any = await mp.fields.createCardToken({
           cardholderName: cardholderName.trim(),
           identificationType: docType,
           identificationNumber: docNumber.trim().replace(/\D/g, ""),
@@ -210,13 +228,9 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
     },
   }), [sdkReady, paymentMethodId, formValid, cardholderName, docType, docNumber, payerEmail])
 
-  // onSubmit estable para que el <form> no re-monte en cada render del padre
+  // onSubmit estable
   const onFormSubmit = useCallback((e: React.FormEvent) => e.preventDefault(), [])
 
-  // autoComplete="off" + name random evita que Chrome/Galicia/etc ofrezcan
-  // tarjetas guardadas que no pueden insertarse en los iframes de los
-  // Secure Fields — el dropdown del navegador quedaba flotando encima del
-  // form. role="presentation" ayuda a que algunos browsers lo respeten más.
   return (
     <form
       autoComplete="off"
@@ -224,9 +238,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
       onSubmit={onFormSubmit}
       className="space-y-4"
     >
-      {/* Trampa anti-autofill: input invisible que Chrome rellena en lugar
-          de los reales. Truco recomendado por OWASP cuando autoComplete:off
-          no alcanza. */}
+      {/* Trampa anti-autofill */}
       <input
         type="text"
         name={trapName}
@@ -235,19 +247,12 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
         aria-hidden="true"
         className="absolute opacity-0 pointer-events-none w-0 h-0"
       />
-      {/* Número de tarjeta */}
+
+      {/* Número de tarjeta — el SDK MP monta su iframe DENTRO de este div */}
       <FieldWrapper label="Número de tarjeta">
         <div className="relative bg-[#0d0f15] border border-gray-800 hover:border-gray-700 focus-within:border-purple-500 rounded-xl px-4 py-[15px] transition-colors h-[52px]">
-          {sdkReady ? (
-            <CardNumber
-              placeholder="1234 1234 1234 1234"
-              style={SECURE_FIELD_STYLE}
-              onBinChange={handleBinChange}
-              onValidityChange={handleCardValidity}
-            />
-          ) : (
-            <SkeletonInput />
-          )}
+          <div id="mp-card-number" className="h-full" />
+          {!sdkReady && <SkeletonInput />}
           {paymentMethodThumbnail && (
             <img
               src={paymentMethodThumbnail}
@@ -272,30 +277,15 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
       <div className="grid grid-cols-2 gap-3">
         <FieldWrapper label="Vencimiento">
           <div className="bg-[#0d0f15] border border-gray-800 hover:border-gray-700 focus-within:border-purple-500 rounded-xl px-4 py-[15px] transition-colors h-[52px]">
-            {sdkReady ? (
-              <ExpirationDate
-                placeholder="MM/AA"
-                mode="short"
-                style={SECURE_FIELD_STYLE}
-                onValidityChange={handleExpirationValidity}
-              />
-            ) : (
-              <SkeletonInput />
-            )}
+            <div id="mp-expiration-date" className="h-full" />
+            {!sdkReady && <SkeletonInput />}
           </div>
         </FieldWrapper>
 
         <FieldWrapper label="Código de seguridad">
           <div className="bg-[#0d0f15] border border-gray-800 hover:border-gray-700 focus-within:border-purple-500 rounded-xl px-4 py-[15px] transition-colors h-[52px]">
-            {sdkReady ? (
-              <SecurityCode
-                placeholder="CVV"
-                style={SECURE_FIELD_STYLE}
-                onValidityChange={handleSecurityCodeValidity}
-              />
-            ) : (
-              <SkeletonInput />
-            )}
+            <div id="mp-security-code" className="h-full" />
+            {!sdkReady && <SkeletonInput />}
           </div>
         </FieldWrapper>
       </div>
@@ -334,7 +324,7 @@ export const MPCustomCardForm = forwardRef<MPCustomCardFormHandle, Props>(functi
             value={docNumber}
             onChange={(e) => setDocNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
             placeholder="12345678"
-            className="w-full bg-[#0d0f15] border border-gray-800 hover:border-gray-700 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 rounded-xl px-4 py-[14px] text-white placeholder-gray-500 text-[15px] font-medium transition-colors tabular-nums"
+            className="w-full bg-[#0d0f15] border border-gray-800 hover:border-gray-700 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 rounded-xl px-4 h-[52px] text-white placeholder-gray-500 text-[15px] font-medium transition-colors tabular-nums"
           />
         </FieldWrapper>
       </div>
@@ -367,6 +357,6 @@ function FieldWrapper({ label, children }: { label: string; children: React.Reac
 
 function SkeletonInput() {
   return (
-    <div className="h-5 bg-gray-800/40 rounded animate-pulse" />
+    <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-5 bg-gray-800/40 rounded animate-pulse" />
   )
 }
