@@ -77,7 +77,7 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
     return d.toISOString().split("T")[0]
   })
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0])
-  const [preset, setPreset] = useState<"7d" | "30d" | "90d" | "custom">("30d")
+  const [preset, setPreset] = useState<"1d" | "7d" | "30d" | "90d" | "custom">("30d")
 
   const load = async () => {
     setLoading(true)
@@ -119,7 +119,9 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
     setPreset(p)
     const now = new Date()
     const start = new Date()
-    if (p === "7d") start.setDate(now.getDate() - 7)
+    if (p === "1d") {
+      // "Hoy" — desde 00:00 hasta ahora
+    } else if (p === "7d") start.setDate(now.getDate() - 7)
     else if (p === "30d") start.setDate(now.getDate() - 30)
     else if (p === "90d") start.setDate(now.getDate() - 90)
     else return
@@ -148,10 +150,10 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
           <p className="text-gray-400 text-sm mt-1">Análisis de ventas y rentabilidad</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {(["7d", "30d", "90d"] as const).map(p => (
+          {(["1d", "7d", "30d", "90d"] as const).map(p => (
             <button key={p} onClick={() => applyPreset(p)}
               className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${preset === p ? "bg-purple-600 text-white" : "bg-gray-800 hover:bg-gray-700 text-gray-300"}`}>
-              {p === "7d" ? "7 días" : p === "30d" ? "30 días" : "90 días"}
+              {p === "1d" ? "Hoy" : p === "7d" ? "7 días" : p === "30d" ? "30 días" : "90 días"}
             </button>
           ))}
           <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-1.5 border border-gray-700">
