@@ -6,6 +6,7 @@ import { slugify } from "@/lib/utils"
 import { issueEmailCode, EMAIL_CODE_TTL_MIN } from "@/lib/email-verification"
 import { sendEmail } from "@/lib/email"
 import { renderEmailVerificationCode } from "@/lib/email-templates"
+import { syncUserToSheet } from "@/lib/sheets-sync"
 
 const VALID_BUSINESS_TYPES = [
   "KIOSCO",
@@ -375,6 +376,9 @@ export async function POST(req: Request) {
       plan,
       promoApplied: !!promoApplied,
     })
+
+    // Push to Google Sheet "Usuarios" — fire & forget.
+    if (createdUserId) syncUserToSheet(createdUserId)
 
     return NextResponse.json(
       {

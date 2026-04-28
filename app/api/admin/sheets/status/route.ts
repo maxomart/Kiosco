@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
+import { isConfigured } from "@/lib/sheets-sync"
 
 export const dynamic = "force-dynamic"
 
-/**
- * Devuelve el SHEETS_EXPORT_TOKEN al admin para mostrarlo en /admin/exportar.
- * Sólo accesible por SUPER_ADMIN — el token es secreto y nunca se cachea.
- */
+/** Devuelve si los 2 webhooks de Sheets están configurados. */
 export async function GET() {
   const session = await auth()
   if (!session || session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
-  const token = process.env.SHEETS_EXPORT_TOKEN ?? null
-  return NextResponse.json({ token: token && token.length >= 16 ? token : null })
+  return NextResponse.json({
+    users: isConfigured("users"),
+    payments: isConfigured("payments"),
+    secret: !!process.env.SHEETS_WEBHOOK_SECRET,
+  })
 }

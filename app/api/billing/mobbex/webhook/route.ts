@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { PLAN_PRICES_ARS, type Plan } from "@/lib/utils"
+import { syncPaymentToSheet } from "@/lib/sheets-sync"
 
 export const dynamic = "force-dynamic"
 
@@ -82,17 +83,20 @@ async function handleEvent({
     })
     // Create invoice
     const externalId = `mobbex_${subscriberUid}_${Date.now()}`
-    await db.invoice.create({
-      data: {
-        subscriptionId: sub.id,
-        number: `MBX-${subscriberUid.slice(0, 8).toUpperCase()}`,
-        stripeInvoiceId: externalId,
-        amount: total,
-        currency: "ARS",
-        status: "PAID",
-        paidAt: new Date(),
-      },
-    }).catch(e => console.error("[mobbex/webhook] invoice failed:", e))
+    try {
+      const inv = await db.invoice.create({
+        data: {
+          subscriptionId: sub.id,
+          number: `MBX-${subscriberUid.slice(0, 8).toUpperCase()}`,
+          stripeInvoiceId: externalId,
+          amount: total,
+          currency: "ARS",
+          status: "PAID",
+          paidAt: new Date(),
+        },
+      })
+      syncPaymentToSheet(inv.id)
+    } catch (e) { console.error("[mobbex/webhook] invoice failed:", e) }
     return
   }
 

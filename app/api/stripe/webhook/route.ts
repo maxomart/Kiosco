@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import type Stripe from "stripe"
 import { db } from "@/lib/db"
 import { getStripe } from "@/lib/stripe"
+import { syncPaymentToSheet } from "@/lib/sheets-sync"
 
 export const dynamic = "force-dynamic"
 
@@ -83,18 +84,21 @@ export async function POST(req: NextRequest) {
         })
         const invoiceNumber = invoice.number ?? invoice.id ?? `inv_${Date.now()}`
         const paidAtTs = invoice.status_transitions?.paid_at
-        await db.invoice.create({
-          data: {
-            subscriptionId: dbSub.id,
-            number: invoiceNumber,
-            stripeInvoiceId: invoice.id ?? null,
-            amount: invoice.amount_paid / 100,
-            currency: invoice.currency.toUpperCase(),
-            status: "PAID",
-            paidAt: paidAtTs ? new Date(paidAtTs * 1000) : new Date(),
-            pdfUrl: invoice.invoice_pdf ?? invoice.hosted_invoice_url ?? null,
-          },
-        }).catch((e) => { console.error("invoice insert failed:", e) })
+        try {
+          const inv = await db.invoice.create({
+            data: {
+              subscriptionId: dbSub.id,
+              number: invoiceNumber,
+              stripeInvoiceId: invoice.id ?? null,
+              amount: invoice.amount_paid / 100,
+              currency: invoice.currency.toUpperCase(),
+              status: "PAID",
+              paidAt: paidAtTs ? new Date(paidAtTs * 1000) : new Date(),
+              pdfUrl: invoice.invoice_pdf ?? invoice.hosted_invoice_url ?? null,
+            },
+          })
+          syncPaymentToSheet(inv.id)
+        } catch (e) { console.error("invoice insert failed:", e) }
         break
       }
 

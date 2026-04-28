@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { getPreapproval, searchPaymentsByPreapproval, searchPreapprovalsByTenant } from "@/lib/mp-billing"
 import { PLAN_PRICES_ARS, type Plan } from "@/lib/utils"
+import { syncPaymentToSheet } from "@/lib/sheets-sync"
 
 const ANNUAL_DISCOUNT = 0.2
 
@@ -23,7 +24,7 @@ async function backfillInvoices(subscriptionId: string, preapprovalId: string, f
     const externalId = `mp_${payment.id}`
     const existing = await db.invoice.findFirst({ where: { stripeInvoiceId: externalId } })
     if (existing) continue
-    await db.invoice.create({
+    const inv = await db.invoice.create({
       data: {
         subscriptionId,
         number: `MP-${payment.id}`,
@@ -34,13 +35,14 @@ async function backfillInvoices(subscriptionId: string, preapprovalId: string, f
         paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
       },
     })
+    syncPaymentToSheet(inv.id)
     created++
   }
   if (created === 0 && fallbackAmount > 0) {
     const externalId = `mp_preapproval_${preapprovalId}`
     const existing = await db.invoice.findFirst({ where: { stripeInvoiceId: externalId } })
     if (!existing) {
-      await db.invoice.create({
+      const inv = await db.invoice.create({
         data: {
           subscriptionId,
           number: `MP-${preapprovalId.slice(0, 8).toUpperCase()}`,
@@ -51,6 +53,7 @@ async function backfillInvoices(subscriptionId: string, preapprovalId: string, f
           paidAt: new Date(),
         },
       })
+      syncPaymentToSheet(inv.id)
       created++
     }
   }

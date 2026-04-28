@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { getPreapproval, searchPaymentsByPreapproval, searchPreapprovalsByTenant } from "@/lib/mp-billing"
 import { PLAN_PRICES_ARS, type Plan } from "@/lib/utils"
+import { syncPaymentToSheet } from "@/lib/sheets-sync"
 
 export const dynamic = "force-dynamic"
 
@@ -30,18 +31,21 @@ async function createInvoicesFromPayments(
     const externalId = `mp_${payment.id}`
     const existing = await db.invoice.findFirst({ where: { stripeInvoiceId: externalId } })
     if (existing) continue
-    await db.invoice.create({
-      data: {
-        subscriptionId,
-        number: `MP-${payment.id}`,
-        stripeInvoiceId: externalId,
-        amount: Number(payment.transaction_amount ?? 0),
-        currency: (payment.currency_id ?? "ARS").toUpperCase(),
-        status: "PAID",
-        paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
-      },
-    }).catch(e => console.error("[mp/sync] invoice create failed:", e))
-    created++
+    try {
+      const inv = await db.invoice.create({
+        data: {
+          subscriptionId,
+          number: `MP-${payment.id}`,
+          stripeInvoiceId: externalId,
+          amount: Number(payment.transaction_amount ?? 0),
+          currency: (payment.currency_id ?? "ARS").toUpperCase(),
+          status: "PAID",
+          paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
+        },
+      })
+      syncPaymentToSheet(inv.id)
+      created++
+    } catch (e) { console.error("[mp/sync] invoice create failed:", e) }
   }
 
   // If MP hasn't processed the payment yet, create a synthetic PAID invoice
@@ -49,17 +53,20 @@ async function createInvoicesFromPayments(
     const externalId = `mp_preapproval_${preapprovalId}`
     const existing = await db.invoice.findFirst({ where: { stripeInvoiceId: externalId } })
     if (!existing) {
-      await db.invoice.create({
-        data: {
-          subscriptionId,
-          number: `MP-${preapprovalId.slice(0, 8).toUpperCase()}`,
-          stripeInvoiceId: externalId,
-          amount: fallbackAmount,
-          currency: "ARS",
-          status: "PAID",
-          paidAt: new Date(),
-        },
-      }).catch(e => console.error("[mp/sync] fallback invoice failed:", e))
+      try {
+        const inv = await db.invoice.create({
+          data: {
+            subscriptionId,
+            number: `MP-${preapprovalId.slice(0, 8).toUpperCase()}`,
+            stripeInvoiceId: externalId,
+            amount: fallbackAmount,
+            currency: "ARS",
+            status: "PAID",
+            paidAt: new Date(),
+          },
+        })
+        syncPaymentToSheet(inv.id)
+      } catch (e) { console.error("[mp/sync] fallback invoice failed:", e) }
     }
   }
 }

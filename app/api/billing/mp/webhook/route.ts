@@ -6,6 +6,7 @@ import {
   getPayment,
 } from "@/lib/mp-billing"
 import { PLAN_PRICES_ARS, type Plan } from "@/lib/utils"
+import { syncPaymentToSheet } from "@/lib/sheets-sync"
 
 export const dynamic = "force-dynamic"
 
@@ -170,17 +171,20 @@ async function handlePayment(paymentId: string) {
     },
   })
 
-  await db.invoice.create({
-    data: {
-      subscriptionId: sub.id,
-      number: `MP-${payment.id}`,
-      stripeInvoiceId: externalId,
-      amount: Number(payment.transaction_amount ?? 0),
-      currency: (payment.currency_id ?? "ARS").toUpperCase(),
-      status: "PAID",
-      paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
-    },
-  }).catch((e) => {
+  try {
+    const invoice = await db.invoice.create({
+      data: {
+        subscriptionId: sub.id,
+        number: `MP-${payment.id}`,
+        stripeInvoiceId: externalId,
+        amount: Number(payment.transaction_amount ?? 0),
+        currency: (payment.currency_id ?? "ARS").toUpperCase(),
+        status: "PAID",
+        paidAt: payment.date_approved ? new Date(payment.date_approved) : new Date(),
+      },
+    })
+    syncPaymentToSheet(invoice.id)
+  } catch (e) {
     console.error("[mp/webhook] invoice insert failed:", e)
-  })
+  }
 }
