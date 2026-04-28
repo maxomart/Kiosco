@@ -4,61 +4,42 @@ const isDev = process.env.NODE_ENV !== "production"
 
 // Content Security Policy — ajustar connect-src según integraciones
 //
-// Mercado Pago Brick necesita ~10 dominios distintos: sdk + assets +
-// telemetría + anti-fraude (mercadolibre.com hace device fingerprinting
-// para detectar tarjetas robadas). Sin todos estos el formulario carga
-// pero se traba al enviar.
-const MP_DOMAINS = {
-  scripts: [
-    "https://sdk.mercadopago.com",
-    "https://http2.mlstatic.com",
-    "https://www.mercadolibre.com",
-  ],
-  styles: ["https://http2.mlstatic.com"],
-  fonts: ["https://http2.mlstatic.com"],
-  connect: [
-    "https://api.mercadopago.com",
-    "https://api.mercadolibre.com",
-    "https://events.mercadopago.com",
-    "https://http2.mlstatic.com",
-    "https://www.mercadolibre.com",
-    "https://www.mercadopago.com",
-    "https://www.mercadopago.com.ar",
-  ],
-  frames: [
-    "https://www.mercadopago.com",
-    "https://www.mercadopago.com.ar",
-    "https://www.mercadolibre.com",
-    "https://sdk.mercadopago.com",
-    "https://http2.mlstatic.com",
-  ],
-}
+// Mercado Pago Brick necesita TODA la familia de dominios (mp + ml + mlstatic),
+// con subdominios variables para CDN/anti-fraude/telemetría. Usamos wildcards
+// para no jugar al "agregar dominio cada vez que MP saca uno nuevo".
+const MP_DOMAINS = [
+  "https://*.mercadopago.com",
+  "https://*.mercadopago.com.ar",
+  "https://*.mercadolibre.com",
+  "https://*.mlstatic.com",
+  "https://*.mlcdn.com",
+]
 
 const cspDirectives: Record<string, string[]> = {
   "default-src": ["'self'"],
   "script-src": [
     "'self'",
     "'unsafe-inline'",
-    ...MP_DOMAINS.scripts,
+    ...MP_DOMAINS,
     ...(isDev ? ["'unsafe-eval'"] : []),
   ],
-  "style-src": ["'self'", "'unsafe-inline'", ...MP_DOMAINS.styles],
+  "style-src": ["'self'", "'unsafe-inline'", ...MP_DOMAINS],
   "img-src": ["'self'", "data:", "blob:", "https:"],
-  "font-src": ["'self'", "data:", ...MP_DOMAINS.fonts],
+  "font-src": ["'self'", "data:", ...MP_DOMAINS],
   "connect-src": [
     "'self'",
     "https://api.openai.com",
     "https://api.anthropic.com",
     "https://api.stripe.com",
     "https://api.twilio.com",
-    ...MP_DOMAINS.connect,
+    ...MP_DOMAINS,
     ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
   ],
   "frame-src": [
     "'self'",
     "https://js.stripe.com",
     "https://hooks.stripe.com",
-    ...MP_DOMAINS.frames,
+    ...MP_DOMAINS,
   ],
   "frame-ancestors": ["'none'"],
   "form-action": ["'self'"],

@@ -8,7 +8,14 @@ import { motion } from "framer-motion"
 import toast from "react-hot-toast"
 import { BillingToggle, type BillingPeriod } from "@/components/shared/BillingToggle"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
-import { MPCardModal } from "@/components/billing/MPCardModal"
+import dynamic from "next/dynamic"
+
+// Modal con MP Brick — SSR off para evitar hydration mismatch (#418).
+// El SDK de MP toca window al inicializar y eso rompe el render del server.
+const MPCardModal = dynamic(
+  () => import("@/components/billing/MPCardModal").then((m) => m.MPCardModal),
+  { ssr: false }
+)
 
 function ArrowDownIcon() {
   return <ArrowDown size={12} />
