@@ -79,134 +79,128 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tenant no encontrado" }, { status: 404 })
   }
 
-  // Crear preapproval autorizado de una con card_token_id. MP cobra la
-  // primera cuota inmediatamente y guarda la tarjeta para las siguientes.
-  const mpBody = {
-    reason: `Orvex ${PLAN_LABELS_AR[plan]} ${period === "annual" ? "anual" : "mensual"}`,
-    external_reference: tenantId!,
-    payer_email: body.payerEmail.trim().toLowerCase(),
-    card_token_id: body.cardTokenId,
-    auto_recurring: {
-      frequency: 1,
-      frequency_type: period === "annual" ? "months" : "months", // MP no soporta "years" → 12 meses si anual
-      transaction_amount: amount,
-      currency_id: "ARS",
-    },
-    back_url: `${process.env.NEXTAUTH_URL ?? ""}/configuracion/suscripcion?mp=success`,
-    status: "authorized",
-  }
+  const payerEmail = body.payerEmail.trim().toLowerCase()
+  const planLabel = PLAN_LABELS_AR[plan]
 
-  let preapproval: any
-  console.log(`[mp/subscribe-with-card] tenant=${tenantId} plan=${plan} amount=${amount} starting MP request...`)
+  // ── PASO 1: COBRAR EL PRIMER PAGO (síncrono) ────────────────────────
+  // /v1/payments es síncrono — MP devuelve approved/rejected en la misma
+  // respuesta, no async como /preapproval. Esto evita que digamos "OK"
+  // sin saber si MP cobró posta. binary_mode garantiza que NO devuelva
+  // "pending" — es approved o rejected, sin grises.
+  console.log(`[mp/subscribe-with-card] tenant=${tenantId} plan=${plan} amount=${amount} starting payment...`)
+  let firstPayment: any
   try {
-    const res = await fetch(`${MP_API}/preapproval`, {
+    const payRes = await fetch(`${MP_API}/v1/payments`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        // Idempotency key — si el user reintenta, MP no cobra dos veces
+        "X-Idempotency-Key": `orvex-${tenantId}-${body.cardTokenId.slice(0, 24)}`,
       },
-      body: JSON.stringify(mpBody),
-      signal: AbortSignal.timeout(20_000),
+      body: JSON.stringify({
+        transaction_amount: amount,
+        token: body.cardTokenId,
+        description: `Orvex ${planLabel} ${period === "annual" ? "anual" : "mensual"}`,
+        payment_method_id: (body as any).paymentMethodId,
+        installments: 1,
+        payer: { email: payerEmail },
+        external_reference: tenantId!,
+        binary_mode: true,
+        metadata: { plan, period, tenant_id: tenantId },
+      }),
+      signal: AbortSignal.timeout(25_000),
     })
-    const text = await res.text()
-    console.log(`[mp/subscribe-with-card] MP responded status=${res.status} body=${text}`)
-    if (!res.ok) {
-      console.error("[mp/subscribe-with-card] MP error:", res.status, text)
-      console.error("[mp/subscribe-with-card] MP request body was:", JSON.stringify(mpBody))
-      let friendly = "No se pudo procesar el pago. Probá con otra tarjeta."
-      const lower = text.toLowerCase()
-      if (lower.includes("cc_rejected_insufficient_amount")) friendly = "Fondos insuficientes en la tarjeta."
-      else if (lower.includes("cc_rejected_bad_filled_security_code")) friendly = "El código de seguridad es incorrecto."
-      else if (lower.includes("cc_rejected_bad_filled_date")) friendly = "La fecha de vencimiento es incorrecta."
-      else if (lower.includes("cc_rejected_high_risk")) friendly = "El pago fue rechazado por riesgo. Probá con otra tarjeta."
-      else if (lower.includes("cc_rejected_call_for_authorize")) friendly = "Tenés que autorizar el pago con tu banco."
-      else if (lower.includes("cc_rejected_other_reason")) friendly = "La tarjeta rechazó el pago. Probá con otra."
-      else if (lower.includes("invalid_card")) friendly = "La tarjeta no es válida."
-      return NextResponse.json({ error: friendly, detail: text }, { status: 502 })
-    }
-    preapproval = JSON.parse(text)
-    console.log(`[mp/subscribe-with-card] preapproval created id=${preapproval?.id} status=${preapproval?.status}`)
+    const payText = await payRes.text()
+    console.log(`[mp/subscribe-with-card] payment status=${payRes.status} body=${payText.slice(0, 300)}`)
+    firstPayment = JSON.parse(payText)
   } catch (err: any) {
-    console.error("[mp/subscribe-with-card] network error:", err?.message, err?.name)
+    console.error("[mp/subscribe-with-card] payment network error:", err?.message)
     const isTimeout = err?.name === "TimeoutError" || err?.name === "AbortError"
     return NextResponse.json({
-      error: isTimeout
-        ? "Mercado Pago tardó demasiado en responder. Probá de nuevo."
-        : "Error de red con Mercado Pago",
+      error: isTimeout ? "Mercado Pago tardó demasiado en responder. Probá de nuevo." : "Error de red con Mercado Pago",
     }, { status: 502 })
   }
 
-  // ── VERIFICAR EL PRIMER COBRO REAL ──────────────────────────────────
-  // Crear el preapproval NO significa que MP haya cobrado — sólo que la
-  // tarjeta es válida y MP la guardó. El primer pago se procesa async.
-  // Polleamos el endpoint de payments hasta confirmar que el primer
-  // payment está "approved", o reportamos error al user.
-  console.log(`[mp/subscribe-with-card] polling payments for preapproval ${preapproval.id}...`)
-  let firstPayment: any = null
-  const maxAttempts = 8 // hasta ~16s
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise((r) => setTimeout(r, 2000))
-    try {
-      const payRes = await fetch(
-        `${MP_API}/preapproval/${encodeURIComponent(preapproval.id)}/payment`,
-        { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8_000) }
-      )
-      if (payRes.ok) {
-        const payData = await payRes.json()
-        const results = payData?.results ?? payData?.payments ?? []
-        if (results.length > 0) {
-          firstPayment = results[0]
-          console.log(`[mp/subscribe-with-card] payment found attempt=${i + 1} status=${firstPayment.status}`)
-          if (firstPayment.status === "approved" || firstPayment.status === "rejected") break
-        } else {
-          console.log(`[mp/subscribe-with-card] no payments yet attempt=${i + 1}`)
-        }
-      }
-    } catch (e) {
-      console.warn(`[mp/subscribe-with-card] payment poll attempt=${i + 1} failed`, e)
-    }
-  }
-
-  if (!firstPayment) {
-    // MP nunca generó un payment — la suscripción quedó pending. Mejor
-    // cancelar el preapproval y avisar al user.
-    console.error(`[mp/subscribe-with-card] no payment after ${maxAttempts * 2}s`)
-    return NextResponse.json({
-      error: "Mercado Pago no procesó el cobro. Probá de nuevo o usá otra tarjeta.",
-    }, { status: 502 })
-  }
-
-  if (firstPayment.status !== "approved") {
-    // El cobro fue rechazado (insufficient funds, banco rechazó, etc).
-    const detail = firstPayment.status_detail ?? firstPayment.status
+  if (firstPayment?.status !== "approved") {
+    const detail = firstPayment?.status_detail ?? firstPayment?.message ?? firstPayment?.status ?? "unknown"
     let friendly = "La tarjeta fue rechazada por Mercado Pago."
     const lower = String(detail).toLowerCase()
     if (lower.includes("insufficient_amount")) friendly = "La tarjeta no tiene fondos suficientes."
     else if (lower.includes("call_for_authorize")) friendly = "El banco rechazó el pago. Llamalo o usá otra tarjeta."
     else if (lower.includes("high_risk")) friendly = "Mercado Pago rechazó el pago por seguridad. Probá con otra tarjeta."
-    else if (lower.includes("bad_filled")) friendly = "Hay un dato incorrecto en la tarjeta (CVV o vencimiento)."
+    else if (lower.includes("bad_filled_security_code") || lower.includes("invalid_security_code")) friendly = "El código de seguridad (CVV) es incorrecto."
+    else if (lower.includes("bad_filled_date")) friendly = "La fecha de vencimiento es incorrecta."
+    else if (lower.includes("cvv")) friendly = "El código de seguridad es obligatorio. Volvé a cargar la tarjeta."
+    else if (lower.includes("invalid_card") || lower.includes("invalid_token")) friendly = "La tarjeta no es válida. Volvé a cargarla."
     else if (lower.includes("rejected")) friendly = "La tarjeta fue rechazada. Probá con otra."
-    console.error(`[mp/subscribe-with-card] payment rejected status=${firstPayment.status} detail=${detail}`)
+    console.error(`[mp/subscribe-with-card] payment NOT approved: status=${firstPayment?.status} detail=${detail}`)
     return NextResponse.json({
       error: friendly,
-      detail: `MP payment status: ${firstPayment.status} (${detail})`,
+      detail: `${firstPayment?.status} (${detail})`,
     }, { status: 402 })
   }
 
-  // ── COBRO CONFIRMADO ────────────────────────────────────────────────
-  // Recién acá marcamos la suscripción como ACTIVE y creamos el invoice.
-  console.log(`[mp/subscribe-with-card] payment APPROVED id=${firstPayment.id} amount=${firstPayment.transaction_amount}`)
+  // ── PASO 2: CREAR PREAPPROVAL PARA COBROS RECURRENTES FUTUROS ──────
+  // MP guardó la tarjeta del payment. El preapproval va a cobrar mes a
+  // mes desde el día 30 en adelante (no cobra el día de hoy — eso ya
+  // pasó en el paso 1). status:"authorized" deja la suscripción activa.
+  console.log(`[mp/subscribe-with-card] payment APPROVED id=${firstPayment.id} — creating preapproval for recurring...`)
+  let preapproval: any
+  try {
+    const startDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    const preBody = {
+      reason: `Orvex ${planLabel} ${period === "annual" ? "anual" : "mensual"}`,
+      external_reference: tenantId!,
+      payer_email: payerEmail,
+      card_token_id: body.cardTokenId,
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: "months",
+        transaction_amount: amount,
+        currency_id: "ARS",
+        start_date: startDate,
+      },
+      back_url: `${process.env.NEXTAUTH_URL ?? ""}/configuracion/suscripcion?mp=success`,
+      status: "authorized",
+    }
+    const preRes = await fetch(`${MP_API}/preapproval`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(preBody),
+      signal: AbortSignal.timeout(15_000),
+    })
+    const preText = await preRes.text()
+    console.log(`[mp/subscribe-with-card] preapproval status=${preRes.status} body=${preText.slice(0, 200)}`)
+    if (preRes.ok) {
+      preapproval = JSON.parse(preText)
+    } else {
+      // El payment ya pasó OK. Si el preapproval falla, igual seguimos —
+      // el user pagó el primer mes. Loggeamos para investigar y la
+      // suscripción queda activa por 30 días sin recurrente automático.
+      console.warn(`[mp/subscribe-with-card] preapproval failed but payment OK — continuing`)
+    }
+  } catch (e) {
+    console.warn(`[mp/subscribe-with-card] preapproval error:`, e)
+  }
+
   const now = new Date()
   const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
 
+  // Si preapproval falló, igual marcamos ACTIVE — el user ya pagó el
+  // primer mes. mpPreapprovalId va vacío y la renovación automática
+  // no va a pasar; el user va a tener que re-suscribirse al mes 2.
   await db.subscription.upsert({
     where: { tenantId: tenantId! },
     create: {
       tenantId: tenantId!,
       plan,
       status: "ACTIVE",
-      mpPreapprovalId: preapproval.id,
-      mpStatus: "authorized",
+      mpPreapprovalId: preapproval?.id ?? null,
+      mpStatus: preapproval ? "authorized" : "no_recurring",
       paymentProvider: "mercadopago",
       currentPeriodStart: now,
       currentPeriodEnd: periodEnd,
@@ -214,8 +208,8 @@ export async function POST(req: NextRequest) {
     update: {
       plan,
       status: "ACTIVE",
-      mpPreapprovalId: preapproval.id,
-      mpStatus: "authorized",
+      mpPreapprovalId: preapproval?.id ?? null,
+      mpStatus: preapproval ? "authorized" : "no_recurring",
       paymentProvider: "mercadopago",
       currentPeriodStart: now,
       currentPeriodEnd: periodEnd,
@@ -252,6 +246,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     plan,
-    preapprovalId: preapproval.id,
+    preapprovalId: preapproval?.id ?? null,
+    paymentId: firstPayment.id,
   })
 }
