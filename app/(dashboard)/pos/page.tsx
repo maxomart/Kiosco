@@ -275,7 +275,7 @@ export default function POSPage() {
       {/* LEFT: Search + Products. Pad-bottom on mobile so the floating cart bar doesn't cover the last row. */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 lg:pb-0">
         {/* Search bar */}
-        <div className="relative mb-2 flex-shrink-0">
+        <div data-tour="pos-search" className="relative mb-2 flex-shrink-0">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             ref={searchRef}

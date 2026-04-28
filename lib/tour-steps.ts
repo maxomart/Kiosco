@@ -31,6 +31,11 @@ export type TourStep =
       body: string
       placement?: "top" | "bottom" | "left" | "right" | "auto"
       requiresFeature?: PlanFeature
+      /** When set, the tour pushes this URL before showing the step.
+       *  Lets the walkthrough actually take the user through the app
+       *  (POS → Inventario → Caja → Reportes) instead of explaining
+       *  everything from /inicio. */
+      navigateTo?: string
     }
 
 const BASE_STEPS: TourStep[] = [
@@ -46,42 +51,48 @@ const BASE_STEPS: TourStep[] = [
   {
     id: "pos",
     type: "spotlight",
-    selector: "[data-tour='nav-pos']",
-    title: "POS — donde cobrás",
-    body: "Buscás el producto, sumás al carrito, cobrás. Tarda menos que sacar el cambio. Acepta MODO, MP QR, débito, efectivo y todo.",
-    placement: "right",
+    // Generic — when we navigate to /pos, we spotlight the search bar
+    // (it's the focal point of the page). Falls back to the page main
+    // if the data-tour isn't found.
+    selector: "[data-tour='pos-search'], main",
+    title: "Acá cobrás",
+    body: "Buscás el producto, sumás al carrito, tap Cobrar. Acepta MODO, MP QR, débito, efectivo y más. Tarda menos que sacar el cambio.",
+    placement: "auto",
+    navigateTo: "/pos",
   },
   {
     id: "inventario",
     type: "spotlight",
-    selector: "[data-tour='nav-inventario']",
-    title: "Inventario",
-    body: "Cargá tus productos uno por uno o subí un Excel. La IA categoriza sola lo que esté sin clasificar.",
-    placement: "right",
-    requiresFeature: undefined,
+    selector: "[data-tour='inventario-add'], main",
+    title: "Acá cargás productos",
+    body: "Uno por uno, escaneando códigos, o importando un Excel. La IA categoriza sola los que estén sin clasificar.",
+    placement: "auto",
+    navigateTo: "/inventario",
   },
   {
     id: "caja",
     type: "spotlight",
-    selector: "[data-tour='nav-caja']",
-    title: "Caja",
-    body: "Antes de empezar a vender, abrís la caja con el efectivo que tenés. Al cerrar el turno, la app cuadra sola.",
-    placement: "right",
+    selector: "[data-tour='caja-action'], main",
+    title: "Caja del día",
+    body: "Antes de vender abrís caja con el efectivo en mano. Al cerrar turno, la app cuadra sola y te marca diferencias si hubo.",
+    placement: "auto",
+    navigateTo: "/caja",
   },
   {
     id: "reportes",
     type: "spotlight",
-    selector: "[data-tour='nav-reportes']",
-    title: "Reportes",
-    body: "Ventas, ingresos, top productos, comparación con la semana pasada. Y la IA te resume lo importante en castellano.",
-    placement: "right",
+    selector: "[data-tour='reportes-summary'], main",
+    title: "Cómo te va",
+    body: "Ventas, ingresos, top productos, comparativa con períodos anteriores. La IA te tira un brief en castellano sobre lo importante.",
+    placement: "auto",
+    navigateTo: "/reportes",
   },
   {
     id: "ai",
     type: "spotlight",
     selector: "[data-tour='ai-button']",
     title: "Asistente IA",
-    body: "Le hacés preguntas tipo «¿qué se vendió ayer?» y te contesta con tus datos reales. En cualquier pantalla, siempre a mano.",
+    body: "Le hacés preguntas tipo «¿qué se vendió ayer?» y te contesta con tus datos reales. Disponible en cualquier pantalla.",
     placement: "left",
     requiresFeature: "feature:ai_assistant",
   },
@@ -90,7 +101,7 @@ const BASE_STEPS: TourStep[] = [
     type: "spotlight",
     selector: "[data-tour='header']",
     title: "Tu cuenta y plan",
-    body: "Acá ves qué plan tenés activo y entrás a tu perfil. Si querés cambiar de plan o invitar empleados, pasás por Configuración.",
+    body: "Acá ves tu plan activo, soporte y tu perfil. Para cambiar de plan o invitar empleados, andá a Configuración.",
     placement: "bottom",
   },
 ]

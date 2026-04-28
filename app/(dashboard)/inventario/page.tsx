@@ -273,6 +273,7 @@ export default function InventarioPage() {
             const atLimit = !isUnlimited && total >= productLimit
             return (
               <button
+                data-tour="inventario-add"
                 onClick={() => { setEditProduct(null); setShowModal(true) }}
                 disabled={atLimit}
                 title={atLimit ? `Plan ${plan}: máximo ${productLimit} productos` : isUnlimited ? undefined : `${total} / ${productLimit} productos en plan ${plan}`}

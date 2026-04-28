@@ -169,7 +169,7 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div data-tour="reportes-summary" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="bg-gray-900 rounded-xl p-5 border border-gray-800 animate-pulse">
               <div className="h-3 bg-gray-800 rounded mb-3 w-2/3" />
@@ -180,7 +180,7 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
       ) : data ? (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div data-tour="reportes-summary" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <StatBox label="Total ventas" value={String(data.totalSales)} color="blue" />
             <StatBox label="Ingresos" value={formatCurrency(data.totalRevenue)} color="purple" />
             <StatBox label="Costo" value={formatCurrency(data.totalCost)} color="yellow" />

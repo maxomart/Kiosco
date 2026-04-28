@@ -182,7 +182,7 @@ export default function CajaPage() {
                 className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-30 pointer-events-none bg-amber-500"
                 aria-hidden
               />
-              <div className="relative">
+              <div data-tour="caja-action" className="relative">
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-amber-900/40 border border-amber-700/30 flex items-center justify-center">

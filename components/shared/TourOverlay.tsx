@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowRight, ArrowLeft, X, Sparkles, CheckCircle2 } from "lucide-react"
 import type { Plan } from "@/lib/utils"
@@ -56,39 +57,85 @@ export default function TourOverlay({ plan, upgradedFrom }: Props) {
   const [rect, setRect] = useState<SpotlightRect | null>(null)
   const [done, setDone] = useState(false)
   const finishedRef = useRef(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  // Tracks navigations the tour itself triggered, so we don't mistake
+  // the user for "left the tour" when we just pushed them to /pos.
+  const programmaticNavRef = useRef(false)
+  // The set of URLs the tour intends to visit during its run. Lets us
+  // distinguish "user clicked Inventario in the sidebar (legit navigation,
+  // tour should follow)" from "user opened the URL bar and went to Google".
+  const tourPathsRef = useRef(new Set<string>())
+  useEffect(() => {
+    tourPathsRef.current = new Set(
+      steps
+        .filter((s): s is Extract<TourStep, { type: "spotlight" }> => s.type === "spotlight")
+        .map((s) => s.navigateTo)
+        .filter((p): p is string => !!p),
+    )
+    // Also include the path where the tour started so a "back to /inicio"
+    // step is allowed.
+    tourPathsRef.current.add(pathname)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const step = steps[stepIdx]
   const isLast = stepIdx === steps.length - 1
 
-  // Re-measure the spotlight target on step change, scroll, or resize.
-  // The element might be inside a scrollable sidebar so we scroll it into
-  // view first.
+  // Pathname watcher: only finish the tour if the user lands somewhere
+  // we didn't expect. Programmatic navigations (next() calls below) and
+  // navigations to a URL the tour will visit anyway are fine.
+  useEffect(() => {
+    if (programmaticNavRef.current) {
+      programmaticNavRef.current = false
+      return
+    }
+    if (tourPathsRef.current.has(pathname)) return
+    finish(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  // Re-measure the spotlight target on step change, scroll, resize, or
+  // pathname change. After router.push for navigateTo steps, the new
+  // page DOM may not be present on the very first frame — we retry up
+  // to ~600ms (~36 frames) until the selector resolves, then give up
+  // and let the tooltip render centered as a fallback.
   useEffect(() => {
     if (!step || step.type !== "spotlight") {
       setRect(null)
       return
     }
+    let cancelled = false
+    let attempts = 0
+    const MAX_ATTEMPTS = 36
+
     const measure = () => {
+      if (cancelled) return
       const el = document.querySelector<HTMLElement>(step.selector)
       if (!el) {
-        setRect(null)
+        if (attempts++ < MAX_ATTEMPTS) {
+          requestAnimationFrame(measure)
+        } else {
+          setRect(null)
+        }
         return
       }
       el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" })
       const r = el.getBoundingClientRect()
       setRect({ top: r.top, left: r.left, width: r.width, height: r.height })
     }
-    // First measure happens after a frame so the layout settles.
+
     const raf = requestAnimationFrame(measure)
     const onResize = () => measure()
     window.addEventListener("resize", onResize)
     window.addEventListener("scroll", onResize, true)
     return () => {
+      cancelled = true
       cancelAnimationFrame(raf)
       window.removeEventListener("resize", onResize)
       window.removeEventListener("scroll", onResize, true)
     }
-  }, [step])
+  }, [step, pathname])
 
   // Lock body scroll while the tour is up so the user can't drift away
   // from the highlighted element. Restore on unmount.
@@ -124,10 +171,34 @@ export default function TourOverlay({ plan, upgradedFrom }: Props) {
       finish(false)
       return
     }
-    setStepIdx((i) => Math.min(steps.length - 1, i + 1))
+    const nextIdx = Math.min(steps.length - 1, stepIdx + 1)
+    const nextStep = steps[nextIdx]
+    // If the next step has its own URL, push it BEFORE updating stepIdx
+    // so the spotlight doesn't try to measure on the old DOM. We mark
+    // the navigation as programmatic so the pathname-watcher above
+    // doesn't misread it as the user leaving the tour.
+    if (
+      nextStep.type === "spotlight" &&
+      nextStep.navigateTo &&
+      nextStep.navigateTo !== pathname
+    ) {
+      programmaticNavRef.current = true
+      router.push(nextStep.navigateTo)
+    }
+    setStepIdx(nextIdx)
   }
   function back() {
-    setStepIdx((i) => Math.max(0, i - 1))
+    const prevIdx = Math.max(0, stepIdx - 1)
+    const prevStep = steps[prevIdx]
+    if (
+      prevStep.type === "spotlight" &&
+      prevStep.navigateTo &&
+      prevStep.navigateTo !== pathname
+    ) {
+      programmaticNavRef.current = true
+      router.push(prevStep.navigateTo)
+    }
+    setStepIdx(prevIdx)
   }
   async function finish(skipped: boolean) {
     if (finishedRef.current) return
@@ -155,39 +226,32 @@ export default function TourOverlay({ plan, upgradedFrom }: Props) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="fixed inset-0 z-[1000]"
+        // pointer-events-none so the spotlighted area underneath is
+        // clickable (the user can tap "Inventario" and actually navigate).
+        // Children that need clicks (tooltip, skip button, dark veils
+        // outside the spotlight) opt back in with pointer-events-auto.
+        className="fixed inset-0 z-[1000] pointer-events-none"
         aria-modal="true"
         role="dialog"
       >
-        {/* Spotlight cutout — for spotlight steps. The single inset
-            absolute box uses a giant box-shadow as the dark veil so we
-            don't need a separate full-screen overlay layer. */}
+        {/* Spotlight steps: four veils around the highlighted rect leave
+            it transparent + clickable. Replaces the old single-element
+            box-shadow trick because that captured all clicks on the dark
+            area. With four rects we can pointer-events-auto only on the
+            dark parts, so the hole is genuinely interactive. */}
         {step.type === "spotlight" && rect && (
-          <motion.div
-            key={step.id}
-            initial={false}
-            animate={{
-              top: rect.top - SPOTLIGHT_PAD,
-              left: rect.left - SPOTLIGHT_PAD,
-              width: rect.width + SPOTLIGHT_PAD * 2,
-              height: rect.height + SPOTLIGHT_PAD * 2,
-            }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute rounded-xl pointer-events-none"
-            style={{
-              boxShadow:
-                "0 0 0 9999px rgba(2, 6, 23, 0.78), 0 0 0 2px rgba(167, 139, 250, 0.6), 0 0 30px rgba(139, 92, 246, 0.4)",
-            }}
-          />
+          <Veil rect={rect} />
         )}
 
         {/* Plain dark scrim for welcome (no spotlight target). */}
         {step.type === "welcome" && (
-          <div className="absolute inset-0 bg-black/78 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-black/78 backdrop-blur-[2px] pointer-events-auto" />
         )}
 
-        {/* Skip + step counter — always visible on top right */}
-        <div className="absolute top-5 right-5 z-10 flex items-center gap-3 text-xs">
+        {/* Skip + step counter — always visible on top right. pointer-
+            events-auto so the user can actually click them (the parent
+            container is none for the spotlight click-through). */}
+        <div className="absolute top-5 right-5 z-10 flex items-center gap-3 text-xs pointer-events-auto">
           <span className="text-gray-400 tabular-nums">
             {stepIdx + 1} / {steps.length}
           </span>
@@ -249,7 +313,7 @@ function WelcomeCard({
       initial={{ opacity: 0, y: 24, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-      className="absolute inset-0 flex items-center justify-center p-6"
+      className="absolute inset-0 flex items-center justify-center p-6 pointer-events-auto"
     >
       <div className="relative w-full max-w-md">
         <div
@@ -342,7 +406,7 @@ function SpotlightCard({
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className="absolute w-[320px] sm:w-[360px]"
+      className="absolute w-[320px] sm:w-[360px] pointer-events-auto"
       style={cardStyle}
     >
       <div className="bg-gray-950/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl shadow-black/60">
@@ -438,4 +502,83 @@ function clampCardX(x: number): number {
 }
 function clampCardY(y: number): number {
   return Math.max(120, Math.min(window.innerHeight - 120, y))
+}
+
+/* ============================================================================
+   Veil — four absolute rectangles around the spotlight rect that together
+   darken the screen and capture clicks, leaving the spotlight area
+   transparent and pointer-events:auto so the highlighted button/link is
+   actually clickable. Replaces the old box-shadow trick which captured
+   all clicks on the dark area too.
+
+       ┌──────────────────────────┐
+       │           top            │
+       ├────┬──────────────┬──────┤
+       │left│   spotlight  │right │   ← spotlight is the gap
+       │    │   (no veil)  │      │
+       ├────┴──────────────┴──────┤
+       │          bottom          │
+       └──────────────────────────┘
+   ========================================================================== */
+
+const VEIL_BG = "rgba(2, 6, 23, 0.78)"
+const SPOTLIGHT_BORDER =
+  "0 0 0 2px rgba(167, 139, 250, 0.6), 0 0 30px rgba(139, 92, 246, 0.4)"
+
+function Veil({ rect }: { rect: SpotlightRect }) {
+  const top = Math.max(0, rect.top - SPOTLIGHT_PAD)
+  const left = Math.max(0, rect.left - SPOTLIGHT_PAD)
+  const width = rect.width + SPOTLIGHT_PAD * 2
+  const height = rect.height + SPOTLIGHT_PAD * 2
+  const right = left + width
+  const bottom = top + height
+
+  // Each rect is pointer-events-auto so clicks anywhere on the dark area
+  // are absorbed (don't accidentally click stuff under the veil). The
+  // spotlight gap has no rect → clicks pass through to the underlying
+  // sidebar link / button → user navigates.
+  const rectStyle = {
+    background: VEIL_BG,
+    pointerEvents: "auto" as const,
+  }
+  return (
+    <>
+      {/* top */}
+      <motion.div
+        layout
+        className="absolute"
+        style={{ ...rectStyle, top: 0, left: 0, right: 0, height: top }}
+      />
+      {/* left */}
+      <motion.div
+        layout
+        className="absolute"
+        style={{ ...rectStyle, top, left: 0, width: left, height }}
+      />
+      {/* right */}
+      <motion.div
+        layout
+        className="absolute"
+        style={{ ...rectStyle, top, left: right, right: 0, height }}
+      />
+      {/* bottom */}
+      <motion.div
+        layout
+        className="absolute"
+        style={{ ...rectStyle, top: bottom, left: 0, right: 0, bottom: 0 }}
+      />
+      {/* Spotlight border + glow — purely visual, no interaction */}
+      <motion.div
+        layout
+        className="absolute rounded-xl pointer-events-none"
+        style={{
+          top,
+          left,
+          width,
+          height,
+          boxShadow: SPOTLIGHT_BORDER,
+        }}
+      />
+    </>
+  )
 }
