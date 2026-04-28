@@ -387,6 +387,10 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                             visual: {
                               style: {
                                 theme: "dark",
+                                // Sólo variables válidas del SDK MP. Las que no
+                                // existen (inputFocusedBorderColor, fontWeightRegular,
+                                // formInputsBorderRadius, textPrimaryColor, etc) las
+                                // eliminé porque tiraban warnings y no aplicaban.
                                 customVariables: {
                                   // Colores principales
                                   baseColor: "#8b5cf6",
@@ -395,32 +399,33 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
                                   // Fondos
                                   formBackgroundColor: "transparent",
                                   inputBackgroundColor: "#0d0f15",
-                                  // Texto
-                                  textPrimaryColor: "#ffffff",
-                                  textSecondaryColor: "#d1d5db",
-                                  // Bordes
+                                  // Bordes (NOTA: MP no expone color de focus —
+                                  // sólo width. El color hereda de baseColor)
                                   inputBorderWidth: "1px",
-                                  inputFocusedBorderColor: "#8b5cf6",
                                   inputFocusedBorderWidth: "2px",
                                   borderRadiusSmall: "10px",
                                   borderRadiusMedium: "12px",
                                   borderRadiusLarge: "14px",
                                   borderRadiusFull: "9999px",
-                                  formInputsBorderRadius: "12px",
+                                  // Espaciado
                                   formPadding: "0px",
                                   inputVerticalPadding: "18px",
                                   inputHorizontalPadding: "18px",
+                                  // Tipografía
                                   fontSizeExtraSmall: "12px",
                                   fontSizeSmall: "14px",
                                   fontSizeMedium: "16px",
                                   fontSizeLarge: "17px",
-                                  fontWeightRegular: "500",
                                   fontWeightSemiBold: "700",
                                   formInputsTextTransform: "none",
+                                  // Estados
                                   errorColor: "#f87171",
                                   successColor: "#34d399",
+                                  // Botón (aunque está oculto, MP lee estos
+                                  // valores para otros componentes internos)
                                   outlinePrimaryColor: "#8b5cf6",
                                   outlineSecondaryColor: "#7c3aed",
+                                  buttonTextColor: "#ffffff",
                                 },
                               },
                               // Escondemos el botón nativo del Brick — usamos
