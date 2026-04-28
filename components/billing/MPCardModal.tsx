@@ -1,10 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { initMercadoPago, CardPayment } from "@mercadopago/sdk-react"
+import dynamic from "next/dynamic"
+import { initMercadoPago } from "@mercadopago/sdk-react"
 import { X, Lock, AlertCircle, Loader2 } from "lucide-react"
 import toast from "react-hot-toast"
 import { formatCurrency } from "@/lib/utils"
+
+// SSR-off para el Brick — el SDK toca window al inicializar.
+const CardPayment = dynamic(
+  () => import("@mercadopago/sdk-react").then((m) => m.CardPayment),
+  { ssr: false, loading: () => null }
+)
 
 interface Props {
   open: boolean
@@ -22,17 +29,27 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sdkReady, setSdkReady] = useState(false)
+  const [missingKey, setMissingKey] = useState(false)
 
   useEffect(() => {
     if (!open) return
+    setError(null)
+    setSubmitting(false)
     const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY
     if (!publicKey) {
-      setError("Falta NEXT_PUBLIC_MP_PUBLIC_KEY en el servidor.")
+      setMissingKey(true)
       return
     }
+    setMissingKey(false)
     if (!sdkInitialized) {
-      initMercadoPago(publicKey, { locale: "es-AR" })
-      sdkInitialized = true
+      try {
+        initMercadoPago(publicKey, { locale: "es-AR" })
+        sdkInitialized = true
+      } catch (e) {
+        console.error("[MP] initMercadoPago failed", e)
+        setError("No se pudo inicializar Mercado Pago. Refrescá la página.")
+        return
+      }
     }
     setSdkReady(true)
   }, [open])
@@ -73,7 +90,7 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-800 flex-shrink-0">
           <div>
@@ -103,6 +120,16 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
             </p>
           </div>
 
+          {missingKey && (
+            <div className="bg-amber-950/40 border border-amber-800/40 rounded-lg p-3 flex gap-2 text-xs">
+              <AlertCircle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-amber-200">
+                Falta la <strong>NEXT_PUBLIC_MP_PUBLIC_KEY</strong> en Railway. Sin esa variable el formulario de
+                tarjeta no puede cargarse. Agregala y redeployá.
+              </p>
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-950/40 border border-red-800/40 rounded-lg p-3 flex gap-2 text-xs">
               <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
@@ -110,39 +137,37 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
             </div>
           )}
 
-          {!sdkReady ? (
-            <div className="flex items-center justify-center py-12 text-gray-400 gap-2 text-sm">
-              <Loader2 size={16} className="animate-spin" /> Cargando formulario seguro...
-            </div>
-          ) : (
-            <div className="mp-card-form-wrapper">
-              <CardPayment
-                initialization={{ amount, payer: { email: "" } }}
-                customization={{
-                  visual: {
-                    style: {
-                      theme: "dark",
-                      customVariables: {
-                        baseColor: "#a855f7",
-                        formBackgroundColor: "#111827",
-                        textPrimaryColor: "#f9fafb",
-                        textSecondaryColor: "#9ca3af",
-                        borderRadiusMedium: "10px",
-                        inputBorderWidth: "1px",
-                        inputFocusedBorderColor: "#a855f7",
+          {!missingKey && (
+            <div className="mp-card-form-wrapper min-h-[400px] relative">
+              {!sdkReady ? (
+                <div className="absolute inset-0 flex items-center justify-center text-gray-400 gap-2 text-sm">
+                  <Loader2 size={16} className="animate-spin" /> Cargando formulario seguro...
+                </div>
+              ) : (
+                <CardPayment
+                  key={`${plan}-${amount}-${period}`}
+                  initialization={{ amount }}
+                  customization={{
+                    visual: {
+                      style: {
+                        theme: "dark",
                       },
+                      hideFormTitle: true,
+                      hidePaymentButton: false,
                     },
-                    hideFormTitle: true,
-                    hidePaymentButton: false,
-                  },
-                  paymentMethods: { maxInstallments: 1 }, // suscripción = 1 cuota
-                }}
-                onSubmit={handleSubmit}
-                onError={(err) => {
-                  console.error("[MP brick error]", err)
-                  setError("Hubo un problema con el formulario de tarjeta.")
-                }}
-              />
+                    paymentMethods: { maxInstallments: 1 },
+                  }}
+                  onSubmit={handleSubmit}
+                  onError={(err) => {
+                    console.error("[MP brick error]", err)
+                    const msg = (err as any)?.message ?? (err as any)?.cause?.[0]?.description ?? "Hubo un problema con el formulario de tarjeta."
+                    setError(msg)
+                  }}
+                  onReady={() => {
+                    // Brick listo — limpiamos cualquier mensaje de "cargando"
+                  }}
+                />
+              )}
             </div>
           )}
         </div>
