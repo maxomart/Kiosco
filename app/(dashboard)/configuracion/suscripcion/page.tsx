@@ -8,6 +8,7 @@ import { motion } from "framer-motion"
 import toast from "react-hot-toast"
 import { BillingToggle, type BillingPeriod } from "@/components/shared/BillingToggle"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
+import { MPCardModal } from "@/components/billing/MPCardModal"
 
 function ArrowDownIcon() {
   return <ArrowDown size={12} />
@@ -94,6 +95,9 @@ export default function SuscripcionPage() {
   // different country), MP rejects with "Cannot operate between different
   // countries". We ask explicitly before redirecting.
   const [mpModal, setMpModal] = useState<{ plan: string; email: string; error?: string } | null>(null)
+  // Card-in-app modal (MP Brick) — el flow principal. mpModal queda como
+  // fallback "redirigirme a MP" si por algún motivo el Brick no carga.
+  const [cardModal, setCardModal] = useState<{ plan: "STARTER" | "PROFESSIONAL" | "BUSINESS"; amount: number } | null>(null)
   const confirm = useConfirm()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -634,23 +638,32 @@ export default function SuscripcionPage() {
                     /* isUpgrade */
                     <div className="space-y-2">
                       <button
-                        onClick={() => handleUpgradeMP(plan)}
+                        onClick={() => {
+                          const monthly = PLAN_PRICES_ARS[plan as keyof typeof PLAN_PRICES_ARS]
+                          const amount = period === "annual"
+                            ? Math.round(monthly * 12 * (1 - ANNUAL_DISCOUNT))
+                            : monthly
+                          setCardModal({ plan: plan as "STARTER" | "PROFESSIONAL" | "BUSINESS", amount })
+                        }}
                         disabled={!!upgrading}
                         className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-accent hover:bg-accent-hover text-accent-foreground"
                       >
-                        {upgrading === `mp:${plan}` ? "Redirigiendo..." : (
-                          <>
-                            <CreditCard size={14} />
-                            Mejorar a {PLAN_LABELS_AR[plan]}
-                            {period === "annual" && " (anual)"}
-                          </>
-                        )}
+                        <CreditCard size={14} />
+                        Suscribirme a {PLAN_LABELS_AR[plan]}
+                        {period === "annual" && " (anual)"}
+                      </button>
+                      <button
+                        onClick={() => handleUpgradeMP(plan)}
+                        disabled={!!upgrading}
+                        className="w-full py-1.5 rounded-lg text-[11px] font-medium transition-colors flex items-center justify-center gap-1 disabled:opacity-50 text-gray-500 hover:text-gray-300"
+                      >
+                        {upgrading === `mp:${plan}` ? "Redirigiendo..." : "o pagar redirigiendo a Mercado Pago"}
                       </button>
                       {period === "monthly" && (
                         <button
                           onClick={() => handleUpgradeStripe(plan)}
                           disabled={!!upgrading}
-                          className="w-full py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-gray-800 hover:bg-gray-700 text-gray-400"
+                          className="w-full py-1.5 rounded-lg text-[11px] font-medium transition-colors flex items-center justify-center gap-1 disabled:opacity-50 text-gray-500 hover:text-gray-300"
                         >
                           {upgrading === `stripe:${plan}` ? "Redirigiendo..." : "o pagar con tarjeta internacional (Stripe USD)"}
                         </button>
@@ -740,6 +753,25 @@ export default function SuscripcionPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {cardModal && (
+        <MPCardModal
+          open
+          onClose={() => setCardModal(null)}
+          plan={cardModal.plan}
+          planLabel={PLAN_LABELS_AR[cardModal.plan]}
+          amount={cardModal.amount}
+          period={period}
+          onSuccess={async () => {
+            // Refrescar la subscription para que se vea el plan nuevo
+            try {
+              const res = await fetch("/api/configuracion/suscripcion", { cache: "no-store" })
+              const data = await res.json()
+              setSub(data.subscription)
+            } catch { /* no-op */ }
+          }}
+        />
       )}
     </div>
   )
