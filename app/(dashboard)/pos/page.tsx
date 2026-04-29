@@ -36,6 +36,10 @@ export default function POSPage() {
   const searchRef = useRef<HTMLInputElement>(null)
   // Doble Enter en search → cobrar (sin tener que presionar el atajo)
   const lastEnterRef = useRef<number>(0)
+  // Navegación del grid con flechas — null cuando el foco está en el search.
+  // Number cuando el user bajó al grid con ↓ desde el search.
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const productRefs = useRef<Array<HTMLButtonElement | null>>([])
   // Barcode-scanner buffer en refs (no state) para evitar re-renders en cada
   // keystroke — esos re-renders re-montaban useShortcuts y trababan los atajos.
   const barcodeBufRef = useRef<string>("")
@@ -107,6 +111,19 @@ export default function POSPage() {
     const id = window.setTimeout(() => searchRef.current?.focus(), 80)
     return () => window.clearTimeout(id)
   }, [])
+
+  // Si los productos visibles cambian (búsqueda nueva, cambio de categoría),
+  // resetear la selección — el índice viejo puede apuntar a otro producto.
+  useEffect(() => {
+    setSelectedIndex(null)
+  }, [debouncedQuery, activeCategoryId])
+
+  // Auto-scroll al producto seleccionado para que siempre esté visible
+  useEffect(() => {
+    if (selectedIndex == null) return
+    const btn = productRefs.current[selectedIndex]
+    btn?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  }, [selectedIndex])
 
   // Cache full product catalog on mount so search/scanner work offline.
   // Also used to populate the grid before any search: users see products
@@ -239,6 +256,53 @@ export default function POSPage() {
         ? initialCatalog.filter((p) => p.categoryId === activeCategoryId)
         : initialCatalog)
 
+  // Navegación con flechas en el grid (sólo cuando selectedIndex !== null).
+  // Declarado DESPUÉS de visibleProducts porque depende de él.
+  useEffect(() => {
+    if (selectedIndex == null) return
+
+    const handler = (e: KeyboardEvent) => {
+      const total = visibleProducts.length
+      if (total === 0) return
+
+      // Calcular columnas según viewport (matches el grid Tailwind)
+      const cols = window.innerWidth >= 1024 ? 4 : window.innerWidth >= 640 ? 3 : 2
+
+      if (e.key === "ArrowRight") {
+        e.preventDefault()
+        setSelectedIndex((i) => Math.min((i ?? 0) + 1, total - 1))
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        setSelectedIndex((i) => Math.max((i ?? 0) - 1, 0))
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault()
+        setSelectedIndex((i) => Math.min((i ?? 0) + cols, total - 1))
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault()
+        const next = (selectedIndex ?? 0) - cols
+        if (next < 0) {
+          // Si pasamos arriba del grid, volver al search
+          setSelectedIndex(null)
+          searchRef.current?.focus()
+        } else {
+          setSelectedIndex(next)
+        }
+      } else if (e.key === "Enter") {
+        e.preventDefault()
+        const product = visibleProducts[selectedIndex]
+        if (product) handleAddProduct(product)
+        // handleAddProduct re-focusea el search → reseteamos la selección
+        setSelectedIndex(null)
+      } else if (e.key === "Escape") {
+        e.preventDefault()
+        setSelectedIndex(null)
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [selectedIndex, visibleProducts])
+
   // Wire up configurable keyboard shortcuts
   useShortcuts({
     "pos:search": () => searchRef.current?.focus(),
@@ -309,9 +373,6 @@ export default function POSPage() {
               if (e.key === "Enter") {
                 e.preventDefault()
                 const now = Date.now()
-                // Doble Enter (<700ms entre golpes) → cobrar al toque.
-                // Funciona tanto con query vacío (después de agregar) como
-                // con query escrito si no hay resultado para agregar.
                 if (now - lastEnterRef.current < 700) {
                   lastEnterRef.current = 0
                   if (cart.length === 0) { toast.error("El carrito está vacío"); return }
@@ -320,8 +381,6 @@ export default function POSPage() {
                   return
                 }
                 lastEnterRef.current = now
-                // Single Enter: agrega el primer resultado si hay alguno
-                // visible (no solo cuando hay 1 — eso lo hacía menos útil).
                 if (isSearching && visibleProducts.length > 0) {
                   handleAddProduct(visibleProducts[0])
                 }
@@ -329,6 +388,12 @@ export default function POSPage() {
               if (e.key === "Escape") {
                 setQuery("")
                 lastEnterRef.current = 0
+              }
+              // ↓ desde el search baja al grid de productos
+              if (e.key === "ArrowDown" && visibleProducts.length > 0) {
+                e.preventDefault()
+                setSelectedIndex(0)
+                searchRef.current?.blur()
               }
             }}
             placeholder="Buscar por nombre, código o barcode..."
@@ -395,12 +460,14 @@ export default function POSPage() {
             </div>
           ) : visibleProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-              {visibleProducts.map(p => (
+              {visibleProducts.map((p, i) => (
                 <button
                   key={p.id}
+                  ref={(el) => { productRefs.current[i] = el }}
                   onClick={() => handleAddProduct(p)}
                   className={cn(
                     "bg-gray-800 hover:bg-gray-700 border rounded-xl p-2.5 text-left transition-all active:scale-95",
+                    selectedIndex === i && "ring-2 ring-purple-500 ring-offset-2 ring-offset-gray-950 border-purple-500 bg-gray-700",
                     p.stock <= 0 && !p.soldByWeight
                       ? "border-red-900/50 opacity-60 cursor-not-allowed"
                       : p.stock <= p.minStock
