@@ -184,6 +184,8 @@ export default function POSPage() {
     }
     addToCart({ productId: p.id, productName: p.name, barcode: p.barcode, unitPrice: p.salePrice, costPrice: p.costPrice, stock: p.stock, taxRate: "STANDARD", soldByWeight: p.soldByWeight })
     toast.success(`${p.name} agregado`, { duration: 1200, icon: "🛒" })
+    // Re-focus search para que el siguiente escaneo entre directo
+    requestAnimationFrame(() => searchRef.current?.focus())
   }, [addToCart, cart])
 
   // Barcode-scanner detector. Listener montado una sola vez — usa refs para no
@@ -224,6 +226,8 @@ export default function POSPage() {
     addToCart({ productId: p.id, productName: p.name, barcode: p.barcode, unitPrice: p.salePrice, costPrice: p.costPrice, stock: p.stock, taxRate: "STANDARD", soldByWeight: p.soldByWeight })
     setQuery("")
     setProducts([])
+    // Re-focus inmediato para que el siguiente producto se cargue sin tocar mouse
+    requestAnimationFrame(() => searchRef.current?.focus())
   }
 
   // Grid data: search results when the user types, otherwise the initial
@@ -302,11 +306,13 @@ export default function POSPage() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              // Doble Enter (dos pulsaciones <500ms): cobrar directo
               if (e.key === "Enter") {
+                e.preventDefault()
                 const now = Date.now()
-                if (now - lastEnterRef.current < 500) {
-                  e.preventDefault()
+                // Doble Enter (<700ms entre golpes) → cobrar al toque.
+                // Funciona tanto con query vacío (después de agregar) como
+                // con query escrito si no hay resultado para agregar.
+                if (now - lastEnterRef.current < 700) {
                   lastEnterRef.current = 0
                   if (cart.length === 0) { toast.error("El carrito está vacío"); return }
                   if (!cashOpen) { toast.error("Abrí la caja primero"); return }
@@ -314,14 +320,15 @@ export default function POSPage() {
                   return
                 }
                 lastEnterRef.current = now
-                // Single Enter en search: si hay un único resultado, agregarlo
-                if (visibleProducts.length === 1 && isSearching) {
-                  e.preventDefault()
+                // Single Enter: agrega el primer resultado si hay alguno
+                // visible (no solo cuando hay 1 — eso lo hacía menos útil).
+                if (isSearching && visibleProducts.length > 0) {
                   handleAddProduct(visibleProducts[0])
                 }
               }
               if (e.key === "Escape") {
                 setQuery("")
+                lastEnterRef.current = 0
               }
             }}
             placeholder="Buscar por nombre, código o barcode..."
