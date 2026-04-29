@@ -417,6 +417,31 @@ export default function POSPage() {
           </div>
         </div>
 
+        {/* Hints contextuales — qué tecla hace qué según el estado actual.
+            Compacto, fijo, sin distraer. Ayuda al kiosquero a usar todo
+            con teclado sin abrir el modal de ayuda. */}
+        <div className="flex-shrink-0 mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 px-1">
+          {selectedIndex !== null ? (
+            <>
+              <Hint kbd="←→↑↓" label="navegar" />
+              <Hint kbd="Enter" label="agregar" />
+              <Hint kbd="Esc" label="volver al buscador" />
+            </>
+          ) : isSearching ? (
+            <>
+              <Hint kbd="Enter" label="agregar primero" />
+              <Hint kbd="↓" label="navegar productos" />
+              {cart.length > 0 && <Hint kbd="Enter Enter" label="cobrar" highlight />}
+            </>
+          ) : (
+            <>
+              <Hint kbd="Tipeá" label="para buscar" />
+              <Hint kbd="↓" label="navegar productos" />
+              {cart.length > 0 && <Hint kbd="Enter Enter" label="cobrar" highlight />}
+            </>
+          )}
+        </div>
+
         {/* Category pills (hidden while searching, no point filtering twice) */}
         {!isSearching && categories.length > 0 && (
           <div className="flex-shrink-0 mb-2 flex gap-1.5 overflow-x-auto scrollbar-none pb-1">
@@ -609,5 +634,23 @@ export default function POSPage() {
       />
       </div>
     </div>
+  )
+}
+
+function Hint({ kbd, label, highlight }: { kbd: string; label: string; highlight?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <kbd
+        className={cn(
+          "inline-flex items-center font-mono rounded border px-1.5 py-0.5 text-[10px] leading-none",
+          highlight
+            ? "bg-purple-600/20 border-purple-500/50 text-purple-200 font-bold"
+            : "bg-gray-900 border-gray-700 text-gray-400"
+        )}
+      >
+        {kbd}
+      </kbd>
+      <span className={highlight ? "text-purple-300 font-medium" : "text-gray-500"}>{label}</span>
+    </span>
   )
 }
