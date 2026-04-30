@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
 import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon } from "lucide-react"
@@ -298,6 +298,16 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
+          {/* Logo del kiosco */}
+          {config && (
+            <LogoSection
+              logoUrl={config.logoUrl}
+              onChange={(url) => set("logoUrl", url)}
+              onSave={handleSave}
+              saving={saving}
+            />
+          )}
+
           {/* Email notifications */}
           {config && (
             <EmailNotificationsSection
@@ -414,6 +424,162 @@ export default function ConfiguracionPage() {
       </div>
     </div>
   )
+}
+
+// ============================================================================
+// LogoSection — preview + upload (auto-redimensionado) + quitar logo
+// ============================================================================
+function LogoSection({
+  logoUrl,
+  onChange,
+  onSave,
+  saving,
+}: {
+  logoUrl: string | null
+  onChange: (url: string | null) => void
+  onSave: () => void
+  saving: boolean
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (file: File) => {
+    setError(null)
+    if (!file.type.startsWith("image/")) {
+      setError("El archivo tiene que ser una imagen.")
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("La imagen es muy grande (máx 5 MB antes de comprimir).")
+      return
+    }
+    setUploading(true)
+    try {
+      // Redimensionar a max 256x256 con canvas y exportar como JPEG calidad 85
+      const dataUrl = await resizeImage(file, 256, 0.85)
+      onChange(dataUrl)
+    } catch (e) {
+      console.error("[logo] resize failed", e)
+      setError("No se pudo procesar la imagen. Probá con otra.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+      <div className="flex items-start gap-3 pb-2 border-b border-gray-800/60">
+        <div className="w-9 h-9 rounded-lg bg-accent-soft border border-accent/30 flex items-center justify-center flex-shrink-0">
+          <ImageIcon size={16} className="text-accent" />
+        </div>
+        <div>
+          <h2 className="text-white font-semibold">Logo del kiosco</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Aparece en el sidebar, tickets y facturas. Se redimensiona automático a 256×256 px.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-5">
+        {/* Preview */}
+        <div className="flex-shrink-0">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="w-20 h-20 rounded-xl border border-gray-700 bg-gray-800 object-cover"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-700 bg-gray-800/40 flex items-center justify-center">
+              <ImageIcon size={24} className="text-gray-600" />
+            </div>
+          )}
+        </div>
+
+        {/* Acciones */}
+        <div className="flex-1 space-y-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) handleFile(f)
+              e.currentTarget.value = ""
+            }}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              loading={uploading}
+            >
+              {logoUrl ? "Cambiar imagen" : "Subir imagen"}
+            </Button>
+            {logoUrl && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => onChange(null)}
+              >
+                Quitar
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-500">
+            Formatos: JPG, PNG, WEBP. Tamaño máx 5 MB.
+          </p>
+          {error && (
+            <p className="text-[11px] text-red-400">{error}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 pt-2 border-t border-gray-800">
+        <Button onClick={onSave} loading={saving} size="md">
+          {saving ? "Guardando..." : "Guardar logo"}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Redimensiona una imagen al tamaño máximo dado (manteniendo aspect ratio)
+ * y la devuelve como data URL JPEG. Usado para que el logo nunca pese más de
+ * ~30KB en la DB.
+ */
+async function resizeImage(file: File, maxSize: number, quality: number): Promise<string> {
+  const objectUrl = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.onerror = () => reject(new Error("No se pudo leer la imagen"))
+      i.src = objectUrl
+    })
+    let { width, height } = img
+    const ratio = width / height
+    if (width > height && width > maxSize) {
+      width = maxSize
+      height = Math.round(maxSize / ratio)
+    } else if (height >= width && height > maxSize) {
+      height = maxSize
+      width = Math.round(maxSize * ratio)
+    }
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Canvas no disponible")
+    ctx.drawImage(img, 0, 0, width, height)
+    return canvas.toDataURL("image/jpeg", quality)
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
 }
 
 // ============================================================================

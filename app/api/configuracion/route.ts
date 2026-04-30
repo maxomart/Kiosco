@@ -26,8 +26,19 @@ const putSchema = z.object({
   emailWeeklySummary: z.boolean().optional(),
   emailMonthlySummary: z.boolean().optional(),
   emailIncludeAIInsights: z.boolean().optional(),
-  // Logo (URL string for now — direct upload coming soon)
-  logoUrl: z.string().url("URL inválida").optional().nullable().or(z.literal("")),
+  // Logo: URL externa o data URL (base64) de un upload local. Aceptamos
+  // data:image/...;base64,... para que el user pueda subir desde su PC sin
+  // depender de un servicio externo.
+  logoUrl: z
+    .string()
+    .max(500_000, "Imagen demasiado grande (máx 500KB)")
+    .refine(
+      (s) => !s || /^https?:\/\//.test(s) || s.startsWith("data:image/"),
+      "URL o imagen inválida"
+    )
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   // Loyalty config
   loyaltyEnabled: z.boolean().optional(),
   loyaltyPointsPerPeso: z.number().nonnegative().optional(),
