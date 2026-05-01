@@ -78,6 +78,15 @@ model User {
   // Last plan we showed a "what's new" welcome for. When user upgrades,
   // we compare this to current plan to know if we should pop the modal.
   lastWelcomedPlan String?
+  // ─── Programa de referidos ─────────────────────────────────────────
+  // Código único que el user comparte para que otros se registren con él.
+  // Se genera en signup y nunca cambia. Slug-friendly (12 chars alfanum).
+  referralCode    String?  @unique
+  // Si este user vino por referido, acá guardamos el código que usó.
+  referredByCode  String?
+  // Bonus de meses gratis acumulados por referidos exitosos. Se descuentan
+  // del cobro mensual de MP (la lógica vive en /api/billing/mp/sync).
+  referralBonusMonths Int   @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

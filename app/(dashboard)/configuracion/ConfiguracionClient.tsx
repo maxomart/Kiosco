@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon, Gift, Download } from "lucide-react"
 import { PageTip } from "@/components/shared/PageTip"
 import { BUSINESS_TYPES, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
@@ -151,6 +151,7 @@ export default function ConfiguracionPage() {
     { icon: Users, label: "Usuarios y permisos", href: "/configuracion/usuarios", desc: "Agregar usuarios y roles", color: "text-sky-400", bg: "bg-sky-900/40", border: "border-sky-700/40" },
     { icon: Keyboard, label: "Atajos de teclado", href: "/configuracion/atajos", desc: "Personalizar F1, F2, etc.", color: "text-emerald-400", bg: "bg-emerald-900/40", border: "border-emerald-700/40" },
     { icon: FileCheck2, label: "Facturación AFIP", href: "/configuracion/afip", desc: "Emití facturas A/B/C con CAE", color: "text-amber-400", bg: "bg-amber-900/40", border: "border-amber-700/40", requiredPlan: "STARTER" as const },
+    { icon: Gift, label: "Recomendar Orvex", href: "/configuracion/referidos", desc: "1 mes gratis por cada amigo que se sume", color: "text-emerald-400", bg: "bg-emerald-900/40", border: "border-emerald-700/40" },
     { icon: Building2, label: "Multi-tienda", href: "/configuracion/multi-tienda", desc: "Gestionar varias sucursales", color: "text-purple-400", bg: "bg-purple-900/40", border: "border-purple-700/40", requiredPlan: "BUSINESS" as const },
   ]
 
@@ -391,6 +392,32 @@ export default function ConfiguracionPage() {
               )}
             </div>
           )}
+
+          {/* Backup */}
+          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-3">
+            <div className="flex items-start gap-3 pb-2 border-b border-gray-800/60">
+              <div className="w-9 h-9 rounded-lg bg-blue-900/40 border border-blue-700/40 flex items-center justify-center flex-shrink-0">
+                <Download size={16} className="text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-white font-semibold">Backup completo</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Descargá un Excel con todos tus datos: productos, ventas, clientes, cargas, gastos y configuración.
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">
+              El archivo incluye 8 hojas decoradas con tu historial completo. Útil si necesitás tener una copia local
+              o querés analizar los datos en Excel/Sheets.
+            </p>
+            <a
+              href="/api/configuracion/backup"
+              download
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm w-fit"
+            >
+              <Download size={14} /> Descargar backup
+            </a>
+          </div>
         </div>
 
         {/* ── Right column: personalization (sticky on large screens) ── */}

@@ -7,6 +7,7 @@ import { issueEmailCode, EMAIL_CODE_TTL_MIN } from "@/lib/email-verification"
 import { sendEmail } from "@/lib/email"
 import { renderEmailVerificationCode } from "@/lib/email-templates"
 import { syncUserToSheet } from "@/lib/sheets-sync"
+import { ensureReferralCode, applyReferralOnSignup } from "@/lib/referrals"
 
 const VALID_BUSINESS_TYPES = [
   "KIOSCO",
@@ -44,6 +45,7 @@ const signupSchema = z.object({
     .regex(/^\+?[0-9\s-]{7,20}$/, "Número de celular inválido. Usá formato +549XXXXXXXXXX"),
   plan: z.enum(VALID_PLANS).optional().default("FREE"),
   promoCode: z.string().trim().toLowerCase().max(64).optional(),
+  referralCode: z.string().trim().max(16).optional(),
 })
 
 function normalizePhone(phone: string): string {
@@ -379,6 +381,17 @@ export async function POST(req: Request) {
 
     // Push to Google Sheet "Usuarios" — fire & forget.
     if (createdUserId) syncUserToSheet(createdUserId)
+
+    // Programa de referidos: generar código propio + aplicar el de quien lo invitó
+    if (createdUserId) {
+      void ensureReferralCode(createdUserId).catch((e) => console.error("[signup] referralCode failed:", e))
+      const referralCode = (parsed.data as any).referralCode
+      if (referralCode) {
+        void applyReferralOnSignup(createdUserId, referralCode).catch((e) =>
+          console.error("[signup] applyReferralOnSignup failed:", e)
+        )
+      }
+    }
 
     return NextResponse.json(
       {

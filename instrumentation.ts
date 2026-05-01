@@ -8,6 +8,13 @@
  */
 
 export async function register(): Promise<void> {
+  // Sentry per runtime
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("./sentry.server.config")
+  } else if (process.env.NEXT_RUNTIME === "edge") {
+    await import("./sentry.edge.config")
+  }
+
   if (process.env.NEXT_RUNTIME !== "nodejs") return
   if (process.env.NODE_ENV !== "production") {
     console.log("[instrumentation] skipping internal cron in non-prod")
@@ -20,4 +27,9 @@ export async function register(): Promise<void> {
   } catch (e) {
     console.error("[instrumentation] failed to start internal cron:", e)
   }
+}
+
+export async function onRequestError(err: unknown, request: any, context: any): Promise<void> {
+  const Sentry = await import("@sentry/nextjs")
+  Sentry.captureRequestError(err, request, context)
 }
