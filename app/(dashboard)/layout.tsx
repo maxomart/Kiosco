@@ -8,6 +8,7 @@ import { SurfaceThemeProvider } from "@/components/theme/SurfaceThemeProvider"
 import { AssistantWidget } from "@/components/ai/AssistantWidget"
 import { ConfirmProvider } from "@/components/shared/ConfirmDialog"
 import TourOverlay from "@/components/shared/TourOverlay"
+import { UpgradeWelcomeModal } from "@/components/shared/UpgradeWelcomeModal"
 import SupportWidget from "@/components/shared/SupportWidget"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
@@ -148,14 +149,15 @@ export default async function DashboardLayout({
 
   const aiEnabled = hasFeature(plan as any, "feature:ai_assistant")
 
-  // Tour: fire if the user never finished it, OR if they upgraded to a
-  // higher plan than the one we last welcomed them on. Comparing by
-  // PLAN_RANK so a downgrade doesn't re-trigger.
+  // Tour completo: SÓLO la primera vez (cuando tourCompletedAt es null).
+  // Para upgrades de plan ya no usamos el tour entero — eso era invasivo —
+  // sino el UpgradeWelcomeModal con confetti, que es mucho más liviano.
   const lastSeen = userRow?.lastWelcomedPlan ?? null
   const lastRank = lastSeen ? PLAN_RANK[lastSeen as keyof typeof PLAN_RANK] ?? -1 : -1
   const currentRank = PLAN_RANK[plan as keyof typeof PLAN_RANK] ?? 0
   const upgraded = lastSeen && currentRank > lastRank
-  const showTour = !userRow?.tourCompletedAt || upgraded
+  const showTour = !userRow?.tourCompletedAt
+  const showUpgradeWelcome = upgraded && !!userRow?.tourCompletedAt
   const upgradedFrom = upgraded ? (lastSeen as any) : null
 
   return (
@@ -174,6 +176,9 @@ export default async function DashboardLayout({
             {aiEnabled && <AssistantWidget plan={plan as any} />}
             <SupportWidget />
             {showTour && <TourOverlay plan={plan as any} upgradedFrom={upgradedFrom} />}
+            {showUpgradeWelcome && upgradedFrom && (
+              <UpgradeWelcomeModal from={upgradedFrom} to={plan as any} />
+            )}
           </div>
         </ConfirmProvider>
       </SurfaceThemeProvider>
