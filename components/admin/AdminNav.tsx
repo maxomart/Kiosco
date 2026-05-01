@@ -19,6 +19,7 @@ import {
   FileSpreadsheet,
   ChevronDown,
   Clock,
+  Bot,
 } from "lucide-react"
 
 interface Props {
@@ -40,6 +41,7 @@ export default function AdminNav({ user }: Props) {
     { href: "/admin/soporte", label: "Soporte", icon: LifeBuoy },
     { href: "/admin/salud", label: "Salud", icon: Activity },
     { href: "/admin/cron", label: "Cron", icon: Clock },
+    { href: "/admin/bot", label: "Bot", icon: Bot },
     { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText },
     { href: "/admin/seguridad", label: "Seguridad", icon: Lock },
   ]

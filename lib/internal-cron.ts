@@ -17,6 +17,7 @@
 
 import { db } from "./db"
 import { sendDigestForTenant, sendLowStockAlert, type DigestPeriod } from "./digest-generator"
+import { runBotIfConfigured } from "./bot-simulator"
 
 let timerStarted = false
 let intervalRef: NodeJS.Timeout | null = null
@@ -86,6 +87,13 @@ async function checkAndRun(): Promise<void> {
       if (ar.dayOfMonth === 1) {
         await runOnce("monthly", ar.dateKey, async () => sendForFlag("monthly"))
       }
+    }
+
+    // Bot demo @ 23:30 AR — simula ventas/cargas/gastos del día sobre el
+    // tenant configurado en BOT_TENANT_EMAIL. Útil para tener datos vivos
+    // en una cuenta de demostración.
+    if (ar.hour === 23 && ar.minute >= 30 && ar.minute < 35) {
+      await runOnce("bot", ar.dateKey, async () => runBotIfConfigured())
     }
   } catch (e) {
     console.error("[internal-cron] check failed:", e)
