@@ -18,8 +18,22 @@ interface AfipConfig {
   lastError: string | null
 }
 
+interface InvoiceQuota {
+  plan: string
+  limit: number
+  used: number
+  remaining: number
+  percentUsed: number
+  reachedLimit: boolean
+  nearingLimit: boolean
+  notIncluded: boolean
+  periodStart: string
+  periodEnd: string
+}
+
 export default function AfipConfigClient(_props: { initial?: any }) {
   const [config, setConfig] = useState<AfipConfig | null>(null)
+  const [quota, setQuota] = useState<InvoiceQuota | null>(null)
   const [cryptoConfigured, setCryptoConfigured] = useState(false)
   const [sdkConfigured, setSdkConfigured] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -38,7 +52,10 @@ export default function AfipConfigClient(_props: { initial?: any }) {
 
   const fetchConfig = async () => {
     try {
-      const r = await fetch("/api/configuracion/afip", { cache: "no-store" })
+      const [r, ru] = await Promise.all([
+        fetch("/api/configuracion/afip", { cache: "no-store" }),
+        fetch("/api/configuracion/afip/usage", { cache: "no-store" }),
+      ])
       if (r.ok) {
         const d = await r.json()
         if (d.config) {
@@ -52,6 +69,9 @@ export default function AfipConfigClient(_props: { initial?: any }) {
         }
         setCryptoConfigured(!!d.cryptoConfigured)
         setSdkConfigured(!!d.sdkConfigured)
+      }
+      if (ru.ok) {
+        setQuota(await ru.json())
       }
     } finally {
       setLoading(false)
@@ -154,6 +174,84 @@ export default function AfipConfigClient(_props: { initial?: any }) {
               )}
             </div>
           </div>
+        </section>
+      )}
+
+      {/* Cuota mensual */}
+      {quota && !quota.notIncluded && (
+        <section className={`rounded-xl border p-5 space-y-3 ${
+          quota.reachedLimit
+            ? "bg-red-950/30 border-red-800/40"
+            : quota.nearingLimit
+            ? "bg-amber-950/30 border-amber-800/40"
+            : "bg-gray-900 border-gray-800"
+        }`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-white font-semibold">Facturas este mes</h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Tu plan {quota.plan} incluye{" "}
+                {quota.limit === Number.POSITIVE_INFINITY ? "facturación ilimitada" : `${quota.limit} facturas/mes`}.
+                {quota.limit !== Number.POSITIVE_INFINITY && quota.limit > 0 && (
+                  <> Resetea el 1° del próximo mes.</>
+                )}
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-3xl font-bold text-white tabular-nums">
+                {quota.used}
+                {quota.limit !== Number.POSITIVE_INFINITY && (
+                  <span className="text-gray-500 text-base font-normal">/{quota.limit}</span>
+                )}
+              </p>
+              {quota.limit !== Number.POSITIVE_INFINITY && (
+                <p className={`text-xs mt-0.5 ${
+                  quota.reachedLimit ? "text-red-300" : quota.nearingLimit ? "text-amber-300" : "text-gray-500"
+                }`}>
+                  {quota.remaining} restantes
+                </p>
+              )}
+            </div>
+          </div>
+
+          {quota.limit !== Number.POSITIVE_INFINITY && quota.limit > 0 && (
+            <div className="space-y-1">
+              <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+                <div
+                  className={`h-full transition-all ${
+                    quota.reachedLimit ? "bg-red-500" : quota.nearingLimit ? "bg-amber-500" : "bg-purple-500"
+                  }`}
+                  style={{ width: `${quota.percentUsed}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-gray-500 text-right">{quota.percentUsed}% usado</p>
+            </div>
+          )}
+
+          {quota.reachedLimit && (
+            <div className="flex items-start gap-2 text-xs text-red-200 bg-red-950/40 rounded-lg p-3">
+              <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <p>
+                Llegaste al límite del mes. Esperá al 1° del próximo mes o
+                <a href="/configuracion/suscripcion" className="text-red-300 underline ml-1">subí de plan</a>.
+              </p>
+            </div>
+          )}
+          {quota.nearingLimit && !quota.reachedLimit && (
+            <div className="flex items-start gap-2 text-xs text-amber-200 bg-amber-950/30 rounded-lg p-3">
+              <AlertCircle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
+              <p>Te quedan {quota.remaining} facturas este mes. Considerá pasar a un plan superior si vas a facturar más.</p>
+            </div>
+          )}
+        </section>
+      )}
+
+      {quota?.notIncluded && (
+        <section className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <p className="text-sm text-gray-300">
+            Tu plan <strong>Gratis</strong> no incluye facturación electrónica.
+            <a href="/configuracion/suscripcion" className="text-purple-300 underline ml-1">Mirá los planes</a> para activarla.
+          </p>
         </section>
       )}
 

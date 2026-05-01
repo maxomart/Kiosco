@@ -14,6 +14,7 @@
 
 import { db } from "./db"
 import { decryptAfipCert } from "./afip-crypto"
+import { assertCanIssueInvoice } from "./afip-quota"
 import {
   chooseInvoiceType,
   buildAfipQRPayload,
@@ -100,6 +101,13 @@ export async function issueElectronicInvoice(saleId: string): Promise<IssueResul
   }
   if (!cfg.afipCertX509 || !cfg.afipCertPrivateKey || !cfg.afipCertCuit) {
     return { ok: false, status: "REJECTED", error: "Faltan credenciales AFIP" }
+  }
+
+  // Chequeo de quota mensual según plan
+  try {
+    await assertCanIssueInvoice(sale.tenantId)
+  } catch (err: any) {
+    return { ok: false, status: "REJECTED", error: err?.message ?? "Quota agotada" }
   }
 
   const accessToken = process.env.AFIP_SDK_ACCESS_TOKEN

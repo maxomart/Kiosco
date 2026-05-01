@@ -22,6 +22,7 @@ import {
   Bot,
   Settings,
   UsersRound,
+  FileCheck2,
 } from "lucide-react"
 
 interface Props {
@@ -73,6 +74,7 @@ const NAV: NavEntry[] = [
       { href: "/admin/salud", label: "Salud", icon: Activity, description: "Métricas del servidor" },
       { href: "/admin/cron", label: "Cron", icon: Clock, description: "Jobs programados" },
       { href: "/admin/bot", label: "Bot", icon: Bot, description: "Simulador de cuenta demo" },
+      { href: "/admin/afip-usage", label: "Facturas ARCA", icon: FileCheck2, description: "Uso del cupo de facturas" },
       { href: "/admin/exportar", label: "Exportar", icon: FileSpreadsheet, description: "Sync con Google Sheets" },
       { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText, description: "Log de acciones críticas" },
     ],
