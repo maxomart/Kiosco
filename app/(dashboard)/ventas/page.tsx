@@ -15,12 +15,19 @@ import {
   Users,
   Calendar,
   Filter,
+  FileCheck2,
 } from "lucide-react"
 import toast from "react-hot-toast"
+import dynamic from "next/dynamic"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
 import { PageTip } from "@/components/shared/PageTip"
 import { SalesAIChat } from "@/components/ventas/SalesAIChat"
+
+const InvoiceModal = dynamic(
+  () => import("@/components/billing/InvoiceModal").then((m) => m.InvoiceModal),
+  { ssr: false }
+)
 
 interface SaleItem { productName: string; quantity: number; unitPrice: number; subtotal: number }
 interface Sale {
@@ -37,6 +44,13 @@ interface Sale {
   cashSession: { id: string } | null
   items: SaleItem[]
   _count: { items: number }
+  // AFIP / ARCA
+  cae?: string | null
+  invoiceNumber?: number | null
+  invoiceType?: string | null
+  pointOfSale?: number | null
+  afipQrUrl?: string | null
+  afipStatus?: string | null
 }
 
 const STATUS_LABELS: Record<string, string> = { COMPLETED: "Completada", CANCELLED: "Anulada", PENDING: "Pendiente" }
@@ -68,6 +82,7 @@ export default function VentasPage() {
   const [page, setPage] = useState(1)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
+  const [invoiceFor, setInvoiceFor] = useState<{ saleId: string; total: number; cae: string | null; letter: string | null; number: number | null; pos: number | null; qrUrl: string | null } | null>(null)
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split("T")[0] })
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0])
   const [showAI, setShowAI] = useState(false)
@@ -335,13 +350,37 @@ export default function VentasPage() {
                         </span>
                       </td>
                       <td className="p-4" onClick={e => e.stopPropagation()}>
-                        {s.status === "COMPLETED" && (
-                          <button onClick={() => handleCancel(s.id)} disabled={cancelling === s.id}
-                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
-                            title="Anular venta">
-                            <XCircle size={15} />
-                          </button>
-                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          {s.cae ? (
+                            <button
+                              onClick={() => setInvoiceFor({
+                                saleId: s.id, total: s.total,
+                                cae: s.cae!, letter: s.invoiceType ?? null,
+                                number: s.invoiceNumber ?? null, pos: s.pointOfSale ?? null,
+                                qrUrl: s.afipQrUrl ?? null,
+                              })}
+                              className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400 transition-colors"
+                              title={`Factura ${s.invoiceType ?? ""} N° ${s.invoiceNumber ?? ""} — ver QR`}
+                            >
+                              <FileCheck2 size={15} />
+                            </button>
+                          ) : s.status === "COMPLETED" && (
+                            <button
+                              onClick={() => setInvoiceFor({ saleId: s.id, total: s.total, cae: null, letter: null, number: null, pos: null, qrUrl: null })}
+                              className="p-1.5 rounded-lg hover:bg-amber-500/10 text-gray-500 hover:text-amber-400 transition-colors"
+                              title="Emitir factura electrónica"
+                            >
+                              <FileCheck2 size={15} />
+                            </button>
+                          )}
+                          {s.status === "COMPLETED" && (
+                            <button onClick={() => handleCancel(s.id)} disabled={cancelling === s.id}
+                              className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                              title="Anular venta">
+                              <XCircle size={15} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                     {isExpanded && s.items && (
@@ -417,6 +456,22 @@ export default function VentasPage() {
 
       {/* AI Chat */}
       <SalesAIChat open={showAI} onClose={() => setShowAI(false)} />
+
+      {invoiceFor && (
+        <InvoiceModal
+          saleId={invoiceFor.saleId}
+          saleTotal={invoiceFor.total}
+          existingCae={invoiceFor.cae}
+          existingInvoice={invoiceFor.cae ? {
+            letter: invoiceFor.letter,
+            number: invoiceFor.number,
+            pos: invoiceFor.pos,
+            qrUrl: invoiceFor.qrUrl,
+          } : null}
+          onClose={() => setInvoiceFor(null)}
+          onIssued={() => { setInvoiceFor(null); load() }}
+        />
+      )}
 
       {/* Floating AI button on mobile */}
       <button

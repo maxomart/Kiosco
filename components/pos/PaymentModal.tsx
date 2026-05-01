@@ -1,11 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { X, Loader2, Check, Banknote, CreditCard, Smartphone, Wallet, QrCode, Printer } from "lucide-react"
+import { X, Loader2, Check, Banknote, CreditCard, Smartphone, Wallet, QrCode, Printer, FileCheck2 } from "lucide-react"
 import toast from "react-hot-toast"
 import { usePOSStore } from "@/store/posStore"
 import { formatCurrency, PAYMENT_METHODS, cn } from "@/lib/utils"
 import { enqueueSale } from "@/lib/offline-store"
+import dynamic from "next/dynamic"
+
+const InvoiceModal = dynamic(
+  () => import("@/components/billing/InvoiceModal").then((m) => m.InvoiceModal),
+  { ssr: false }
+)
 
 interface Props { onClose: () => void }
 
@@ -40,6 +46,7 @@ export function PaymentModal({ onClose }: Props) {
   const [cashReceived, setCashReceived] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState<{ saleId: string; number: number | string; total: number; change: number; method: string; offline?: boolean } | null>(null)
+  const [showInvoice, setShowInvoice] = useState(false)
 
   // MP state
   const [mpQrUrl, setMpQrUrl] = useState<string | null>(null)
@@ -282,16 +289,32 @@ export function PaymentModal({ onClose }: Props) {
               <p className="text-2xl font-bold text-green-400">{formatCurrency(success.change)}</p>
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button onClick={printTicket} disabled={!!success.offline}
               title={success.offline ? "El ticket se podrá imprimir luego de sincronizar" : "Imprimir ticket"}
-              className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-100 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
-              <Printer size={16} /> Imprimir ticket
+              className="bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-100 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
+              <Printer size={16} /> Ticket
             </button>
-            <button onClick={onClose} className="flex-1 bg-accent hover:bg-accent-hover text-accent-foreground font-semibold py-3 rounded-xl transition">
+            <button
+              onClick={() => setShowInvoice(true)}
+              disabled={!!success.offline}
+              title={success.offline ? "Sincronizá la venta antes de facturar" : "Emitir factura electrónica ARCA"}
+              className="bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-40 disabled:cursor-not-allowed text-amber-200 border border-amber-500/30 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
+            >
+              <FileCheck2 size={16} /> Facturar
+            </button>
+            <button onClick={onClose} className="col-span-2 bg-accent hover:bg-accent-hover text-accent-foreground font-semibold py-3 rounded-xl transition">
               Nueva venta
             </button>
           </div>
+
+          {showInvoice && success && (
+            <InvoiceModal
+              saleId={success.saleId}
+              saleTotal={success.total}
+              onClose={() => setShowInvoice(false)}
+            />
+          )}
         </div>
       </div>
     )
