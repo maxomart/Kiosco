@@ -1,258 +1,370 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
+import { useState, useEffect, useRef } from "react"
+import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck } from "lucide-react"
 import toast from "react-hot-toast"
-import { ArrowLeft, FileCheck2, ShieldCheck, ShieldAlert, Zap, ExternalLink } from "lucide-react"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { Select } from "@/components/ui/Select"
 
-interface InitialConfig {
-  afipEnabled: boolean
-  afipMode: "HOMOLOGACION" | "PRODUCCION"
-  afipCondicionIVA: "RI" | "MONOTRIBUTO" | "EXENTO" | null
-  afipPointOfSale: number
-  afipCertProvider: "mock" | "tusfacturas"
-  afipCertCuit: string
-  afipCertSecret: string
-  afipLastSyncAt: string | null
-  afipLastError: string | null
+interface AfipConfig {
+  enabled: boolean
+  ready: boolean
+  mode: "HOMOLOGACION" | "PRODUCCION"
+  condicionIVA: "RI" | "MONOTRIBUTO" | "EXENTO" | null
+  pointOfSale: number | null
+  cuit: string | null
+  businessName: string | null
+  hasCert: boolean
+  hasPrivateKey: boolean
+  lastSyncAt: string | null
+  lastError: string | null
 }
 
-export default function AfipConfigClient({ initial }: { initial: InitialConfig }) {
-  const [cfg, setCfg] = useState<InitialConfig>(initial)
+export default function AfipConfigClient(_props: { initial?: any }) {
+  const [config, setConfig] = useState<AfipConfig | null>(null)
+  const [cryptoConfigured, setCryptoConfigured] = useState(false)
+  const [sdkConfigured, setSdkConfigured] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
 
-  // Parse TusFacturas credentials from JSON-encoded secret
-  const parsedCreds = (() => {
-    try {
-      return JSON.parse(cfg.afipCertSecret || "{}") as { apitoken?: string; apikey?: string; usertoken?: string }
-    } catch {
-      return {}
-    }
-  })()
-  const [tf, setTf] = useState({
-    apitoken: parsedCreds.apitoken ?? "",
-    apikey: parsedCreds.apikey ?? "",
-    usertoken: parsedCreds.usertoken ?? "",
-  })
+  const [cuit, setCuit] = useState("")
+  const [pointOfSale, setPointOfSale] = useState<number>(1)
+  const [condicionIVA, setCondicionIVA] = useState<"RI" | "MONOTRIBUTO" | "EXENTO">("MONOTRIBUTO")
+  const [mode, setMode] = useState<"HOMOLOGACION" | "PRODUCCION">("HOMOLOGACION")
+  const [businessName, setBusinessName] = useState("")
+  const [enabled, setEnabled] = useState(false)
 
-  const set = <K extends keyof InitialConfig>(key: K, val: InitialConfig[K]) =>
-    setCfg((c) => ({ ...c, [key]: val }))
+  const certRef = useRef<HTMLInputElement>(null)
+  const keyRef = useRef<HTMLInputElement>(null)
+
+  const fetchConfig = async () => {
+    try {
+      const r = await fetch("/api/configuracion/afip", { cache: "no-store" })
+      if (r.ok) {
+        const d = await r.json()
+        if (d.config) {
+          setConfig(d.config)
+          setCuit(d.config.cuit ?? "")
+          setPointOfSale(d.config.pointOfSale ?? 1)
+          setCondicionIVA(d.config.condicionIVA ?? "MONOTRIBUTO")
+          setMode(d.config.mode)
+          setBusinessName(d.config.businessName ?? "")
+          setEnabled(d.config.enabled)
+        }
+        setCryptoConfigured(!!d.cryptoConfigured)
+        setSdkConfigured(!!d.sdkConfigured)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchConfig() }, [])
+
+  const readFile = (input: HTMLInputElement | null): Promise<string | null> => {
+    const file = input?.files?.[0]
+    if (!file) return Promise.resolve(null)
+    return file.text()
+  }
 
   const handleSave = async () => {
+    if (!cuit.match(/^\d{11}$/)) {
+      toast.error("CUIT inválido — tiene que ser 11 dígitos sin guiones")
+      return
+    }
     setSaving(true)
-    const secret = cfg.afipCertProvider === "tusfacturas" ? JSON.stringify(tf) : ""
-    const res = await fetch("/api/afip/config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        afipEnabled: cfg.afipEnabled,
-        afipMode: cfg.afipMode,
-        afipCondicionIVA: cfg.afipCondicionIVA,
-        afipPointOfSale: Number(cfg.afipPointOfSale) || 1,
-        afipCertProvider: cfg.afipCertProvider,
-        afipCertCuit: cfg.afipCertCuit || null,
-        afipCertSecret: secret || null,
-      }),
-    })
-    setSaving(false)
-    const data = await res.json().catch(() => ({}))
-    if (res.ok) {
-      toast.success("Configuración AFIP guardada")
-      setCfg((c) => ({ ...c, afipCertSecret: secret }))
-    } else {
-      toast.error(data?.error ?? "No se pudo guardar")
+    try {
+      const cert = certRef.current?.files?.[0] ? await readFile(certRef.current) : undefined
+      const key = keyRef.current?.files?.[0] ? await readFile(keyRef.current) : undefined
+
+      const r = await fetch("/api/configuracion/afip", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cuit, pointOfSale, condicionIVA, mode, businessName, enabled,
+          ...(cert ? { cert } : {}),
+          ...(key ? { privateKey: key } : {}),
+        }),
+      })
+      const d = await r.json()
+      if (!r.ok) {
+        toast.error(d.error ?? "Error al guardar")
+        return
+      }
+      toast.success("Configuración guardada")
+      if (certRef.current) certRef.current.value = ""
+      if (keyRef.current) keyRef.current.value = ""
+      await fetchConfig()
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error de red")
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleTest = async () => {
     setTesting(true)
     try {
-      const res = await fetch("/api/afip/test", { method: "POST" })
-      const data = await res.json().catch(() => ({}))
-      if (data.ok) toast.success(data.message ?? "Conexión OK")
-      else toast.error(data.message ?? "Falló el test")
+      const r = await fetch("/api/configuracion/afip/test", { method: "POST" })
+      const d = await r.json()
+      if (d.ok) toast.success("Conexión con ARCA OK", { duration: 4000 })
+      else toast.error(d.message ?? "No se pudo conectar", { duration: 6000 })
+      await fetchConfig()
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error de red")
     } finally {
       setTesting(false)
     }
   }
 
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="h-32 bg-gray-900 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+
+  const setupOk = cryptoConfigured && sdkConfigured
+
   return (
-    <div className="p-6 max-w-3xl space-y-6 animate-in fade-in duration-300">
-      <Link href="/configuracion" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 mb-2">
-        <ArrowLeft size={14} /> Volver a configuración
-      </Link>
-
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <FileCheck2 className="text-accent" size={22} /> Facturación electrónica AFIP
-        </h1>
-        <p className="text-gray-400 text-sm mt-1">Emití facturas A, B y C con CAE directo de AFIP.</p>
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-amber-900/40 border border-amber-700/40 flex items-center justify-center">
+          <FileCheck2 className="w-5 h-5 text-amber-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Facturación electrónica ARCA</h1>
+          <p className="text-sm text-gray-400">
+            Emití facturas A/B/C con CAE directo de ARCA (ex AFIP) desde tu POS.
+          </p>
+        </div>
       </div>
 
-      {/* Status card */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-start gap-4">
-        {cfg.afipEnabled ? (
-          <ShieldCheck className="text-green-400 flex-shrink-0" size={24} />
-        ) : (
-          <ShieldAlert className="text-amber-400 flex-shrink-0" size={24} />
-        )}
-        <div className="flex-1">
-          {cfg.afipEnabled ? (
-            <>
-              <p className="text-white text-sm font-medium">
-                AFIP activo en modo <span className="text-accent">{cfg.afipMode}</span>
-              </p>
-              <p className="text-gray-500 text-xs mt-0.5">
-                Proveedor: {cfg.afipCertProvider} · CUIT: {cfg.afipCertCuit || "—"} · Punto de venta: {cfg.afipPointOfSale}
-              </p>
-              {cfg.afipLastError && (
-                <p className="text-red-400 text-xs mt-2">Último error: {cfg.afipLastError}</p>
+      {!setupOk && (
+        <section className="bg-amber-950/40 border border-amber-800/40 rounded-xl p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-200 space-y-2">
+              <p className="font-semibold">Setup del servidor pendiente</p>
+              {!cryptoConfigured && (
+                <p>Falta <code className="bg-gray-900 px-1 py-0.5 rounded">AFIP_ENCRYPTION_KEY</code> en Railway. Generala con <code className="bg-gray-900 px-1 py-0.5 rounded">openssl rand -hex 32</code>.</p>
               )}
-            </>
-          ) : (
-            <>
-              <p className="text-white text-sm font-medium">AFIP desactivado</p>
-              <p className="text-gray-500 text-xs mt-0.5">Activá el interruptor para empezar a emitir comprobantes.</p>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Main form */}
-      <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
-        <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-800/40 hover:bg-gray-800/60 transition cursor-pointer">
-          <div>
-            <p className="text-sm font-medium text-gray-100">Activar facturación electrónica</p>
-            <p className="text-xs text-gray-500 mt-0.5">Al activarlo, las ventas podrán solicitar CAE a AFIP.</p>
-          </div>
-          <input
-            type="checkbox"
-            checked={cfg.afipEnabled}
-            onChange={(e) => set("afipEnabled", e.target.checked)}
-            className="w-5 h-5 rounded accent-accent flex-shrink-0"
-          />
-        </label>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Select
-            label="Modo"
-            value={cfg.afipMode}
-            onChange={(e) => set("afipMode", e.target.value as "HOMOLOGACION" | "PRODUCCION")}
-          >
-            <option value="HOMOLOGACION">Homologación (testing)</option>
-            <option value="PRODUCCION">Producción (real)</option>
-          </Select>
-
-          <Select
-            label="Condición IVA del emisor"
-            value={cfg.afipCondicionIVA ?? ""}
-            onChange={(e) => set("afipCondicionIVA", (e.target.value || null) as any)}
-          >
-            <option value="">Seleccioná…</option>
-            <option value="RI">Responsable Inscripto</option>
-            <option value="MONOTRIBUTO">Monotributo</option>
-            <option value="EXENTO">Exento</option>
-          </Select>
-
-          <Input
-            label="CUIT del emisor"
-            value={cfg.afipCertCuit}
-            onChange={(e) => set("afipCertCuit", e.target.value)}
-            placeholder="20-12345678-9"
-            hint="11 dígitos. Validamos el checksum."
-          />
-
-          <Input
-            label="Punto de venta"
-            type="number"
-            min={1}
-            value={cfg.afipPointOfSale}
-            onChange={(e) => set("afipPointOfSale", Number(e.target.value) || 1)}
-            hint="Usalo tal como lo configuraste en AFIP (habitualmente 1, 2, 3…)."
-          />
-
-          <div className="sm:col-span-2">
-            <Select
-              label="Proveedor de facturación"
-              value={cfg.afipCertProvider}
-              onChange={(e) => set("afipCertProvider", e.target.value as "mock" | "tusfacturas")}
-            >
-              <option value="mock">Mock — para testear sin AFIP real</option>
-              <option value="tusfacturas">TusFacturas.app — integración productiva</option>
-            </Select>
-          </div>
-        </div>
-
-        {cfg.afipCertProvider === "tusfacturas" && (
-          <div className="space-y-3 pt-2 border-t border-gray-800">
-            <p className="text-sm font-medium text-gray-200">Credenciales TusFacturas.app</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Input
-                label="API Key"
-                value={tf.apikey}
-                onChange={(e) => setTf({ ...tf, apikey: e.target.value })}
-                placeholder="xxxxxxxx"
-              />
-              <Input
-                label="API Token"
-                value={tf.apitoken}
-                onChange={(e) => setTf({ ...tf, apitoken: e.target.value })}
-                placeholder="xxxxxxxx"
-              />
-              <Input
-                label="User Token"
-                value={tf.usertoken}
-                onChange={(e) => setTf({ ...tf, usertoken: e.target.value })}
-                placeholder="xxxxxxxx"
-              />
+              {!sdkConfigured && (
+                <p>Falta <code className="bg-gray-900 px-1 py-0.5 rounded">AFIP_SDK_ACCESS_TOKEN</code>. Conseguilo gratis en <a href="https://afipsdk.com" target="_blank" rel="noopener" className="text-purple-300 underline inline-flex items-center gap-1">afipsdk.com<ExternalLink size={11} /></a>.</p>
+              )}
             </div>
           </div>
-        )}
+        </section>
+      )}
 
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-800">
-          <Button onClick={handleSave} loading={saving} size="md">
-            {saving ? "Guardando..." : "Guardar configuración"}
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleTest}
-            loading={testing}
-            leftIcon={<Zap size={14} />}
-          >
-            Probar conexión
-          </Button>
+      <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
+        <h2 className="text-white font-semibold">Estado</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <StatusCard label="Conexión a ARCA" ok={config?.ready ?? false} text={config?.ready ? "Verificada" : "Sin probar"} />
+          <StatusCard label="Certificado X.509" ok={config?.hasCert ?? false} text={config?.hasCert ? "Cargado" : "Falta subir"} />
+          <StatusCard label="Private key" ok={config?.hasPrivateKey ?? false} text={config?.hasPrivateKey ? "Cargada" : "Falta subir"} />
         </div>
-      </div>
+        {config?.lastError && (
+          <div className="bg-red-950/40 border border-red-800/40 rounded-lg p-3 text-xs text-red-200">
+            <p className="font-semibold mb-1">Último error:</p>
+            <code className="text-red-300 break-all">{config.lastError}</code>
+          </div>
+        )}
+      </section>
 
-      {/* Docs block */}
-      <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-3">
-        <h2 className="text-white font-semibold">Cómo dar de alta tu cuenta en TusFacturas</h2>
-        <ol className="text-sm text-gray-400 space-y-2 list-decimal pl-5">
-          <li>
-            Creá una cuenta gratuita en{" "}
-            <a href="https://www.tusfacturas.app/registro" target="_blank" rel="noreferrer" className="text-accent hover:underline inline-flex items-center gap-1">
-              tusfacturas.app/registro <ExternalLink size={11} />
-            </a>
-          </li>
-          <li>
-            En tu cuenta AFIP (<a className="text-accent hover:underline" href="https://auth.afip.gob.ar/" target="_blank" rel="noreferrer">Administrador de Relaciones</a>)
-            delegale a TusFacturas el rol <code className="bg-gray-800 px-1 rounded text-xs">Webservices Facturación Electrónica</code>.
-          </li>
-          <li>Desde el panel de TusFacturas, copiá tu <b>API Key</b>, <b>API Token</b> y <b>User Token</b> (Configuración → API).</li>
-          <li>Pegalos arriba y probá la conexión.</li>
-          <li>Empezá en modo <b>Homologación</b>. Una vez que AFIP te habilite la producción, cambialo a <b>Producción</b>.</li>
-        </ol>
-        <p className="text-xs text-gray-500 pt-2 border-t border-gray-800">
-          Documentación de la API:{" "}
-          <a href="https://developers.tusfacturas.app/" target="_blank" rel="noreferrer" className="text-accent hover:underline">developers.tusfacturas.app</a>
-          {" · "}Spec del QR AFIP:{" "}
-          <a href="https://www.afip.gob.ar/fe/qr/especificaciones.asp" target="_blank" rel="noreferrer" className="text-accent hover:underline">RG 4892/2020</a>
-        </p>
+      <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+        <h2 className="text-white font-semibold">Datos fiscales</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="CUIT (sin guiones)">
+            <input
+              type="text" inputMode="numeric"
+              value={cuit}
+              onChange={(e) => setCuit(e.target.value.replace(/\D/g, "").slice(0, 11))}
+              placeholder="20123456789"
+              className="w-full bg-gray-800 border border-gray-700 hover:border-gray-600 focus:border-purple-500 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+            />
+          </Field>
+          <Field label="Razón social (opcional)">
+            <input
+              type="text"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Kiosco Don Pepe SRL"
+              className="w-full bg-gray-800 border border-gray-700 hover:border-gray-600 focus:border-purple-500 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+            />
+          </Field>
+          <Field label="Condición frente al IVA">
+            <select
+              value={condicionIVA}
+              onChange={(e) => setCondicionIVA(e.target.value as any)}
+              className="w-full bg-gray-800 border border-gray-700 hover:border-gray-600 focus:border-purple-500 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
+            >
+              <option value="MONOTRIBUTO">Monotributista</option>
+              <option value="RI">Responsable Inscripto</option>
+              <option value="EXENTO">Exento</option>
+            </select>
+          </Field>
+          <Field label="Punto de venta">
+            <input
+              type="number"
+              value={pointOfSale}
+              onChange={(e) => setPointOfSale(Math.max(1, parseInt(e.target.value || "1")))}
+              min={1} max={99999}
+              className="w-full bg-gray-800 border border-gray-700 hover:border-gray-600 focus:border-purple-500 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+            />
+          </Field>
+        </div>
+
+        <div className="bg-gray-800/40 border border-gray-800 rounded-lg p-4">
+          <p className="text-xs text-gray-400 mb-2">Ambiente</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setMode("HOMOLOGACION")}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                mode === "HOMOLOGACION"
+                  ? "bg-amber-600/20 border border-amber-500/40 text-amber-200"
+                  : "bg-gray-800 border border-gray-700 text-gray-400 hover:text-white"
+              }`}
+            >
+              Pruebas (Homologación)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("PRODUCCION")}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                mode === "PRODUCCION"
+                  ? "bg-emerald-600/20 border border-emerald-500/40 text-emerald-200"
+                  : "bg-gray-800 border border-gray-700 text-gray-400 hover:text-white"
+              }`}
+            >
+              Producción
+            </button>
+          </div>
+          <p className="text-[11px] text-gray-500 mt-2">
+            {mode === "HOMOLOGACION"
+              ? "Modo testing — facturas contra ambiente de pruebas, sin valor fiscal."
+              : "Modo real — facturas con valor fiscal. Probá primero en homologación."}
+          </p>
+        </div>
+      </section>
+
+      <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+        <h2 className="text-white font-semibold flex items-center gap-2">
+          <Lock size={16} className="text-purple-400" />
+          Certificado digital
+        </h2>
+        <div className="bg-purple-950/30 border border-purple-900/40 rounded-lg p-3 flex gap-2 text-xs">
+          <Info size={14} className="text-purple-300 flex-shrink-0 mt-0.5" />
+          <div className="text-purple-100/90 space-y-1">
+            <p>El certificado lo generás en el portal de ARCA con tu clave fiscal:</p>
+            <ol className="list-decimal list-inside space-y-0.5 text-purple-200/80">
+              <li>Entrá a ARCA con clave fiscal nivel 3</li>
+              <li>Buscá "Administración de Certificados Digitales"</li>
+              <li>Generá uno nuevo asociado al servicio "Facturación Electrónica" (wsfe)</li>
+              <li>Descargás el .crt y .key</li>
+              <li>Subilos acá. Los guardamos encriptados con AES-256.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Certificado X.509 (.crt o .pem)">
+            <input
+              ref={certRef} type="file" accept=".crt,.pem,.cer,.txt"
+              className="block w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-purple-600/20 file:text-purple-200 file:text-xs file:font-medium hover:file:bg-purple-600/30"
+            />
+            {config?.hasCert && (
+              <p className="text-[11px] text-emerald-400 mt-1.5 flex items-center gap-1">
+                <CheckCircle2 size={11} /> Ya hay un certificado guardado
+              </p>
+            )}
+          </Field>
+          <Field label="Private Key (.key o .pem)">
+            <input
+              ref={keyRef} type="file" accept=".key,.pem,.txt"
+              className="block w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-purple-600/20 file:text-purple-200 file:text-xs file:font-medium hover:file:bg-purple-600/30"
+            />
+            {config?.hasPrivateKey && (
+              <p className="text-[11px] text-emerald-400 mt-1.5 flex items-center gap-1">
+                <CheckCircle2 size={11} /> Ya hay una key guardada
+              </p>
+            )}
+          </Field>
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px] text-gray-500 pt-2">
+          <ShieldCheck size={12} className="text-emerald-400" />
+          Encriptados con AES-256-GCM. Ni nosotros vemos tus certificados.
+        </div>
+      </section>
+
+      <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-white font-semibold">Activar facturación electrónica</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Cuando esté activo, cada venta del POS puede emitir factura ARCA automática.
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+            <input
+              type="checkbox" checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+              disabled={!config?.ready}
+              className="sr-only peer"
+            />
+            <div className={`w-11 h-6 rounded-full transition-colors ${enabled && config?.ready ? "bg-purple-600" : "bg-gray-700"}`}>
+              <div className={`w-5 h-5 rounded-full bg-white transition-transform translate-y-0.5 ${enabled && config?.ready ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+            </div>
+          </label>
+        </div>
+        {!config?.ready && (
+          <p className="text-[11px] text-amber-400 flex items-center gap-1">
+            <AlertCircle size={12} /> Para activar, primero probá la conexión y que sea exitosa.
+          </p>
+        )}
+      </section>
+
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button" onClick={handleSave} disabled={saving}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm disabled:opacity-50"
+        >
+          {saving ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+          {saving ? "Guardando..." : "Guardar cambios"}
+        </button>
+        <button
+          type="button" onClick={handleTest} disabled={testing || !setupOk}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-medium text-sm disabled:opacity-50"
+        >
+          {testing ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+          {testing ? "Probando..." : "Probar conexión"}
+        </button>
       </div>
+    </div>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
+        {label}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+function StatusCard({ label, ok, text }: { label: string; ok: boolean; text: string }) {
+  return (
+    <div className={`rounded-lg border p-3 ${ok ? "bg-emerald-950/40 border-emerald-800/40" : "bg-gray-800/50 border-gray-800"}`}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs text-gray-400">{label}</span>
+        {ok ? <CheckCircle2 size={14} className="text-emerald-400" /> : <AlertCircle size={14} className="text-gray-500" />}
+      </div>
+      <p className={`text-sm ${ok ? "text-emerald-200" : "text-gray-400"}`}>{text}</p>
     </div>
   )
 }

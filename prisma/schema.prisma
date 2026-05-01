@@ -465,6 +465,15 @@ model TenantConfig {
   afipCertProvider    String?                           // "tusfacturas" | "afipsdk" | "self"
   afipCertCuit        String?                           // CUIT del emisor (sin guiones)
   afipCertSecret      String?  @db.Text                 // API token of provider OR encrypted cert ref
+  // Certificado digital y private key — encriptados con AES-GCM usando
+  // AFIP_ENCRYPTION_KEY. Formato del valor: "<iv-hex>:<ciphertext-hex>".
+  afipCertX509        String?  @db.Text
+  afipCertPrivateKey  String?  @db.Text
+  afipBusinessName    String?                           // Razón social (puede diferir de businessName)
+  // True solo si la última conexión a ARCA fue exitosa. Permite saber si la
+  // config está lista o aún hay algún error sin tocar afipEnabled (que es
+  // el toggle del user).
+  afipReady           Boolean  @default(false)
   afipLastSyncAt      DateTime?
   afipLastError       String?  @db.Text
 
