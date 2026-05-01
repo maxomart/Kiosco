@@ -110,22 +110,14 @@ function pickWeighted<T extends { weight: number }>(items: T[]): T {
   return items[items.length - 1]
 }
 
-/** Genera 8-25 timestamps random distribuidos por el día con picos en
- *  horarios reales de kiosco (mañana 8-10, mediodía 12-14, tarde 17-19). */
-function generateSaleTimestamps(date: Date, count: number): Date[] {
+/** Genera N timestamps en una ventana de ±30 min alrededor de `center`.
+ *  Usado cuando el bot corre por slot (mañana/mediodía/tarde/etc) — las
+ *  ventas se generan en el momento real para que se vea como un kiosco vivo. */
+function generateNearbyTimestamps(center: Date, count: number): Date[] {
   const result: Date[] = []
   for (let i = 0; i < count; i++) {
-    // Hora con bias hacia los picos
-    const r = Math.random()
-    let hour: number
-    if (r < 0.30) hour = randInt(8, 10)         // mañana
-    else if (r < 0.55) hour = randInt(12, 14)   // mediodía
-    else if (r < 0.85) hour = randInt(17, 19)   // tarde
-    else hour = randInt(10, 21)                  // resto del día
-    const minute = randInt(0, 59)
-    const t = new Date(date)
-    t.setHours(hour, minute, randInt(0, 59), 0)
-    result.push(t)
+    const offsetMs = (Math.random() - 0.5) * 60 * 60 * 1000 // ±30 min
+    result.push(new Date(center.getTime() + offsetMs))
   }
   result.sort((a, b) => a.getTime() - b.getTime())
   return result
@@ -215,9 +207,29 @@ interface DailyResult {
   rechargesCreated: number
   expensesCreated: number
   revenue: number
+  slot?: BotSlot
 }
 
-export async function runDailyBotSimulation(tenantId: string): Promise<DailyResult> {
+export type BotSlot = "morning" | "noon" | "afternoon" | "evening" | "night" | "manual"
+
+interface BotRunOpts {
+  slot?: BotSlot
+  /** Cantidad de ventas a generar. Default: depende del slot (3-6 por slot) */
+  salesCount?: number
+  /** Si true, intenta reponer stock con cargas. Default: solo en slot "night" o "manual" */
+  doRecharges?: boolean
+  /** Si true, registra un gasto random (~30% prob). Default: solo en slot "night" o "manual" */
+  doExpenses?: boolean
+}
+
+export async function runDailyBotSimulation(
+  tenantId: string,
+  opts: BotRunOpts = {}
+): Promise<DailyResult> {
+  const slot: BotSlot = opts.slot ?? "manual"
+  const isFinalSlot = slot === "night" || slot === "manual"
+  const doRecharges = opts.doRecharges ?? isFinalSlot
+  const doExpenses = opts.doExpenses ?? isFinalSlot
   // Setup si está vacío
   await seedKioskoCatalog(tenantId)
 
@@ -255,10 +267,12 @@ export async function runDailyBotSimulation(tenantId: string): Promise<DailyResu
   // Mapear seed weights por nombre
   const weightByName = new Map(SEED_PRODUCTS.map((p) => [p.name, p.weight]))
 
-  // Generar timestamps de ventas — entre 10 y 25 ventas
-  const today = new Date()
-  const numSales = randInt(10, 25)
-  const timestamps = generateSaleTimestamps(today, numSales)
+  // Cantidad de ventas: si el slot lo especifica, lo usamos; sino default
+  // por slot (3-6 por slot intermedio, 4-7 para "manual" suelto).
+  const numSales = opts.salesCount ?? (slot === "manual" ? randInt(8, 15) : randInt(3, 6))
+  // Timestamps en ventana de ±30 min alrededor del momento actual — ventas
+  // que parecen del momento real, no de un dump nocturno.
+  const timestamps = generateNearbyTimestamps(new Date(), numSales)
 
   // Última number usado
   const lastSale = await db.sale.findFirst({
@@ -371,29 +385,24 @@ export async function runDailyBotSimulation(tenantId: string): Promise<DailyResu
     revenue += total
   }
 
-  // Reposición de stock — productos que quedaron < minStock se "recompran"
-  // del proveedor que los abastece. Agrupados por supplier para 1 Recharge
-  // por proveedor.
-  const lowStock = await db.product.findMany({
-    where: { tenantId, stock: { lt: db.product.fields.minStock as any } },
-    select: { id: true, name: true, costPrice: true, stock: true, minStock: true, supplierId: true },
-  })
-  // El where con field comparison es un poco frágil — fallback manual
-  const allProducts = await db.product.findMany({
-    where: { tenantId },
-    select: { id: true, name: true, costPrice: true, stock: true, minStock: true, supplierId: true },
-  })
-  const needsRestock = allProducts.filter((p) => p.stock < p.minStock && p.supplierId)
-
-  const lastRecharge = await db.recharge.findFirst({
-    where: { tenantId },
-    orderBy: { number: "desc" },
-    select: { number: true },
-  })
-  let nextRechargeNumber = (lastRecharge?.number ?? 0) + 1
-
+  // Reposición de stock — sólo en slot final (night/manual). En los slots
+  // intermedios no rellenamos para no saturar la DB con cargas todo el día.
   let rechargesCreated = 0
-  if (needsRestock.length > 0) {
+  if (doRecharges) {
+    const allProducts = await db.product.findMany({
+      where: { tenantId },
+      select: { id: true, name: true, costPrice: true, stock: true, minStock: true, supplierId: true },
+    })
+    const needsRestock = allProducts.filter((p) => p.stock < p.minStock && p.supplierId)
+
+    const lastRecharge = await db.recharge.findFirst({
+      where: { tenantId },
+      orderBy: { number: "desc" },
+      select: { number: true },
+    })
+    let nextRechargeNumber = (lastRecharge?.number ?? 0) + 1
+
+    if (needsRestock.length > 0) {
     // Agrupar por supplier
     const bySupplier = new Map<string, typeof needsRestock>()
     for (const p of needsRestock) {
@@ -459,11 +468,12 @@ export async function runDailyBotSimulation(tenantId: string): Promise<DailyResu
       }
       rechargesCreated++
     }
-  }
+    } // cierra if (needsRestock)
+  } // cierra if (doRecharges)
 
-  // Gasto ocasional (~30% probabilidad por día)
+  // Gasto ocasional (~30% probabilidad) — sólo en slot final
   let expensesCreated = 0
-  if (Math.random() < 0.3) {
+  if (doExpenses && Math.random() < 0.3) {
     const expenseTypes = [
       { category: "Servicios", amount: randInt(15000, 35000), notes: "Luz / internet" },
       { category: "Sueldos",   amount: randInt(80000, 150000), notes: "Sueldo cajero" },
@@ -483,6 +493,7 @@ export async function runDailyBotSimulation(tenantId: string): Promise<DailyResu
     rechargesCreated,
     expensesCreated,
     revenue,
+    slot,
   }
 }
 
@@ -490,7 +501,9 @@ export async function runDailyBotSimulation(tenantId: string): Promise<DailyResu
  * Run del bot — busca el tenant configurado en BOT_TENANT_EMAIL y dispara
  * la simulación. Pensado para llamarse desde el cron interno.
  */
-export async function runBotIfConfigured(): Promise<{ ok: boolean; reason?: string; result?: DailyResult; tenantId?: string }> {
+export async function runBotIfConfigured(
+  opts: BotRunOpts = {}
+): Promise<{ ok: boolean; reason?: string; result?: DailyResult; tenantId?: string }> {
   const email = process.env.BOT_TENANT_EMAIL
   if (!email) return { ok: false, reason: "BOT_TENANT_EMAIL no configurado" }
 
@@ -500,6 +513,6 @@ export async function runBotIfConfigured(): Promise<{ ok: boolean; reason?: stri
   })
   if (!owner?.tenantId) return { ok: false, reason: `No hay user con email ${email}` }
 
-  const result = await runDailyBotSimulation(owner.tenantId)
+  const result = await runDailyBotSimulation(owner.tenantId, opts)
   return { ok: true, result, tenantId: owner.tenantId }
 }

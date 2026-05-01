@@ -89,11 +89,23 @@ async function checkAndRun(): Promise<void> {
       }
     }
 
-    // Bot demo @ 23:30 AR — simula ventas/cargas/gastos del día sobre el
-    // tenant configurado en BOT_TENANT_EMAIL. Útil para tener datos vivos
-    // en una cuenta de demostración.
+    // Bot demo — 5 slots distribuidos en el día para que la cuenta parezca
+    // un kiosco vivo. Cada slot genera 3-6 ventas con timestamps del momento.
+    // Las cargas + gastos sólo se hacen en el slot "night" (último del día).
+    if (ar.hour === 10 && ar.minute < 5) {
+      await runOnce("bot-morning", ar.dateKey, async () => runBotIfConfigured({ slot: "morning" }))
+    }
+    if (ar.hour === 13 && ar.minute < 5) {
+      await runOnce("bot-noon", ar.dateKey, async () => runBotIfConfigured({ slot: "noon" }))
+    }
+    if (ar.hour === 17 && ar.minute < 5) {
+      await runOnce("bot-afternoon", ar.dateKey, async () => runBotIfConfigured({ slot: "afternoon" }))
+    }
+    if (ar.hour === 20 && ar.minute < 5) {
+      await runOnce("bot-evening", ar.dateKey, async () => runBotIfConfigured({ slot: "evening" }))
+    }
     if (ar.hour === 23 && ar.minute >= 30 && ar.minute < 35) {
-      await runOnce("bot", ar.dateKey, async () => runBotIfConfigured())
+      await runOnce("bot-night", ar.dateKey, async () => runBotIfConfigured({ slot: "night" }))
     }
   } catch (e) {
     console.error("[internal-cron] check failed:", e)
