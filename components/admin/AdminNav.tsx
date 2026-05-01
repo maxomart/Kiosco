@@ -126,9 +126,11 @@ export default function AdminNav({ user }: Props) {
         <span className="text-white font-bold tracking-tight hidden sm:inline">Orvex Admin</span>
       </Link>
 
-      {/* Nav top-level */}
+      {/* Nav top-level — overflow-visible para que los dropdowns no queden
+          clipeados. Si no entran en mobile (5 items + iconos), usamos
+          flex-wrap antes de cortar. */}
       <div className="flex-1 min-w-0" ref={groupMenuRef}>
-        <div className="flex gap-1 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 flex-wrap">
           {NAV.map((entry) => {
             const Icon = entry.icon
             if (entry.type === "link") {
