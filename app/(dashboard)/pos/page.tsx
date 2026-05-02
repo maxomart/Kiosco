@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { Search, Barcode, ShoppingCart, DollarSign, AlertTriangle, ArrowRight, Package, Keyboard, X } from "lucide-react"
+import { Search, Barcode, ShoppingCart, DollarSign, AlertTriangle, ArrowRight, Package, Keyboard, X, Camera } from "lucide-react"
 import { useShortcuts, useShortcutKey } from "@/hooks/useShortcuts"
 import { ShortcutsHelpModal } from "@/components/shared/ShortcutsHelpModal"
 import toast from "react-hot-toast"
@@ -10,6 +10,7 @@ import { usePOSStore } from "@/store/posStore"
 import { CartPanel } from "@/components/pos/CartPanel"
 import { PaymentModal } from "@/components/pos/PaymentModal"
 import { OfflineBanner } from "@/components/pos/OfflineBanner"
+import { CameraBarcodeScanner } from "@/components/pos/CameraBarcodeScanner"
 import { useDebounce } from "@/lib/hooks/useDebounce"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
@@ -48,6 +49,7 @@ export default function POSPage() {
   const { addToCart, cart, setCashSession, clearCart, total } = usePOSStore()
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   // Auto-close cart drawer when payment modal opens (so user sees the modal cleanly)
   const searchShortcutKey = useShortcutKey("pos:search")
   const chargeShortcutKey = useShortcutKey("pos:charge")
@@ -405,6 +407,13 @@ export default function POSPage() {
             </kbd>
             <Barcode size={13} />
             <button
+              onClick={() => setShowScanner(true)}
+              className="flex items-center gap-1 text-gray-400 hover:text-purple-400 transition-colors"
+              title="Escanear con la cámara"
+            >
+              <Camera size={14} />
+            </button>
+            <button
               onClick={() => setShowShortcutsHelp(true)}
               className="hidden lg:flex items-center gap-1 text-gray-500 hover:text-accent transition-colors"
               title={`Ayuda de atajos (${helpShortcutKey})`}
@@ -627,6 +636,16 @@ export default function POSPage() {
       </div>
 
       {showPayment && cashOpen && <PaymentModal onClose={() => setShowPayment(false)} />}
+
+      {showScanner && (
+        <CameraBarcodeScanner
+          onScan={(code) => {
+            setShowScanner(false)
+            handleBarcodeScan(code)
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
 
       <ShortcutsHelpModal
         open={showShortcutsHelp}
