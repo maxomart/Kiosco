@@ -117,6 +117,12 @@ export function ThemeProvider({
   const setMode = useCallback((next: ThemeMode) => {
     setModeState(next)
     try { localStorage.setItem(MODE_KEY, next) } catch {}
+    // Best-effort save al servidor (para que persista entre dispositivos)
+    fetch("/api/configuracion", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ themeMode: next }),
+    }).catch(() => {})
   }, [])
 
   return (
