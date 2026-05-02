@@ -69,6 +69,27 @@ export async function GET() {
     const expensesTotal = Number(expensesAgg._sum.amount ?? 0)
     const netProfit = grossProfit - expensesTotal
 
+    // Movimientos de caja chica de esta sesión
+    const movements = await db.cashMovement.findMany({
+      where: { cashSessionId: cashSession.id },
+      include: { user: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    })
+    const withdrawals = movements
+      .filter((m) => m.type === "WITHDRAWAL")
+      .reduce((s, m) => s + Number(m.amount), 0)
+    const deposits = movements
+      .filter((m) => m.type === "DEPOSIT")
+      .reduce((s, m) => s + Number(m.amount), 0)
+
+    // Ventas en efectivo desde la apertura
+    const cashSalesAgg = await db.sale.aggregate({
+      where: { cashSessionId: cashSession.id, status: "COMPLETED", paymentMethod: "CASH" },
+      _sum: { total: true },
+    })
+    const cashSalesTotal = Number(cashSalesAgg._sum.total ?? 0)
+    const expectedCash = Number(cashSession.openingBalance) + cashSalesTotal + deposits - withdrawals
+
     return NextResponse.json({
       session: cashSession,
       salesTotal: totalRevenue,
@@ -81,6 +102,11 @@ export async function GET() {
       multiCash,
       openSessions,
       ownedByCurrentUser: cashSession.userId === session.user.id,
+      movements,
+      withdrawals,
+      deposits,
+      expectedCash,
+      cashSalesTotal,
     })
   } catch (err) {
     console.error("[GET /api/caja/sesion-actual]", err)

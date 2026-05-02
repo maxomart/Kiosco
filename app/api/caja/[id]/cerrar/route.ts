@@ -28,7 +28,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (cashSession.status !== "OPEN") return NextResponse.json({ error: "La caja ya está cerrada" }, { status: 400 })
 
     const salesTotal = await db.sale.aggregate({ where: { cashSessionId: id, status: "COMPLETED", paymentMethod: "CASH" }, _sum: { total: true } })
-    const expectedCash = Number(cashSession.openingBalance) + Number(salesTotal._sum.total ?? 0)
+    // Movimientos de caja chica: depósitos suman, retiros restan al esperado
+    const movements = await db.cashMovement.findMany({
+      where: { cashSessionId: id },
+      select: { type: true, amount: true },
+    })
+    const movementsNet = movements.reduce((acc, m) => {
+      const amt = Number(m.amount)
+      return acc + (m.type === "DEPOSIT" ? amt : -amt)
+    }, 0)
+    const expectedCash = Number(cashSession.openingBalance) + Number(salesTotal._sum.total ?? 0) + movementsNet
     const difference = parsed.data.closingBalance - expectedCash
 
     const closed = await db.cashSession.update({

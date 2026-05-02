@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { DollarSign, Lock, Unlock, AlertCircle, CheckCircle, History, TrendingUp, Users } from "lucide-react"
+import { DollarSign, Lock, Unlock, AlertCircle, CheckCircle, History, TrendingUp, Users, ArrowDownToLine, ArrowUpFromLine, Wallet, Plus, X } from "lucide-react"
 import toast from "react-hot-toast"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
@@ -21,6 +21,16 @@ interface CashSession {
   _count?: { sales: number }
 }
 
+interface CashMovement {
+  id: string
+  type: "WITHDRAWAL" | "DEPOSIT"
+  amount: number
+  reason: string
+  notes: string | null
+  createdAt: string
+  user?: { name: string | null }
+}
+
 export default function CajaPage() {
   const [current, setCurrent] = useState<CashSession | null>(null)
   const [salesTotal, setSalesTotal] = useState(0)
@@ -37,6 +47,15 @@ export default function CajaPage() {
   const [closeNotes, setCloseNotes] = useState("")
   const [working, setWorking] = useState(false)
   const [view, setView] = useState<"current" | "history">("current")
+  // Caja chica
+  const [movements, setMovements] = useState<CashMovement[]>([])
+  const [withdrawals, setWithdrawals] = useState(0)
+  const [deposits, setDeposits] = useState(0)
+  const [expectedCashSrv, setExpectedCashSrv] = useState(0)
+  const [showMovementForm, setShowMovementForm] = useState(false)
+  const [movementType, setMovementType] = useState<"WITHDRAWAL" | "DEPOSIT">("WITHDRAWAL")
+  const [movementAmount, setMovementAmount] = useState("")
+  const [movementReason, setMovementReason] = useState("")
   const confirm = useConfirm()
 
   const load = async () => {
@@ -55,6 +74,10 @@ export default function CajaPage() {
       setNetProfit(Number(d.netProfit ?? 0))
       setMultiCash(!!d.multiCash)
       setOpenSessions(d.openSessions ?? [])
+      setMovements(d.movements ?? [])
+      setWithdrawals(Number(d.withdrawals ?? 0))
+      setDeposits(Number(d.deposits ?? 0))
+      setExpectedCashSrv(Number(d.expectedCash ?? 0))
     }
     if (listRes.ok) {
       const d = await listRes.json()
@@ -83,7 +106,7 @@ export default function CajaPage() {
     if (!current) return
     const amount = parseFloat(closeAmount)
     if (isNaN(amount) || amount < 0) return toast.error("Ingresá el monto de cierre")
-    const expected = Number(current.openingBalance) + salesTotal
+    const expected = expectedCashSrv > 0 ? expectedCashSrv : Number(current.openingBalance) + salesTotal
     const diff = amount - expected
     if (Math.abs(diff) > 1000) {
       const ok = await confirm({
@@ -116,7 +139,33 @@ export default function CajaPage() {
     )
   }
 
-  const expectedCash = current ? Number(current.openingBalance) + salesTotal : 0
+  const expectedCash = current
+    ? expectedCashSrv || Number(current.openingBalance) + salesTotal
+    : 0
+
+  const handleCreateMovement = async () => {
+    if (!current) return
+    const amount = parseFloat(movementAmount)
+    if (isNaN(amount) || amount <= 0) return toast.error("Ingresá un monto mayor a 0")
+    if (movementReason.trim().length < 2) return toast.error("Decí brevemente para qué")
+    setWorking(true)
+    const res = await fetch(`/api/caja/${current.id}/movimientos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: movementType, amount, reason: movementReason.trim() }),
+    })
+    if (res.ok) {
+      setMovementAmount("")
+      setMovementReason("")
+      setShowMovementForm(false)
+      toast.success(movementType === "WITHDRAWAL" ? "Retiro registrado" : "Depósito registrado")
+      await load()
+    } else {
+      const d = await res.json()
+      toast.error(d.error || "Error al registrar el movimiento")
+    }
+    setWorking(false)
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
@@ -294,6 +343,156 @@ export default function CajaPage() {
                       <p className="text-gray-500 text-[10px] mt-1">Bruto − gastos</p>
                     </div>
                   </div>
+                </div>
+
+                {/* ─── Caja chica: retiros y depósitos ─── */}
+                <div className="mt-4 pt-4 border-t border-gray-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                        Caja chica
+                      </h3>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        Retiros y depósitos durante el día — afectan el efectivo esperado al cerrar
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setShowMovementForm(true); setMovementType("WITHDRAWAL") }}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium flex items-center gap-1.5"
+                    >
+                      <Plus size={13} /> Movimiento
+                    </button>
+                  </div>
+
+                  {(withdrawals > 0 || deposits > 0) && (
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="bg-rose-950/30 border border-rose-800/30 rounded-lg p-3 flex items-center gap-2">
+                        <ArrowUpFromLine size={16} className="text-rose-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-rose-300 uppercase tracking-wider font-bold">Retirado</p>
+                          <p className="text-rose-200 font-bold tabular-nums">−{formatCurrency(withdrawals)}</p>
+                        </div>
+                      </div>
+                      <div className="bg-emerald-950/30 border border-emerald-800/30 rounded-lg p-3 flex items-center gap-2">
+                        <ArrowDownToLine size={16} className="text-emerald-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-emerald-300 uppercase tracking-wider font-bold">Depositado</p>
+                          <p className="text-emerald-200 font-bold tabular-nums">+{formatCurrency(deposits)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {showMovementForm && (
+                    <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-4 mb-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm text-white font-semibold flex items-center gap-2">
+                          <Wallet size={14} className="text-purple-400" />
+                          Nuevo movimiento
+                        </h4>
+                        <button
+                          onClick={() => setShowMovementForm(false)}
+                          className="p-1 text-gray-500 hover:text-gray-200"
+                          aria-label="Cerrar"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setMovementType("WITHDRAWAL")}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                            movementType === "WITHDRAWAL"
+                              ? "bg-rose-600/20 border-rose-500/40 text-rose-200"
+                              : "bg-gray-900 border-gray-700 text-gray-400 hover:text-white"
+                          }`}
+                        >
+                          <ArrowUpFromLine size={13} /> Retiro
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMovementType("DEPOSIT")}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${
+                            movementType === "DEPOSIT"
+                              ? "bg-emerald-600/20 border-emerald-500/40 text-emerald-200"
+                              : "bg-gray-900 border-gray-700 text-gray-400 hover:text-white"
+                          }`}
+                        >
+                          <ArrowDownToLine size={13} /> Depósito
+                        </button>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1.5">
+                          Monto
+                        </label>
+                        <CurrencyInput
+                          value={parseFloat(movementAmount) || 0}
+                          onValueChange={(n) => setMovementAmount(String(n))}
+                          placeholder="0"
+                          className="text-base font-semibold py-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1.5">
+                          Motivo <span className="text-gray-600 font-normal normal-case">(ej: pago verdura, retiro dueño)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={movementReason}
+                          onChange={(e) => setMovementReason(e.target.value.slice(0, 200))}
+                          placeholder={movementType === "WITHDRAWAL" ? "Pago verdura" : "Vuelto inicial extra"}
+                          className="w-full bg-gray-900 border border-gray-700 hover:border-gray-600 focus:border-purple-500 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                        />
+                      </div>
+                      <button
+                        onClick={handleCreateMovement}
+                        disabled={working}
+                        className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-semibold rounded-lg text-sm"
+                      >
+                        {working ? "Guardando…" : `Registrar ${movementType === "WITHDRAWAL" ? "retiro" : "depósito"}`}
+                      </button>
+                    </div>
+                  )}
+
+                  {movements.length > 0 ? (
+                    <ul className="space-y-1.5 max-h-64 overflow-y-auto">
+                      {movements.map((m) => (
+                        <li
+                          key={m.id}
+                          className="flex items-center justify-between gap-3 text-sm bg-gray-800/40 rounded-lg px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {m.type === "WITHDRAWAL" ? (
+                              <ArrowUpFromLine size={14} className="text-rose-400 flex-shrink-0" />
+                            ) : (
+                              <ArrowDownToLine size={14} className="text-emerald-400 flex-shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-gray-200 truncate">{m.reason}</p>
+                              <p className="text-[10px] text-gray-500">
+                                {m.user?.name ?? "—"} · {formatDateTime(m.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`text-sm font-semibold tabular-nums flex-shrink-0 ${
+                              m.type === "WITHDRAWAL" ? "text-rose-300" : "text-emerald-300"
+                            }`}
+                          >
+                            {m.type === "WITHDRAWAL" ? "−" : "+"}
+                            {formatCurrency(m.amount)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    !showMovementForm && (
+                      <p className="text-xs text-gray-500 italic text-center py-3">
+                        Sin movimientos en esta caja
+                      </p>
+                    )
+                  )}
                 </div>
               </div>
 

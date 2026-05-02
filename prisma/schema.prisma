@@ -24,6 +24,7 @@ model Tenant {
   expenses    Expense[]
   recharges   Recharge[]
   cashSessions CashSession[]
+  cashMovements CashMovement[]
   categories  Category[]
   config      TenantConfig?
   subscription Subscription?
@@ -97,6 +98,7 @@ model User {
   stockMovements StockMovement[]
   auditLogs      AuditLog[]
   cashSessions   CashSession[]
+  cashMovements  CashMovement[]
   apiKeysCreated ApiKey[]        @relation("ApiKeyCreatedBy")
   clientPayments ClientPayment[]
   pushSubscriptions PushSubscription[]
@@ -339,10 +341,34 @@ model CashSession {
   userId   String
   user     User   @relation(fields: [userId], references: [id])
 
-  sales Sale[]
+  sales     Sale[]
+  movements CashMovement[]
 
   @@index([tenantId])
   @@index([status])
+}
+
+/// Movimientos de caja chica — retiros y depósitos durante una sesión abierta.
+/// `type` = WITHDRAWAL (saca dinero) o DEPOSIT (mete dinero, ej: vuelto inicial extra).
+/// Afectan el `expectedCash` al cierre.
+model CashMovement {
+  id            String   @id @default(cuid())
+  type          String   // "WITHDRAWAL" | "DEPOSIT"
+  amount        Decimal  @db.Decimal(12, 2)
+  reason        String   // Motivo en texto libre (ej: "verdura", "pago alquiler")
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cashSessionId String
+  cashSession   CashSession  @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([cashSessionId])
+  @@index([createdAt])
 }
 
 // ============= EXPENSES & RECHARGES =============
