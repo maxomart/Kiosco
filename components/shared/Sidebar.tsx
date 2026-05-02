@@ -25,6 +25,8 @@ import {
   Tv,
   Percent,
   Sparkles,
+  Wrench,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { canAny, hasFeature, type Permission, type PlanFeature } from "@/lib/permissions"
@@ -56,20 +58,28 @@ type NavItem = {
   feature?: PlanFeature        // optional plan gate
 }
 
-const NAV_ITEMS: NavItem[] = [
+// Top: lo más usado del día a día. Siempre visible.
+const NAV_TOP: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: Home },
   { href: "/pos", label: "POS", icon: ShoppingCart, permissions: ["sales:create"] },
   { href: "/inventario", label: "Inventario", icon: Package, permissions: ["products:read"] },
-  { href: "/etiquetas", label: "Etiquetas", icon: Tag, permissions: ["products:read"] },
   { href: "/ventas", label: "Ventas", icon: Receipt, permissions: ["sales:read"] },
-  { href: "/reportes", label: "Reportes", icon: BarChart3, permissions: ["reports:read"] },
-  { href: "/tv", label: "Modo TV", icon: Tv, permissions: ["reports:read"] },
-  { href: "/comisiones", label: "Comisiones", icon: Percent, permissions: ["reports:read"] },
-  { href: "/clientes", label: "Clientes", icon: Users, permissions: ["clients:read"] },
   { href: "/caja", label: "Caja", icon: DollarSign, permissions: ["cash:read"] },
-  { href: "/gastos", label: "Gastos", icon: TrendingDown, permissions: ["expenses:read"], feature: "feature:expenses" },
+  { href: "/clientes", label: "Clientes", icon: Users, permissions: ["clients:read"] },
+  { href: "/reportes", label: "Reportes", icon: BarChart3, permissions: ["reports:read"] },
+]
+
+// Herramientas: secundarios. Colapsable para no saturar.
+const NAV_TOOLS: NavItem[] = [
   { href: "/cargas", label: "Cargas", icon: Truck, permissions: ["recharges:read"], feature: "feature:recharges" },
-  { href: "/pedidos-proveedor", label: "Pedidos a proveedor", icon: Sparkles, permissions: ["recharges:read"] },
+  { href: "/gastos", label: "Gastos", icon: TrendingDown, permissions: ["expenses:read"], feature: "feature:expenses" },
+  { href: "/etiquetas", label: "Etiquetas", icon: Tag, permissions: ["products:read"], feature: "feature:labels" },
+  { href: "/pedidos-proveedor", label: "Pedidos a proveedor", icon: Sparkles, permissions: ["recharges:read"], feature: "feature:supplier_orders" },
+  { href: "/comisiones", label: "Comisiones", icon: Percent, permissions: ["reports:read"], feature: "feature:commissions" },
+  { href: "/tv", label: "Modo TV", icon: Tv, permissions: ["reports:read"], feature: "feature:tv_mode" },
+]
+
+const NAV_BOTTOM: NavItem[] = [
   { href: "/configuracion", label: "Configuración", icon: Settings, permissions: ["settings:read"] },
 ]
 
@@ -79,17 +89,46 @@ const ROLE_LABELS: Record<string, string> = {
   CASHIER: "Cajero/a",
 }
 
+const TOOLS_OPEN_KEY = "orvex:sidebar-tools-open"
+
 export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  // Auto-expand "Herramientas" si el path actual está adentro
+  const isToolsRoute = NAV_TOOLS.some(
+    (i) => pathname === i.href || pathname.startsWith(i.href + "/")
+  )
+  const [toolsOpen, setToolsOpen] = useState<boolean>(isToolsRoute)
 
-  // Hide nav items the user has no permission for. For plan-gated items we
-  // still show them with a lock icon (acts as upsell to /configuracion/suscripcion).
-  const visibleNav = NAV_ITEMS.filter((item) => {
-    if (!item.permissions || item.permissions.length === 0) return true
-    return canAny(user.role, item.permissions)
-  })
+  // Restaurar preferencia del user (persistida en localStorage)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (isToolsRoute) { setToolsOpen(true); return }
+    try {
+      const cached = localStorage.getItem(TOOLS_OPEN_KEY)
+      if (cached === "1") setToolsOpen(true)
+      else if (cached === "0") setToolsOpen(false)
+    } catch {}
+  }, [isToolsRoute])
+
+  const handleToggleTools = () => {
+    setToolsOpen((prev) => {
+      const next = !prev
+      try { localStorage.setItem(TOOLS_OPEN_KEY, next ? "1" : "0") } catch {}
+      return next
+    })
+  }
+
+  // Filter por permisos. Items plan-gated igual se muestran con candado.
+  const filterByPerm = (items: NavItem[]) =>
+    items.filter((item) => {
+      if (!item.permissions || item.permissions.length === 0) return true
+      return canAny(user.role, item.permissions)
+    })
+  const visibleTop = filterByPerm(NAV_TOP)
+  const visibleTools = filterByPerm(NAV_TOOLS)
+  const visibleBottom = filterByPerm(NAV_BOTTOM)
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -107,6 +146,62 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/login" })
+  }
+
+  const renderNavLink = ({ href, label, icon: Icon, feature }: NavItem) => {
+    const isActive = pathname === href || pathname.startsWith(href + "/")
+    const locked = !!feature && !hasFeature(plan, feature)
+    const targetHref = locked ? "/configuracion/suscripcion" : href
+    const tourId = `nav-${href.replace(/^\//, "")}`
+    return (
+      <Link
+        key={href}
+        href={targetHref}
+        data-tour={tourId}
+        className={cn(
+          "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
+          isActive && !locked
+            ? "bg-accent-soft text-accent-foreground"
+            : locked
+            ? "text-gray-600 hover:text-gray-400 hover:bg-gray-800/40"
+            : "text-gray-400 hover:text-gray-100 hover:bg-gray-800/70",
+          collapsed && "justify-center px-2"
+        )}
+        title={
+          collapsed
+            ? `${label}${locked ? " (Bloqueado · plan superior)" : ""}`
+            : locked
+            ? "Función bloqueada — Suscribite para desbloquear"
+            : undefined
+        }
+      >
+        <span
+          className={cn(
+            "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full bg-accent transition-all duration-200 ease-out",
+            isActive && !locked ? "h-6 opacity-100" : "h-0 opacity-0"
+          )}
+          aria-hidden
+        />
+        <Icon
+          className={cn(
+            "w-4 h-4 flex-shrink-0 transition-colors duration-150",
+            isActive && !locked
+              ? "text-accent"
+              : locked
+              ? "text-gray-600 group-hover:text-gray-500"
+              : "text-gray-400 group-hover:text-gray-200"
+          )}
+        />
+        {!collapsed && (
+          <>
+            <span className={cn("flex-1", isActive && !locked && "text-gray-100")}>{label}</span>
+            {locked && (
+              <Lock className="w-3.5 h-3.5 text-gray-600 group-hover:text-amber-400 transition-colors" />
+            )}
+          </>
+        )}
+      </Link>
+    )
   }
 
   const NavContent = (
@@ -145,66 +240,51 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {visibleNav.map(({ href, label, icon: Icon, feature }) => {
-          const isActive =
-            pathname === href || pathname.startsWith(href + "/")
-          // Plan-gated: render but disabled-looking, link to upgrade page
-          const locked = !!feature && !hasFeature(plan, feature)
-          const targetHref = locked ? "/configuracion/suscripcion" : href
-          // Stable id from the href so the tour can spotlight specific nav
-          // items via [data-tour='nav-pos'], etc.
-          const tourId = `nav-${href.replace(/^\//, "")}`
-          return (
-            <Link
-              key={href}
-              href={targetHref}
-              data-tour={tourId}
+        {/* TOP — items principales */}
+        {visibleTop.map((item) => renderNavLink(item))}
+
+        {/* GRUPO HERRAMIENTAS — colapsable */}
+        {visibleTools.length > 0 && (
+          <div className="pt-3">
+            {/* Toggle del grupo */}
+            <button
+              onClick={collapsed ? undefined : handleToggleTools}
               className={cn(
-                "relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
-                isActive && !locked
-                  ? "bg-accent-soft text-accent-foreground"
-                  : locked
-                  ? "text-gray-600 hover:text-gray-400 hover:bg-gray-800/40"
-                  : "text-gray-400 hover:text-gray-100 hover:bg-gray-800/70",
+                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors",
+                "text-gray-500 hover:text-gray-300 hover:bg-gray-800/40",
                 collapsed && "justify-center px-2"
               )}
-              title={
-                collapsed
-                  ? `${label}${locked ? " (Bloqueado · plan superior)" : ""}`
-                  : locked
-                  ? "Función bloqueada — Suscribite para desbloquear"
-                  : undefined
-              }
+              title={collapsed ? "Herramientas" : undefined}
+              aria-expanded={toolsOpen}
             >
-              {/* Active indicator bar */}
-              <span
-                className={cn(
-                  "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-r-full bg-accent transition-all duration-200 ease-out",
-                  isActive && !locked ? "h-6 opacity-100" : "h-0 opacity-0"
-                )}
-                aria-hidden
-              />
-              <Icon
-                className={cn(
-                  "w-4 h-4 flex-shrink-0 transition-colors duration-150",
-                  isActive && !locked
-                    ? "text-accent"
-                    : locked
-                    ? "text-gray-600 group-hover:text-gray-500"
-                    : "text-gray-400 group-hover:text-gray-200"
-                )}
-              />
+              <Wrench className="w-4 h-4 flex-shrink-0" />
               {!collapsed && (
                 <>
-                  <span className={cn("flex-1", isActive && !locked && "text-gray-100")}>{label}</span>
-                  {locked && (
-                    <Lock className="w-3.5 h-3.5 text-gray-600 group-hover:text-amber-400 transition-colors" />
-                  )}
+                  <span className="flex-1 text-left">Herramientas</span>
+                  <ChevronDown
+                    className={cn(
+                      "w-3.5 h-3.5 transition-transform duration-200",
+                      toolsOpen ? "rotate-0" : "-rotate-90"
+                    )}
+                  />
                 </>
               )}
-            </Link>
-          )
-        })}
+            </button>
+            {/* Contenido del grupo (visible cuando expandido OR cuando colapsado para no esconder items) */}
+            {(toolsOpen || collapsed) && (
+              <div className={cn("space-y-0.5", !collapsed && "mt-1 pl-2 border-l border-gray-800/60 ml-3")}>
+                {visibleTools.map((item) => renderNavLink(item))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* BOTTOM — config */}
+        {visibleBottom.length > 0 && (
+          <div className="pt-3 border-t border-gray-800/60 mt-3">
+            {visibleBottom.map((item) => renderNavLink(item))}
+          </div>
+        )}
       </nav>
 
       {/* Bottom section: user info + logout */}

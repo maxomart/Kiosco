@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { predictStockouts } from "@/lib/predictions"
+import { requireFeature } from "@/lib/plan-guard"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +14,8 @@ export const dynamic = "force-dynamic"
 export async function GET() {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const planErr = await requireFeature(tenantId!, "feature:supplier_orders")
+  if (planErr) return planErr
 
   const stockouts = await predictStockouts(tenantId!)
 

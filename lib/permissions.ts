@@ -122,6 +122,15 @@ export type PlanFeature =
   | "feature:multi_cash"      // Multiple simultaneous cash sessions
   | "feature:multi_store"     // Multiple stores under one account
   | "feature:priority_support" // Priority support channel
+  // ─── Features nuevas ────────────────────────────────────────────────
+  | "feature:cash_movements"  // Caja chica (retiros / depósitos en sesión)
+  | "feature:labels"          // Imprimir etiquetas con código de barras
+  | "feature:tv_mode"         // Modo TV / pantalla pública con stats live
+  | "feature:public_storefront" // Carta pública /k/<slug>
+  | "feature:commissions"     // % de comisión por venta a empleados
+  | "feature:supplier_orders" // Pedidos a proveedor automáticos (IA)
+  | "feature:android_twa"     // App de Android (TWA)
+  | "feature:predictive_ai"   // IA predictiva (3 cards en /inicio)
 
 type PlanGate = Record<PlanFeature, Plan[]>
 
@@ -145,6 +154,15 @@ const PLAN_FEATURES: PlanGate = {
   "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multi_store":       ["BUSINESS", "ENTERPRISE"],
   "feature:priority_support":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  // ─── Nuevas ─── (acceso parejo: básicos para STARTER, premium para PROFESSIONAL+)
+  "feature:cash_movements":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:labels":            ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:public_storefront": ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:tv_mode":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:commissions":       ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:supplier_orders":   ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:predictive_ai":     ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:android_twa":       ["BUSINESS", "ENTERPRISE"],
 }
 
 /** Per-day AI message quota by plan (soft cap).

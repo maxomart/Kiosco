@@ -3,6 +3,7 @@ import ExcelJS from "exceljs"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { predictStockouts } from "@/lib/predictions"
+import { requireFeature } from "@/lib/plan-guard"
 
 export const dynamic = "force-dynamic"
 
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic"
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ supplierId: string }> }) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const planErr = await requireFeature(tenantId!, "feature:supplier_orders")
+  if (planErr) return planErr
 
   const { supplierId } = await params
   const noSupplier = supplierId === "sin-proveedor"

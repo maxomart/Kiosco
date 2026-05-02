@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
+import { requireFeature } from "@/lib/plan-guard"
 
 export const dynamic = "force-dynamic"
 
@@ -15,6 +16,8 @@ export const dynamic = "force-dynamic"
 export async function GET(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  const planErr = await requireFeature(tenantId!, "feature:commissions")
+  if (planErr) return planErr
 
   const url = new URL(req.url)
   const fromStr = url.searchParams.get("from")

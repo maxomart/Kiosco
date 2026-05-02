@@ -39,7 +39,11 @@ export function PredictiveInsights() {
 
   useEffect(() => {
     fetch("/api/predicciones", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        // 403 = plan no incluye IA predictiva. No mostramos nada.
+        if (r.status === 403) return null
+        return r.ok ? r.json() : null
+      })
       .then((d) => setData(d))
       .finally(() => setLoading(false))
   }, [])

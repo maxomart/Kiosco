@@ -5,8 +5,10 @@
  *   - plan check second (does the TENANT's plan allow it?)
  */
 
+import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { PLAN_LIMITS, type Plan, PLAN_LABELS } from "@/lib/utils"
+import { hasFeature, minimumPlanFor, type PlanFeature } from "@/lib/permissions"
 
 /** Fetch plan for a tenant (defaults to STARTER if no subscription row). */
 export async function getTenantPlan(tenantId: string): Promise<Plan> {
@@ -73,6 +75,33 @@ async function countEntity(
     case "suppliers":  return db.supplier.count({ where: { tenantId, active: true } })
     case "categories": return db.category.count({ where: { tenantId, active: true } })
   }
+}
+
+/**
+ * Server-side plan-feature guard para APIs. Devuelve NextResponse 403 con
+ * mensaje upsell si el tenant no tiene la feature, o `null` si OK.
+ *
+ * Uso típico:
+ *   const planErr = await requireFeature(tenantId!, "feature:tv_mode")
+ *   if (planErr) return planErr
+ */
+export async function requireFeature(
+  tenantId: string,
+  feature: PlanFeature,
+  plan?: Plan,
+): Promise<NextResponse | null> {
+  const p: Plan = plan ?? (await getTenantPlan(tenantId))
+  if (hasFeature(p, feature)) return null
+  const minPlan = minimumPlanFor(feature)
+  return NextResponse.json(
+    {
+      error: `Esta función requiere el plan ${PLAN_LABELS[minPlan]} o superior.`,
+      code: "PLAN_GATE",
+      currentPlan: p,
+      requiredPlan: minPlan,
+    },
+    { status: 403 },
+  )
 }
 
 /**
