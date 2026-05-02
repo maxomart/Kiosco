@@ -21,6 +21,7 @@ import StatCard from "@/components/shared/StatCard"
 import WeeklySalesChart from "@/components/shared/WeeklySalesChart"
 import { AnimatedStagger, AnimatedItem } from "@/components/shared/AnimatedStagger"
 import { OnboardingChecklist } from "@/components/shared/OnboardingChecklist"
+import { OnboardingWizard } from "@/components/shared/OnboardingWizard"
 import { PredictiveInsights } from "@/components/dashboard/PredictiveInsights"
 import { Progress } from "@/components/ui/progress"
 
@@ -358,6 +359,9 @@ export default async function DashboardPage() {
           })}
         </p>
       </AnimatedItem>
+
+      {/* Wizard interactivo de 5 pasos — overlay full-screen al primer login */}
+      <OnboardingWizard />
 
       {/* Onboarding checklist — only shows if tenant hasn't dismissed it */}
       <AnimatedItem>

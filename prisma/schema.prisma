@@ -461,6 +461,10 @@ model TenantConfig {
 
   // Onboarding / first-time user experience
   onboardingDismissed     Boolean  @default(false)
+  // Wizard interactivo de 5 pasos al primer login. Si está null → mostrar.
+  wizardCompletedAt       DateTime?
+  // Marcar que el usuario abrió la página de reportes desde el wizard.
+  wizardSeenReports       Boolean  @default(false)
 
   // Loyalty program settings (PROFESSIONAL+ feature)
   loyaltyEnabled          Boolean  @default(false)
