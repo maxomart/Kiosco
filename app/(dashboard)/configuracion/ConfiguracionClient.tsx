@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon, Gift, Download, Globe } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon, Gift, Download, Globe, Smartphone } from "lucide-react"
 import { PageTip } from "@/components/shared/PageTip"
 import { BUSINESS_TYPES, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
@@ -154,6 +154,7 @@ export default function ConfiguracionPage() {
     { icon: Gift, label: "Recomendar Orvex", href: "/configuracion/referidos", desc: "1 mes gratis por cada amigo que se sume", color: "text-emerald-400", bg: "bg-emerald-900/40", border: "border-emerald-700/40" },
     { icon: Globe, label: "Carta pública", href: "/configuracion/carta-publica", desc: "Vidriera online con tus productos", color: "text-pink-400", bg: "bg-pink-900/40", border: "border-pink-700/40" },
     { icon: Star, label: "Programa de fidelidad", href: "/configuracion/loyalty", desc: "Puntos por compra + canje como descuento", color: "text-amber-400", bg: "bg-amber-900/40", border: "border-amber-700/40" },
+    { icon: Smartphone, label: "App de Android", href: "/configuracion/app-android", desc: "Empaquetar como app para Play Store", color: "text-emerald-400", bg: "bg-emerald-900/40", border: "border-emerald-700/40" },
     { icon: Building2, label: "Multi-tienda", href: "/configuracion/multi-tienda", desc: "Gestionar varias sucursales", color: "text-purple-400", bg: "bg-purple-900/40", border: "border-purple-700/40", requiredPlan: "BUSINESS" as const },
   ]
 
