@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck } from "lucide-react"
+import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck, Wand2, Eye, EyeOff } from "lucide-react"
 import toast from "react-hot-toast"
 
 interface AfipConfig {
@@ -39,6 +39,9 @@ export default function AfipConfigClient(_props: { initial?: any }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [creatingCert, setCreatingCert] = useState(false)
+  const [claveFiscal, setClaveFiscal] = useState("")
+  const [showClaveFiscal, setShowClaveFiscal] = useState(false)
 
   const [cuit, setCuit] = useState("")
   const [pointOfSale, setPointOfSale] = useState<number>(1)
@@ -118,6 +121,54 @@ export default function AfipConfigClient(_props: { initial?: any }) {
       toast.error(e?.message ?? "Error de red")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleCreateCert = async () => {
+    if (!cuit.match(/^\d{11}$/)) {
+      toast.error("Primero completá un CUIT válido (11 dígitos)")
+      return
+    }
+    if (claveFiscal.length < 4) {
+      toast.error("Entrá la clave fiscal de AFIP")
+      return
+    }
+    if (!confirm("¿Generar el certificado en modo " + (mode === "PRODUCCION" ? "PRODUCCIÓN" : "Homologación") + "?\n\nLa clave fiscal sólo se usa para esta operación. No se guarda.")) {
+      return
+    }
+    setCreatingCert(true)
+    const tid = toast.loading("Generando certificado en ARCA. Puede tardar hasta 2 minutos…")
+    try {
+      const r = await fetch("/api/configuracion/afip/create-cert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cuit,
+          claveFiscal,
+          mode,
+          businessName: businessName || undefined,
+          condicionIVA,
+          pointOfSale,
+        }),
+      })
+      const d = await r.json()
+      if (!r.ok || !d.ok) {
+        toast.error(d.error ?? "No se pudo crear el certificado", { id: tid, duration: 8000 })
+        return
+      }
+      setClaveFiscal("")
+      if (d.connectionOk) {
+        toast.success("¡Certificado creado y conexión a ARCA OK!", { id: tid, duration: 5000 })
+      } else {
+        toast(`Certificado creado, pero la conexión falló: ${d.connectionMessage ?? "(sin detalle)"}`, {
+          id: tid, duration: 8000, icon: "⚠️",
+        })
+      }
+      await fetchConfig()
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error de red", { id: tid })
+    } finally {
+      setCreatingCert(false)
     }
   }
 
@@ -347,10 +398,85 @@ export default function AfipConfigClient(_props: { initial?: any }) {
         </div>
       </section>
 
+      {/* ─── Modo automático (uno-click) ─── */}
+      <section className="bg-gradient-to-br from-purple-950/40 via-gray-900 to-gray-950 border border-purple-700/40 rounded-xl p-5 space-y-4 relative overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-32 h-32 bg-purple-600/20 blur-3xl rounded-full pointer-events-none" />
+        <div className="relative space-y-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-white font-semibold flex items-center gap-2">
+                <Wand2 size={16} className="text-purple-400" />
+                Modo automático <span className="text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/30 rounded-full px-2 py-0.5 ml-1">Recomendado</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Generamos el certificado por vos en ARCA. Sólo necesitás tu CUIT y tu clave fiscal nivel 3+.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-3 flex gap-2 text-xs">
+            <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+            <div className="text-gray-300 space-y-1">
+              <p>
+                <strong className="text-emerald-300">Tu clave fiscal nunca se guarda</strong> — sólo viaja una vez al SDK para hacer el alta del cert en ARCA.
+              </p>
+              <p className="text-gray-500">
+                El certificado generado queda encriptado con AES-256-GCM en nuestra base.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="CUIT (lo tomamos de arriba)">
+              <input
+                type="text" readOnly
+                value={cuit || "(completá el CUIT arriba)"}
+                className="w-full bg-gray-800/50 border border-gray-800 rounded-lg px-3 py-2 text-gray-400 text-sm cursor-not-allowed"
+              />
+            </Field>
+            <Field label="Clave fiscal (nivel 3 o más)">
+              <div className="relative">
+                <input
+                  type={showClaveFiscal ? "text" : "password"}
+                  value={claveFiscal}
+                  onChange={(e) => setClaveFiscal(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  className="w-full bg-gray-800 border border-gray-700 hover:border-gray-600 focus:border-purple-500 rounded-lg pl-3 pr-10 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowClaveFiscal((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-200"
+                  aria-label={showClaveFiscal ? "Ocultar clave" : "Mostrar clave"}
+                >
+                  {showClaveFiscal ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </Field>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleCreateCert}
+              disabled={creatingCert || !setupOk || !cuit || claveFiscal.length < 4}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm disabled:opacity-50 shadow-lg shadow-purple-900/40"
+            >
+              {creatingCert ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+              {creatingCert ? "Generando…" : "Generar certificado"}
+            </button>
+            <p className="text-[11px] text-gray-500">
+              Tarda hasta 2 minutos. Después probamos la conexión solos.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
         <h2 className="text-white font-semibold flex items-center gap-2">
           <Lock size={16} className="text-purple-400" />
-          Certificado digital
+          Certificado digital <span className="text-[10px] text-gray-500 font-normal ml-1">(modo manual)</span>
         </h2>
         <div className="bg-purple-950/30 border border-purple-900/40 rounded-lg p-3 flex gap-2 text-xs">
           <Info size={14} className="text-purple-300 flex-shrink-0 mt-0.5" />

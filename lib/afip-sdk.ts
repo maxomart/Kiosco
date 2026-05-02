@@ -140,6 +140,59 @@ export async function testAfipConnection(tenantId: string): Promise<AfipServerSt
   }
 }
 
+export interface CertCreationResult {
+  ok: boolean
+  message: string
+  cert?: string
+  key?: string
+}
+
+/**
+ * "Uno-click" — usa AfipSDK CreateCert para que ARCA genere el certificado
+ * digital del kiosquero a partir de su CUIT + Clave Fiscal nivel 3+.
+ *
+ * Flujo del SDK:
+ *   1. AfipSDK arma el CSR (RSA 2048) en su backend
+ *   2. Hace login en AFIP con clave fiscal
+ *   3. Sube el CSR a AFIP, obtiene el cert firmado
+ *   4. Lo asocia al WSFE de ese ambiente (prod o homo)
+ *   5. Devuelve cert + private key en PEM
+ *
+ * IMPORTANTE: La clave fiscal nunca se loguea ni se guarda en DB. Sólo se
+ * pasa al SDK para esta operación puntual.
+ */
+export async function createCertViaSDK(opts: {
+  cuit: string
+  username: string
+  password: string
+  alias: string
+  production: boolean
+}): Promise<CertCreationResult> {
+  const accessToken = process.env.AFIP_SDK_ACCESS_TOKEN
+  if (!accessToken) {
+    return { ok: false, message: "AFIP_SDK_ACCESS_TOKEN no configurado en el servidor" }
+  }
+  try {
+    const Afip = await loadAfip()
+    const afip = new Afip({
+      CUIT: opts.cuit,
+      production: opts.production,
+      access_token: accessToken,
+    })
+    const result = await afip.CreateCert(opts.username, opts.password, opts.alias)
+    // El SDK devuelve { cert, key } (PEM strings). Si la forma cambia, ajustar acá.
+    const cert: string | undefined = result?.cert ?? result?.certificate ?? result?.x509
+    const key: string | undefined = result?.key ?? result?.private_key ?? result?.privateKey
+    if (!cert || !key) {
+      return { ok: false, message: "AfipSDK no devolvió el cert/key esperado" }
+    }
+    return { ok: true, message: "Certificado generado", cert, key }
+  } catch (err: any) {
+    const msg = err?.message ?? String(err)
+    return { ok: false, message: msg.slice(0, 500) }
+  }
+}
+
 /** Devuelve el último número emitido. cbteTipo: 1=A, 6=B, 11=C. */
 export async function getLastVoucherNumber(
   tenantId: string,
