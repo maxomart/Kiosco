@@ -24,6 +24,7 @@ import {
   Tag,
   Tv,
   Percent,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { canAny, hasFeature, type Permission, type PlanFeature } from "@/lib/permissions"
@@ -68,6 +69,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/caja", label: "Caja", icon: DollarSign, permissions: ["cash:read"] },
   { href: "/gastos", label: "Gastos", icon: TrendingDown, permissions: ["expenses:read"], feature: "feature:expenses" },
   { href: "/cargas", label: "Cargas", icon: Truck, permissions: ["recharges:read"], feature: "feature:recharges" },
+  { href: "/pedidos-proveedor", label: "Pedidos a proveedor", icon: Sparkles, permissions: ["recharges:read"] },
   { href: "/configuracion", label: "Configuración", icon: Settings, permissions: ["settings:read"] },
 ]
 
