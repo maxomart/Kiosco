@@ -13,6 +13,7 @@
  *   - lowstock: todos los días a las 09:00
  *   - weekly:   los lunes a las 09:00
  *   - monthly:  el día 1 de cada mes a las 09:00
+ *   - bot:      todas las horas de 08:00 a 23:00 (slot "night" sólo a las 23)
  */
 
 import { db } from "./db"
@@ -89,23 +90,21 @@ async function checkAndRun(): Promise<void> {
       }
     }
 
-    // Bot demo — 5 slots distribuidos en el día para que la cuenta parezca
-    // un kiosco vivo. Cada slot genera 3-6 ventas con timestamps del momento.
-    // Las cargas + gastos sólo se hacen en el slot "night" (último del día).
-    if (ar.hour === 10 && ar.minute < 5) {
-      await runOnce("bot-morning", ar.dateKey, async () => runBotIfConfigured({ slot: "morning" }))
-    }
-    if (ar.hour === 13 && ar.minute < 5) {
-      await runOnce("bot-noon", ar.dateKey, async () => runBotIfConfigured({ slot: "noon" }))
-    }
-    if (ar.hour === 17 && ar.minute < 5) {
-      await runOnce("bot-afternoon", ar.dateKey, async () => runBotIfConfigured({ slot: "afternoon" }))
-    }
-    if (ar.hour === 20 && ar.minute < 5) {
-      await runOnce("bot-evening", ar.dateKey, async () => runBotIfConfigured({ slot: "evening" }))
-    }
-    if (ar.hour === 23 && ar.minute >= 30 && ar.minute < 35) {
-      await runOnce("bot-night", ar.dateKey, async () => runBotIfConfigured({ slot: "night" }))
+    // Bot demo — corre cada hora en horario de comercio (8:00 a 23:00 AR).
+    // Cada slot genera 1-3 ventas con timestamps del momento, así la cuenta
+    // demo parece un kiosco activo durante todo el día. La hora 23 además
+    // hace cargas + gastos para "cerrar" la jornada.
+    if (ar.hour >= 8 && ar.hour <= 23 && ar.minute < 5) {
+      const isClosingHour = ar.hour === 23
+      const hourLabel = String(ar.hour).padStart(2, "0")
+      await runOnce(`bot-h${hourLabel}`, ar.dateKey, async () =>
+        runBotIfConfigured({
+          slot: isClosingHour ? "night" : "morning",
+          salesCount: isClosingHour ? undefined : 1 + Math.floor(Math.random() * 3),
+          doRecharges: isClosingHour,
+          doExpenses: isClosingHour,
+        })
+      )
     }
   } catch (e) {
     console.error("[internal-cron] check failed:", e)

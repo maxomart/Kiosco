@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Mail, UserCheck, UserX, X, Copy, Loader2, AlertCircle, KeyRound, Eye, EyeOff } from "lucide-react"
+import { Plus, Trash2, Mail, UserCheck, UserX, X, Copy, Loader2, AlertCircle, KeyRound, Eye, EyeOff, RotateCcw } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import { useConfirm } from "@/components/shared/ConfirmDialog"
 import toast from "react-hot-toast"
@@ -136,6 +136,31 @@ export default function UsuariosPage() {
     setActing(null)
   }
 
+  const handleResetPassword = async (user: User) => {
+    const ok = await confirm({
+      title: "¿Generar nueva contraseña?",
+      description: `Vas a ver la nueva contraseña una sola vez para pasársela a ${user.name || user.email}. La actual deja de funcionar al instante.`,
+      confirmText: "Generar nueva",
+      tone: "warning",
+    })
+    if (!ok) return
+    setActing(user.id + ":reset")
+    try {
+      const res = await fetch(`/api/configuracion/usuarios/${user.id}/reset-password`, { method: "POST" })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && d.password) {
+        setNewUserCreds({ email: user.email, password: d.password })
+        toast.success("Contraseña reseteada")
+      } else {
+        toast.error(d.error || "No se pudo resetear la contraseña")
+      }
+    } catch {
+      toast.error("Error de red")
+    } finally {
+      setActing(null)
+    }
+  }
+
   const handleDelete = async (user: User) => {
     const ok = await confirm({
       title: "¿Eliminar usuario permanentemente?",
@@ -175,8 +200,8 @@ export default function UsuariosPage() {
       {newUserCreds && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 max-w-md w-full">
-            <h3 className="text-white font-semibold text-lg mb-3">Usuario creado</h3>
-            <p className="text-gray-400 text-sm mb-4">Compartí estas credenciales con el usuario. No podrás verlas otra vez.</p>
+            <h3 className="text-white font-semibold text-lg mb-3">Nueva contraseña generada</h3>
+            <p className="text-gray-400 text-sm mb-4">Compartí estas credenciales con el usuario. No podrás verlas otra vez. Decile que la cambie en "Mi contraseña" cuando entre.</p>
             <div className="bg-gray-800 rounded-lg p-3 mb-3">
               <p className="text-xs text-gray-500 mb-1">Email</p>
               <p className="text-white font-mono text-sm">{newUserCreds.email}</p>
@@ -287,6 +312,18 @@ export default function UsuariosPage() {
                                 : u.active
                                 ? <UserX size={14} />
                                 : <UserCheck size={14} />
+                              }
+                            </button>
+                            {/* Reset password */}
+                            <button
+                              onClick={() => handleResetPassword(u)}
+                              disabled={acting === u.id + ":reset"}
+                              title="Resetear contraseña"
+                              className="p-1.5 rounded-lg hover:bg-purple-500/10 text-gray-400 hover:text-purple-400 transition-colors disabled:opacity-50"
+                            >
+                              {acting === u.id + ":reset"
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : <RotateCcw size={14} />
                               }
                             </button>
                             {/* Hard delete */}
