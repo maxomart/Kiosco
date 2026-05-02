@@ -21,6 +21,7 @@ import StatCard from "@/components/shared/StatCard"
 import WeeklySalesChart from "@/components/shared/WeeklySalesChart"
 import { AnimatedStagger, AnimatedItem } from "@/components/shared/AnimatedStagger"
 import { OnboardingChecklist } from "@/components/shared/OnboardingChecklist"
+import { PredictiveInsights } from "@/components/dashboard/PredictiveInsights"
 import { Progress } from "@/components/ui/progress"
 
 // ---------------------------------------------------------------------------
@@ -361,6 +362,11 @@ export default async function DashboardPage() {
       {/* Onboarding checklist — only shows if tenant hasn't dismissed it */}
       <AnimatedItem>
         <OnboardingChecklist />
+      </AnimatedItem>
+
+      {/* Predicciones IA: cierre estimado + stock por agotarse + top rentables */}
+      <AnimatedItem>
+        <PredictiveInsights />
       </AnimatedItem>
 
       {/* Low stock alert (full-width if present) */}

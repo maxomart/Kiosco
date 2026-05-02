@@ -10,6 +10,7 @@ import { ConfirmProvider } from "@/components/shared/ConfirmDialog"
 import TourOverlay from "@/components/shared/TourOverlay"
 import { UpgradeWelcomeModal } from "@/components/shared/UpgradeWelcomeModal"
 import SupportWidget from "@/components/shared/SupportWidget"
+import { InstallPrompt } from "@/components/shared/InstallPrompt"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
 import SubscriptionStatusBanner from "@/components/shared/SubscriptionStatusBanner"
@@ -175,6 +176,7 @@ export default async function DashboardLayout({
             </div>
             {aiEnabled && <AssistantWidget plan={plan as any} />}
             <SupportWidget />
+            <InstallPrompt />
             {showTour && <TourOverlay plan={plan as any} upgradedFrom={upgradedFrom} />}
             {showUpgradeWelcome && upgradedFrom && (
               <UpgradeWelcomeModal from={upgradedFrom} to={plan as any} />

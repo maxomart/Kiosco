@@ -99,6 +99,7 @@ model User {
   cashSessions   CashSession[]
   apiKeysCreated ApiKey[]        @relation("ApiKeyCreatedBy")
   clientPayments ClientPayment[]
+  pushSubscriptions PushSubscription[]
 
   @@index([email])
   @@index([tenantId])
@@ -779,6 +780,25 @@ model PriceHistory {
 
   @@index([productId])
   @@index([createdAt])
+}
+
+// ============= PUSH NOTIFICATIONS =============
+// Web Push subscriptions de los users — guardamos endpoint + keys p256dh
+// y auth devueltos por PushManager.subscribe(). Sirven para mandar
+// notificaciones nativas (stock bajo, factura emitida, cierre del día).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime?
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ============= INTERNAL CRON DEDUPE =============
