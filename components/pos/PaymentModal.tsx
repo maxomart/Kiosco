@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { X, Loader2, Check, Banknote, CreditCard, Smartphone, Wallet, QrCode, Printer, FileCheck2 } from "lucide-react"
+import { X, Loader2, Check, Banknote, CreditCard, Smartphone, Wallet, QrCode, Printer, FileCheck2, Star, Gift } from "lucide-react"
 import toast from "react-hot-toast"
 import { usePOSStore } from "@/store/posStore"
 import { formatCurrency, PAYMENT_METHODS, cn } from "@/lib/utils"
@@ -38,6 +38,12 @@ interface ClientLite {
   name: string
   creditLimit: number
   currentBalance: number
+  loyaltyPoints: number
+}
+
+interface LoyaltyConfig {
+  enabled: boolean
+  pointValue: number  // pesos por punto al canjear
 }
 
 export function PaymentModal({ onClose }: Props) {
@@ -56,13 +62,20 @@ export function PaymentModal({ onClose }: Props) {
 
   // Client (for cuenta corriente validations)
   const [client, setClient] = useState<ClientLite | null>(null)
+  // Loyalty
+  const [loyalty, setLoyalty] = useState<LoyaltyConfig | null>(null)
+  const [pointsToRedeem, setPointsToRedeem] = useState(0)
+  const [showRedeem, setShowRedeem] = useState(false)
 
-  const totalAmount = total()
+  const baseTotal = total()
+  const loyaltyDiscount =
+    loyalty && pointsToRedeem > 0 ? Math.min(baseTotal, pointsToRedeem * loyalty.pointValue) : 0
+  const totalAmount = Math.max(0, baseTotal - loyaltyDiscount)
   const change = method === "CASH" && cashReceived ? Math.max(0, Number(cashReceived) - totalAmount) : 0
 
   // Load selected client when CC method picked (and on mount when present)
   useEffect(() => {
-    if (!selectedClientId) { setClient(null); return }
+    if (!selectedClientId) { setClient(null); setPointsToRedeem(0); setShowRedeem(false); return }
     fetch(`/api/clientes`)
       .then((r) => r.json())
       .then((d) => {
@@ -71,10 +84,24 @@ export function PaymentModal({ onClose }: Props) {
           id: c.id, name: c.name,
           creditLimit: Number(c.creditLimit ?? 0),
           currentBalance: Number(c.currentBalance ?? 0),
+          loyaltyPoints: Number(c.loyaltyPoints ?? 0),
         })
       })
       .catch(() => {})
   }, [selectedClientId])
+
+  // Carga config de loyalty 1 vez
+  useEffect(() => {
+    fetch("/api/configuracion", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setLoyalty({
+          enabled: !!d.loyaltyEnabled,
+          pointValue: Number(d.loyaltyPointValue ?? 1),
+        })
+      })
+      .catch(() => {})
+  }, [])
 
   // Poll MP status when pending
   useEffect(() => {
@@ -164,6 +191,8 @@ export function PaymentModal({ onClose }: Props) {
         clientId: selectedClientId ?? null,
         cashSessionId: cashSessionId ?? null,
         notes: mpRef ? `MP ref: ${mpRef}` : null,
+        loyaltyPointsRedeemed: pointsToRedeem,
+        loyaltyDiscount: loyaltyDiscount,
       }
 
       // Offline-first short-circuit: if the browser knows we're offline,
@@ -349,6 +378,93 @@ export function PaymentModal({ onClose }: Props) {
               ))}
             </div>
           </div>
+
+          {/* ─── Canje de puntos de fidelidad ─── */}
+          {loyalty?.enabled && client && client.loyaltyPoints > 0 && (
+            <div className="bg-amber-950/30 border border-amber-800/30 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Star size={14} className="text-amber-400" />
+                  <p className="text-xs text-amber-200">
+                    <span className="font-semibold">{client.name}</span> tiene{" "}
+                    <span className="font-bold text-amber-300 tabular-nums">{client.loyaltyPoints} pts</span>
+                    <span className="text-amber-400/70"> ({formatCurrency(client.loyaltyPoints * loyalty.pointValue)})</span>
+                  </p>
+                </div>
+                {!showRedeem ? (
+                  <button
+                    onClick={() => setShowRedeem(true)}
+                    className="text-xs px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white font-medium flex items-center gap-1"
+                  >
+                    <Gift size={12} /> Canjear
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { setShowRedeem(false); setPointsToRedeem(0) }}
+                    className="text-xs text-gray-400 hover:text-gray-200"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+              {showRedeem && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={Math.min(client.loyaltyPoints, Math.floor(baseTotal / loyalty.pointValue))}
+                      step={1}
+                      value={pointsToRedeem || ""}
+                      onChange={(e) => {
+                        const n = Math.max(0, parseInt(e.target.value) || 0)
+                        const maxByPoints = client.loyaltyPoints
+                        const maxByTotal = Math.floor(baseTotal / loyalty.pointValue)
+                        setPointsToRedeem(Math.min(n, maxByPoints, maxByTotal))
+                      }}
+                      placeholder="Puntos a canjear"
+                      className="flex-1 bg-gray-900 border border-amber-700/40 rounded-lg px-3 py-1.5 text-sm text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                    />
+                    <button
+                      onClick={() => {
+                        const maxByPoints = client.loyaltyPoints
+                        const maxByTotal = Math.floor(baseTotal / loyalty.pointValue)
+                        setPointsToRedeem(Math.min(maxByPoints, maxByTotal))
+                      }}
+                      className="text-xs px-2 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300"
+                    >
+                      Máx
+                    </button>
+                  </div>
+                  {loyaltyDiscount > 0 && (
+                    <p className="text-[11px] text-emerald-300">
+                      Descuento: <span className="font-bold">−{formatCurrency(loyaltyDiscount)}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Total a pagar */}
+          {(loyaltyDiscount > 0 || baseTotal !== totalAmount) && (
+            <div className="bg-gray-800/40 border border-gray-700 rounded-xl px-3 py-2 space-y-0.5 text-xs">
+              <div className="flex justify-between text-gray-400">
+                <span>Subtotal</span>
+                <span className="tabular-nums">{formatCurrency(baseTotal)}</span>
+              </div>
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between text-amber-300">
+                  <span>Canje de puntos</span>
+                  <span className="tabular-nums">−{formatCurrency(loyaltyDiscount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-white font-bold border-t border-gray-700 pt-1 mt-1">
+                <span>Total a pagar</span>
+                <span className="tabular-nums">{formatCurrency(totalAmount)}</span>
+              </div>
+            </div>
+          )}
 
           {method === "CASH" && (
             <div>

@@ -34,6 +34,11 @@ const CreateSaleSchema = z.object({
   clientId: z.string().optional().nullable(),
   cashSessionId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  // Canje de puntos de fidelidad — sólo si hay clientId.
+  // Es la cantidad de puntos a descontar; el server valida que el cliente los tenga
+  // y resta `loyaltyDiscount` al total (ya viene aplicado en `total`).
+  loyaltyPointsRedeemed: z.number().int().min(0).optional().default(0),
+  loyaltyDiscount: z.number().nonnegative().optional().default(0),
 })
 
 export async function POST(req: NextRequest) {
@@ -248,6 +253,31 @@ export async function POST(req: NextRequest) {
         })) as any
         const loyaltyEnabled = cfg?.loyaltyEnabled ?? false
         const rate = cfg?.loyaltyPointsPerPeso != null ? Number(cfg.loyaltyPointsPerPeso) : 1
+
+        // 5a. Canje de puntos (DEDUCCIÓN — antes que earning)
+        if ((data.loyaltyPointsRedeemed ?? 0) > 0) {
+          const client = await tx.client.findUnique({
+            where: { id: data.clientId },
+            select: { loyaltyPoints: true },
+          })
+          if (!client || client.loyaltyPoints < data.loyaltyPointsRedeemed!) {
+            throw new Error("El cliente no tiene suficientes puntos para canjear")
+          }
+          await tx.client.update({
+            where: { id: data.clientId },
+            data: { loyaltyPoints: { decrement: data.loyaltyPointsRedeemed! } },
+          })
+          await tx.loyaltyTransaction.create({
+            data: {
+              points: -data.loyaltyPointsRedeemed!,
+              description: `Canje en venta #${nextNumber}${data.loyaltyDiscount ? ` (-$${data.loyaltyDiscount.toFixed(2)})` : ""}`,
+              clientId: data.clientId,
+              saleId: createdSale.id,
+            },
+          })
+        }
+
+        // 5b. Earning (sumar puntos por la compra)
         if (loyaltyEnabled && rate > 0) {
           const pointsEarned = Math.floor(data.total * rate)
           if (pointsEarned > 0) {
