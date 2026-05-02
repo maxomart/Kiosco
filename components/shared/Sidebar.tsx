@@ -21,6 +21,7 @@ import {
   ShoppingBag,
   Lock,
   X,
+  Tag,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { canAny, hasFeature, type Permission, type PlanFeature } from "@/lib/permissions"
@@ -56,6 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: Home },
   { href: "/pos", label: "POS", icon: ShoppingCart, permissions: ["sales:create"] },
   { href: "/inventario", label: "Inventario", icon: Package, permissions: ["products:read"] },
+  { href: "/etiquetas", label: "Etiquetas", icon: Tag, permissions: ["products:read"] },
   { href: "/ventas", label: "Ventas", icon: Receipt, permissions: ["sales:read"] },
   { href: "/reportes", label: "Reportes", icon: BarChart3, permissions: ["reports:read"] },
   { href: "/clientes", label: "Clientes", icon: Users, permissions: ["clients:read"] },
