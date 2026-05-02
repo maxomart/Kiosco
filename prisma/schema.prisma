@@ -88,6 +88,10 @@ model User {
   // Bonus de meses gratis acumulados por referidos exitosos. Se descuentan
   // del cobro mensual de MP (la lógica vive en /api/billing/mp/sync).
   referralBonusMonths Int   @default(0)
+  // ─── Comisiones por venta (empleados) ─────────────────────────────
+  // % del total de cada venta que el cajero se gana como comisión.
+  // 0 = sin comisión (default). Sólo lo edita el OWNER en /configuracion/usuarios.
+  commissionPercent Decimal @default(0) @db.Decimal(5, 2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

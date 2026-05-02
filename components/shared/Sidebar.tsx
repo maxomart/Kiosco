@@ -23,6 +23,7 @@ import {
   X,
   Tag,
   Tv,
+  Percent,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { canAny, hasFeature, type Permission, type PlanFeature } from "@/lib/permissions"
@@ -62,6 +63,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/ventas", label: "Ventas", icon: Receipt, permissions: ["sales:read"] },
   { href: "/reportes", label: "Reportes", icon: BarChart3, permissions: ["reports:read"] },
   { href: "/tv", label: "Modo TV", icon: Tv, permissions: ["reports:read"] },
+  { href: "/comisiones", label: "Comisiones", icon: Percent, permissions: ["reports:read"] },
   { href: "/clientes", label: "Clientes", icon: Users, permissions: ["clients:read"] },
   { href: "/caja", label: "Caja", icon: DollarSign, permissions: ["cash:read"] },
   { href: "/gastos", label: "Gastos", icon: TrendingDown, permissions: ["expenses:read"], feature: "feature:expenses" },

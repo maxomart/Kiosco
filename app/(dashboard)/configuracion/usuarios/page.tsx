@@ -14,6 +14,7 @@ interface User {
   active: boolean
   createdAt: string
   lastLoginAt: string | null
+  commissionPercent: number
 }
 
 const ROLE_LABELS: Record<string, string> = { OWNER: "Dueño", ADMIN: "Admin", CASHIER: "Cajero" }
@@ -236,6 +237,7 @@ export default function UsuariosPage() {
               <th className="p-4 text-left text-gray-400 font-medium">Usuario</th>
               <th className="p-4 text-left text-gray-400 font-medium">Rol</th>
               <th className="p-4 text-left text-gray-400 font-medium hidden sm:table-cell">Último ingreso</th>
+              <th className="p-4 text-center text-gray-400 font-medium hidden md:table-cell" title="% del total de la venta que el cajero gana de comisión">% Com.</th>
               <th className="p-4 text-center text-gray-400 font-medium">Estado</th>
               <th className="p-4 text-right text-gray-400 font-medium">Acciones</th>
             </tr>
@@ -269,6 +271,28 @@ export default function UsuariosPage() {
                     </td>
                     <td className="p-4 text-gray-400 hidden sm:table-cell">
                       {u.lastLoginAt ? formatDate(u.lastLoginAt) : "Nunca"}
+                    </td>
+                    <td className="p-4 text-center hidden md:table-cell">
+                      <CommissionInput
+                        value={Number(u.commissionPercent)}
+                        onSave={async (next) => {
+                          const r = await fetch(`/api/configuracion/usuarios/${u.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ commissionPercent: next }),
+                          })
+                          if (!r.ok) {
+                            const d = await r.json().catch(() => ({}))
+                            toast.error(d.error ?? "No se pudo guardar")
+                            return false
+                          }
+                          setUsers((prev) =>
+                            prev.map((x) => (x.id === u.id ? { ...x, commissionPercent: next } : x))
+                          )
+                          toast.success(`Comisión: ${next}%`)
+                          return true
+                        }}
+                      />
                     </td>
                     <td className="p-4 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -539,6 +563,66 @@ export default function UsuariosPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Input editable inline para el % de comisión. Edición optimista con guardado al blur/Enter. */
+function CommissionInput({
+  value,
+  onSave,
+}: {
+  value: number
+  onSave: (next: number) => Promise<boolean>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal] = useState(String(value))
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { setVal(String(value)) }, [value])
+
+  const commit = async () => {
+    const n = Math.max(0, Math.min(100, parseFloat(val.replace(",", ".")) || 0))
+    if (n === value) { setEditing(false); return }
+    setSaving(true)
+    const ok = await onSave(n)
+    setSaving(false)
+    if (ok) setEditing(false)
+    else setVal(String(value))
+  }
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className={`text-xs px-2 py-1 rounded-md border border-transparent hover:border-gray-700 hover:bg-gray-800 tabular-nums ${
+          value === 0 ? "text-gray-500" : "text-emerald-300 font-semibold"
+        }`}
+        title="Editar % de comisión"
+      >
+        {value}%
+      </button>
+    )
+  }
+  return (
+    <div className="inline-flex items-center gap-1">
+      <input
+        type="number"
+        min={0}
+        max={100}
+        step="0.5"
+        value={val}
+        autoFocus
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit()
+          else if (e.key === "Escape") { setVal(String(value)); setEditing(false) }
+        }}
+        disabled={saving}
+        className="w-14 bg-gray-800 border border-emerald-500/40 rounded-md px-2 py-1 text-center text-xs text-white tabular-nums focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      />
+      <span className="text-[10px] text-gray-500">%</span>
     </div>
   )
 }
