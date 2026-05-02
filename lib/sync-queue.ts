@@ -160,12 +160,30 @@ export function useOfflineSync(): OfflineSyncState {
     window.addEventListener("online", onOnline)
     window.addEventListener("offline", onOffline)
     // Listen to a custom event so PaymentModal can poke us right after enqueue
-    const onEnqueued = () => refresh()
+    const onEnqueued = () => {
+      refresh()
+      // Registrar Background Sync para que el SO dispare el flush solo cuando vuelva la red
+      if ("serviceWorker" in navigator && "SyncManager" in window) {
+        navigator.serviceWorker.ready
+          .then((reg: any) => reg.sync?.register("orvex-sync-sales"))
+          .catch(() => {})
+      }
+    }
     window.addEventListener("orvex:offline-sale-enqueued", onEnqueued)
+    // Mensaje del SW cuando se dispara Background Sync
+    const onSwMsg = (e: MessageEvent) => {
+      if (e.data?.type === "orvex:sync-sales") flush()
+    }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", onSwMsg)
+    }
     return () => {
       window.removeEventListener("online", onOnline)
       window.removeEventListener("offline", onOffline)
       window.removeEventListener("orvex:offline-sale-enqueued", onEnqueued)
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("message", onSwMsg)
+      }
     }
   }, [flush, refresh])
 

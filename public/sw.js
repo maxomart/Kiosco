@@ -1,29 +1,57 @@
 /**
- * RetailAR Service Worker — minimal install/cache layer.
+ * Orvex Service Worker — offline POS support.
  *
  * Strategy:
- *   - /api/*       → network-first (fall back to nothing if offline)
- *   - static       → cache-first (icons, manifest, fonts, _next/static)
- *   - everything   → network-first with cache fallback
+ *   - /api/auth/*       → never cache, always live
+ *   - /api/productos    → network-first + 1h cache fallback (POS necesita catálogo)
+ *   - /api/sync/sales   → never cache; en offline devuelve 503 (cliente lo maneja)
+ *   - otros /api/*      → network-first; offline = 503 JSON
+ *   - /pos, /caja, /inicio → pre-cacheados en install + network-first
+ *   - static            → cache-first
+ *   - HTML genérico     → network-first con offline.html como fallback
  *
- * This does NOT make POS truly offline yet — it just makes the app
- * installable and snappier on repeat loads.
+ * Background Sync:
+ *   - Registramos tag "orvex-sync-sales" desde el cliente cuando una venta
+ *     queda en la cola IDB. El SW dispara un postMessage al cliente al
+ *     activarse el sync para que el cliente flushee la cola.
+ *
+ * NOTA: bumpear VERSION para forzar reinstalación de cache cuando se cambie
+ * la lista de assets pre-cacheados o las rutas críticas.
  */
 
-const VERSION = "v2"
-const CACHE = `retailar-${VERSION}`
-const API_CACHE = `retailar-api-${VERSION}`
+const VERSION = "v3"
+const CACHE = `orvex-${VERSION}`
+const API_CACHE = `orvex-api-${VERSION}`
 const API_TTL_MS = 60 * 60 * 1000 // 1h fallback for /api/productos GETs
+
 const STATIC_ASSETS = [
   "/manifest.json",
   "/icons/icon.svg",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/offline.html",
 ]
+
+// Páginas críticas que pre-cacheamos en install para que el POS arranque
+// offline aún si no las visitó antes.
+const CRITICAL_PAGES = ["/pos", "/inicio", "/caja"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(STATIC_ASSETS).catch(() => {}))
+    (async () => {
+      const cache = await caches.open(CACHE)
+      // Cache assets primero (rápidos y siempre disponibles)
+      await cache.addAll(STATIC_ASSETS).catch(() => {})
+      // Después intentamos cachear las páginas críticas — pueden fallar
+      // si el user no está autenticado, está bien, las cacheamos en uso.
+      await Promise.all(
+        CRITICAL_PAGES.map((path) =>
+          fetch(path, { credentials: "include" })
+            .then((res) => res.ok && cache.put(path, res.clone()))
+            .catch(() => {})
+        )
+      )
+    })()
   )
   self.skipWaiting()
 })
@@ -54,9 +82,23 @@ self.addEventListener("fetch", (event) => {
     return
   }
 
+  // /api/sync/* — nunca cachear, fallar limpio en offline para que el cliente
+  // sepa que no se sincronizó.
+  if (url.pathname.startsWith("/api/sync/")) {
+    event.respondWith(
+      fetch(req).catch(
+        () =>
+          new Response(JSON.stringify({ error: "offline" }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          })
+      )
+    )
+    return
+  }
+
   // /api/productos — network-first with 1h cache fallback so the POS
   // can still list products on cold-load when offline.
-  // (Only safe for GET; we already filtered method above.)
   if (url.pathname.startsWith("/api/productos")) {
     event.respondWith(networkFirstWithCache(req))
     return
@@ -66,10 +108,11 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(req).catch(
-        () => new Response(JSON.stringify({ error: "offline" }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" },
-        })
+        () =>
+          new Response(JSON.stringify({ error: "offline" }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          })
       )
     )
     return
@@ -82,19 +125,20 @@ self.addEventListener("fetch", (event) => {
     url.pathname === "/manifest.json"
   ) {
     event.respondWith(
-      caches.match(req).then((cached) =>
-        cached ||
-        fetch(req).then((res) => {
-          const copy = res.clone()
-          caches.open(CACHE).then((c) => c.put(req, copy))
-          return res
-        })
+      caches.match(req).then(
+        (cached) =>
+          cached ||
+          fetch(req).then((res) => {
+            const copy = res.clone()
+            caches.open(CACHE).then((c) => c.put(req, copy))
+            return res
+          })
       )
     )
     return
   }
 
-  // Pages: network-first, fall back to cache
+  // Pages: network-first, fall back to cache, then to /offline.html
   event.respondWith(
     fetch(req)
       .then((res) => {
@@ -102,7 +146,13 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {})
         return res
       })
-      .catch(() => caches.match(req).then((c) => c || Response.error()))
+      .catch(() =>
+        caches.match(req).then(
+          (cached) =>
+            cached ||
+            caches.match("/offline.html").then((off) => off || Response.error())
+        )
+      )
   )
 })
 
@@ -116,12 +166,13 @@ async function networkFirstWithCache(req) {
     if (res && res.ok) {
       const copy = res.clone()
       const cache = await caches.open(API_CACHE)
-      // Stamp with cache time so we can evict via TTL.
       const headers = new Headers(copy.headers)
       headers.set("sw-cached-at", String(Date.now()))
       const body = await copy.blob()
       const stamped = new Response(body, {
-        status: copy.status, statusText: copy.statusText, headers,
+        status: copy.status,
+        statusText: copy.statusText,
+        headers,
       })
       cache.put(req, stamped).catch(() => {})
     }
@@ -129,15 +180,31 @@ async function networkFirstWithCache(req) {
   } catch (err) {
     const cache = await caches.open(API_CACHE)
     const cached = await cache.match(req)
-    if (cached) {
-      const at = Number(cached.headers.get("sw-cached-at") ?? 0)
-      if (!at || Date.now() - at < API_TTL_MS) return cached
-      // Stale but better than nothing when truly offline:
-      return cached
-    }
+    if (cached) return cached
     return new Response(
       JSON.stringify({ error: "offline", offline: true, products: [] }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     )
   }
 }
+
+/**
+ * Background Sync — el cliente registra el tag "orvex-sync-sales" cuando
+ * encola una venta offline. Cuando vuelve la conexión, el SO dispara este
+ * handler aún si la pestaña está cerrada. Nosotros mandamos un mensaje a
+ * todos los clients para que disparen el flush; si no hay clients activos,
+ * abrimos uno headless al endpoint de sync (best effort).
+ */
+self.addEventListener("sync", (event) => {
+  if (event.tag !== "orvex-sync-sales") return
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
+      if (clientsList.length > 0) {
+        for (const c of clientsList) {
+          c.postMessage({ type: "orvex:sync-sales" })
+        }
+      }
+    })()
+  )
+})

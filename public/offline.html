@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sin conexión · Orvex</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #050510, #0a0a18 50%, #07071a);
+    color: #f3f4f6;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    max-width: 420px; text-align: center;
+    background: rgba(17,24,39,0.6);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 24px;
+    padding: 32px 28px;
+    backdrop-filter: blur(20px);
+  }
+  .icon {
+    width: 64px; height: 64px; margin: 0 auto 16px;
+    border-radius: 20px;
+    background: rgba(124,58,237,0.2);
+    border: 1px solid rgba(124,58,237,0.4);
+    display: flex; align-items: center; justify-content: center;
+    color: #a78bfa;
+  }
+  h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+  p { margin: 0 0 24px; color: #9ca3af; font-size: 14px; line-height: 1.5; }
+  .actions { display: flex; flex-direction: column; gap: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 12px 16px; border-radius: 12px; font-weight: 600; font-size: 14px;
+    border: 1px solid transparent; cursor: pointer; text-decoration: none;
+  }
+  .btn-primary { background: #7c3aed; color: white; }
+  .btn-primary:hover { background: #8b5cf6; }
+  .btn-secondary { background: rgba(255,255,255,0.05); color: #d1d5db; border-color: rgba(255,255,255,0.1); }
+  .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+  .hint { margin-top: 20px; font-size: 11px; color: #6b7280; }
+  .hint code { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; color: #a78bfa; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="2" y1="2" x2="22" y2="22"></line>
+        <path d="M8.5 16.4 a5 5 0 0 1 7-1"></path>
+        <path d="M2 8.82 a15 15 0 0 1 4.17-2.65"></path>
+        <path d="M10.66 5c4.01-.36 8.14.9 11.34 3.76"></path>
+        <path d="M16.85 11.25 a10 10 0 0 1 2.22 1.68"></path>
+        <path d="M5 13 a10 10 0 0 1 5.24-2.76"></path>
+        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+      </svg>
+    </div>
+    <h1>Sin conexión</h1>
+    <p>
+      No pudimos cargar esta página. El POS y la caja siguen funcionando offline si ya las visitaste antes — las ventas se sincronizan solas cuando vuelva el internet.
+    </p>
+    <div class="actions">
+      <a href="/pos" class="btn btn-primary">Ir al POS</a>
+      <a href="javascript:location.reload()" class="btn btn-secondary">Reintentar</a>
+    </div>
+    <p class="hint">Las ventas pendientes están guardadas en tu dispositivo. <br/>Aparecen en el banner naranja del POS.</p>
+  </div>
+</body>
+</html>
