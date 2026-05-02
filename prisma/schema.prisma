@@ -485,6 +485,14 @@ model TenantConfig {
   // Hour of day to send daily digest (0-23, local timezone)
   emailDailyHour          Int      @default(22)
 
+  // ─── Carta/vidriera pública en cobraorvex.com/k/<slug> ──────────────
+  publicStorefrontEnabled Boolean  @default(false)
+  publicHours             String?  // Texto libre: "Lun-Sáb 8-22hs"
+  publicAddress           String?
+  publicWhatsapp          String?  // E.164 sin +
+  publicDescription       String?  @db.Text  // Bio corta del kiosco
+  publicShowPrices        Boolean  @default(true)
+
   // Onboarding / first-time user experience
   onboardingDismissed     Boolean  @default(false)
   // Wizard interactivo de 5 pasos al primer login. Si está null → mostrar.
