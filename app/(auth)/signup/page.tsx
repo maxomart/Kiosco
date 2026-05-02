@@ -16,6 +16,7 @@ import {
   Crown,
   Building2,
   PartyPopper,
+  Gift,
 } from "lucide-react"
 import { BUSINESS_TYPES, PLAN_LABELS_AR, PLAN_PRICES_ARS } from "@/lib/utils"
 
@@ -111,6 +112,7 @@ function SignupForm() {
     ? (planParamRaw as PlanParam)
     : "STARTER"
   const promoParamRaw = searchParams.get("promo")?.trim().toLowerCase() ?? ""
+  const refParamRaw = searchParams.get("ref")?.trim().toUpperCase().slice(0, 16) ?? ""
 
   const [selectedPlan, setSelectedPlan] = useState<PlanParam>(initialPlan)
   const [promo, setPromo] = useState<PromoState>(
@@ -183,6 +185,9 @@ function SignupForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
+  // Código de referido — viene del query `?ref=` o se entra manualmente
+  const [referralCode, setReferralCode] = useState<string>(refParamRaw)
+  const [showRefInput, setShowRefInput] = useState<boolean>(!!refParamRaw)
 
   function set(field: keyof FormState) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -240,6 +245,8 @@ function SignupForm() {
         plan: selectedPlan,
       }
       if (shouldApplyPromo) payload.promoCode = promo.code
+      const refCleaned = referralCode.trim().toUpperCase()
+      if (refCleaned.length >= 4) payload.referralCode = refCleaned
 
       const res = await fetch("/api/auth/signup", {
         method: "POST",
@@ -346,6 +353,26 @@ function SignupForm() {
     <div className="w-full max-w-3xl">
       {/* Promo banner */}
       {promo.status !== "idle" && <PromoBanner promo={promo} />}
+
+      {/* Referral banner — cuando llegan con ?ref= */}
+      {refParamRaw && referralCode && (
+        <div className="mb-4 rounded-xl border border-emerald-400/30 bg-gradient-to-br from-emerald-400/15 via-emerald-500/5 to-transparent p-4">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 w-9 h-9 rounded-full bg-emerald-400/20 border border-emerald-400/40 flex items-center justify-center">
+              <Gift className="w-4 h-4 text-emerald-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-emerald-100">
+                Te invitaron a Orvex con el código{" "}
+                <span className="font-mono uppercase tracking-wide">{referralCode}</span>
+              </p>
+              <p className="text-xs text-emerald-100/80 mt-0.5">
+                Cuando te suscribas, ganás <strong>1 mes gratis</strong> y quien te invitó también.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Plan picker */}
       <div className="mb-5">
@@ -650,6 +677,43 @@ function SignupForm() {
               )}
             </div>
           </div>
+
+          {/* Código de referido — sólo si no llegaron con ?ref= */}
+          {!refParamRaw && (
+            <div className="pt-1">
+              {showRefInput ? (
+                <div>
+                  <label
+                    htmlFor="ref-code"
+                    className="block text-xs font-medium text-gray-300 mb-1.5 flex items-center gap-1.5"
+                  >
+                    <Gift className="w-3.5 h-3.5 text-emerald-400" />
+                    Código de referido
+                    <span className="text-[10px] text-gray-500 font-normal">(opcional · suma 1 mes gratis)</span>
+                  </label>
+                  <input
+                    id="ref-code"
+                    type="text"
+                    inputMode="text"
+                    autoComplete="off"
+                    placeholder="ABCD1234"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase().slice(0, 16))}
+                    className={`${inputBase} ${inputOk} font-mono uppercase tracking-wider`}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowRefInput(true)}
+                  className="text-xs text-gray-400 hover:text-emerald-300 inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <Gift className="w-3.5 h-3.5" />
+                  ¿Tenés un código de referido?
+                </button>
+              )}
+            </div>
+          )}
 
           <button
             type="submit"

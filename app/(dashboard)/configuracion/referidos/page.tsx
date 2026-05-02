@@ -25,7 +25,7 @@ export default function ReferidosPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const link = stats ? `${origin}/registro?ref=${stats.code}` : ""
+  const link = stats ? `${origin}/signup?ref=${stats.code}` : ""
   const waMsg = stats
     ? `Te recomiendo Orvex para tu kiosco. Si te registrás con mi código tenés 1 mes gratis: ${link}`
     : ""
