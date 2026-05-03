@@ -339,10 +339,6 @@ export default async function DashboardPage() {
 
   const avgTicket = todayCount > 0 ? todayTotal / todayCount : 0
 
-  // Series de sparkline derivadas de weeklyData
-  const revenueTrend = weeklyData.map((d) => d.total)
-  const countTrend = weeklyData.map((d) => d.count)
-
   return (
     <AnimatedStagger className="max-w-7xl mx-auto space-y-6">
       {/* Greeting */}
@@ -390,8 +386,6 @@ export default async function DashboardPage() {
           iconBg="bg-accent-soft border border-accent/20"
           change={revenueChange ?? undefined}
           changeLabel="vs ayer"
-          sparkline={revenueTrend}
-          sparklineColor="text-accent"
         />
         <StatCard
           title="Transacciones"
@@ -400,8 +394,6 @@ export default async function DashboardPage() {
           iconColor="text-blue-400"
           iconBg="bg-blue-900/40"
           subtitle={todayCount > 0 ? `Ticket prom: ${formatCurrencyCompact(avgTicket)}` : undefined}
-          sparkline={countTrend}
-          sparklineColor="text-blue-400"
         />
         <StatCard
           title="Ganancias hoy"
@@ -414,8 +406,6 @@ export default async function DashboardPage() {
               ? `Margen: ${((todayProfit / todayTotal) * 100).toFixed(1)}%`
               : undefined
           }
-          sparkline={revenueTrend}
-          sparklineColor="text-emerald-400"
         />
         <StatCard
           title="Stock bajo"
