@@ -12,7 +12,7 @@ export async function GET() {
     const users = await db.user.findMany({
       where: { tenantId: tenantId! },
       orderBy: [{ role: "asc" }, { createdAt: "asc" }],
-      select: { id: true, name: true, email: true, role: true, active: true, createdAt: true, commissionPercent: true },
+      select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
     })
     return NextResponse.json({ users })
   } catch (err) {

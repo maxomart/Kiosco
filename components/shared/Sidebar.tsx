@@ -23,7 +23,6 @@ import {
   X,
   Tag,
   Tv,
-  Percent,
   Sparkles,
   Wrench,
   ChevronDown,
@@ -75,7 +74,6 @@ const NAV_TOOLS: NavItem[] = [
   { href: "/gastos", label: "Gastos", icon: TrendingDown, permissions: ["expenses:read"], feature: "feature:expenses" },
   { href: "/etiquetas", label: "Etiquetas", icon: Tag, permissions: ["products:read"], feature: "feature:labels" },
   { href: "/pedidos-proveedor", label: "Pedidos a proveedor", icon: Sparkles, permissions: ["recharges:read"], feature: "feature:supplier_orders" },
-  { href: "/comisiones", label: "Comisiones", icon: Percent, permissions: ["reports:read"], feature: "feature:commissions" },
   { href: "/tv", label: "Modo TV", icon: Tv, permissions: ["reports:read"], feature: "feature:tv_mode" },
 ]
 

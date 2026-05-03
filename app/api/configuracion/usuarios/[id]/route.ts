@@ -33,7 +33,6 @@ async function wouldLeaveTenantWithoutOwner(
 const patchSchema = z.object({
   active: z.boolean().optional(),
   role: z.enum(["OWNER", "ADMIN", "CASHIER"]).optional(),
-  commissionPercent: z.number().min(0).max(100).optional(),
 })
 
 /** Toggle active/inactive and/or change role */
@@ -81,22 +80,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // Sólo el OWNER puede tocar el % de comisión
-  if (parsed.data.commissionPercent !== undefined && session.user.role !== "OWNER") {
-    return NextResponse.json(
-      { error: "Solo el dueño puede cambiar la comisión." },
-      { status: 403 }
-    )
-  }
-
   await db.user.update({
     where: { id },
     data: {
       ...(parsed.data.role ? { role: parsed.data.role } : {}),
       ...(typeof parsed.data.active === "boolean" ? { active: parsed.data.active } : {}),
-      ...(parsed.data.commissionPercent !== undefined
-        ? { commissionPercent: parsed.data.commissionPercent }
-        : {}),
     },
   })
   return NextResponse.json({ ok: true, active: nextActive, role: nextRole })
