@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { TrendingUp, DollarSign, ShoppingBag, BarChart2, Download, Calendar, Lock, Sparkles, ArrowRight } from "lucide-react"
-import { formatCurrency, formatDate, type Plan } from "@/lib/utils"
+import { formatCurrency, formatCurrencyCompact, formatDate, type Plan } from "@/lib/utils"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts"
 import { AIInsightsPanel } from "@/components/reportes/AIInsightsPanel"
 import { SalesHeatmap } from "@/components/reportes/SalesHeatmap"
@@ -57,13 +57,18 @@ const METHOD_LABELS: Record<string, string> = {
 }
 const COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#84cc16"]
 
-function StatBox({ label, value, sub, color = "purple" }: { label: string; value: string; sub?: string; color?: string }) {
+function StatBox({ label, value, fullValue, sub, color = "purple" }: { label: string; value: string; fullValue?: string; sub?: string; color?: string }) {
   const colorMap: Record<string, string> = { purple: "text-purple-400", green: "text-green-400", blue: "text-blue-400", yellow: "text-yellow-400" }
   return (
-    <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
-      <p className="text-gray-500 text-sm mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${colorMap[color] ?? colorMap.purple}`}>{value}</p>
-      {sub && <p className="text-gray-500 text-xs mt-1">{sub}</p>}
+    <div className="bg-gray-900 rounded-xl p-4 sm:p-5 border border-gray-800 min-w-0">
+      <p className="text-gray-500 text-xs sm:text-sm mb-1 truncate">{label}</p>
+      <p
+        className={`text-xl sm:text-2xl font-bold tabular-nums truncate ${colorMap[color] ?? colorMap.purple}`}
+        title={fullValue ?? value}
+      >
+        {value}
+      </p>
+      {sub && <p className="text-gray-500 text-xs mt-1 truncate">{sub}</p>}
     </div>
   )
 }
@@ -185,16 +190,16 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
         </div>
       ) : data ? (
         <>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* KPI Cards — usamos compact para que no se desborden cuando los números crecen */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             <div data-tour="reportes-summary">
               <StatBox label="Total ventas" value={String(data.totalSales)} color="blue" />
             </div>
-            <StatBox label="Ingresos" value={formatCurrency(data.totalRevenue)} color="purple" />
-            <StatBox label="Costo" value={formatCurrency(data.totalCost)} color="yellow" />
-            <StatBox label="Ganancia" value={formatCurrency(data.totalProfit)} color="green" />
+            <StatBox label="Ingresos" value={formatCurrencyCompact(data.totalRevenue)} fullValue={formatCurrency(data.totalRevenue)} color="purple" />
+            <StatBox label="Costo" value={formatCurrencyCompact(data.totalCost)} fullValue={formatCurrency(data.totalCost)} color="yellow" />
+            <StatBox label="Ganancia" value={formatCurrencyCompact(data.totalProfit)} fullValue={formatCurrency(data.totalProfit)} color="green" />
             <StatBox label="Margen" value={`${data.profitMargin.toFixed(1)}%`} color={data.profitMargin >= 20 ? "green" : "yellow"} />
-            <StatBox label="Ticket promedio" value={formatCurrency(data.avgTicket)} color="purple" />
+            <StatBox label="Ticket promedio" value={formatCurrencyCompact(data.avgTicket)} fullValue={formatCurrency(data.avgTicket)} color="purple" />
           </div>
 
           {/* AI Insights + comparison vs previous period (only for paid plans) */}

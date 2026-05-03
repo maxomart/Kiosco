@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrencyCompact } from "@/lib/utils"
 import StatCard from "@/components/shared/StatCard"
 import WeeklySalesChart from "@/components/shared/WeeklySalesChart"
 import { AnimatedStagger, AnimatedItem } from "@/components/shared/AnimatedStagger"
@@ -384,7 +384,7 @@ export default async function DashboardPage() {
       <AnimatedItem className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Ventas del día"
-          value={formatCurrency(todayTotal)}
+          value={formatCurrencyCompact(todayTotal)}
           icon={Receipt}
           iconColor="text-accent"
           iconBg="bg-accent-soft border border-accent/20"
@@ -399,13 +399,13 @@ export default async function DashboardPage() {
           icon={ShoppingCart}
           iconColor="text-blue-400"
           iconBg="bg-blue-900/40"
-          subtitle={todayCount > 0 ? `Ticket prom: ${formatCurrency(avgTicket)}` : undefined}
+          subtitle={todayCount > 0 ? `Ticket prom: ${formatCurrencyCompact(avgTicket)}` : undefined}
           sparkline={countTrend}
           sparklineColor="text-blue-400"
         />
         <StatCard
           title="Ganancias hoy"
-          value={formatCurrency(todayProfit)}
+          value={formatCurrencyCompact(todayProfit)}
           icon={TrendingUp}
           iconColor="text-emerald-400"
           iconBg="bg-emerald-900/40"

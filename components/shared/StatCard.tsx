@@ -118,7 +118,12 @@ export default function StatCard({
       {/* Value + sparkline side by side */}
       <div className="flex items-end justify-between gap-3 relative">
         <div className="space-y-1 min-w-0 flex-1">
-          <p className="text-2xl font-bold text-gray-100 leading-none truncate">{value}</p>
+          <p
+            className="text-xl xl:text-2xl font-bold text-gray-100 leading-none truncate tabular-nums"
+            title={typeof value === "string" ? value : String(value)}
+          >
+            {value}
+          </p>
           <p className="text-sm font-medium text-gray-400">{title}</p>
           {subtitle && <p className="text-xs text-gray-600">{subtitle}</p>}
           {hasChange && (

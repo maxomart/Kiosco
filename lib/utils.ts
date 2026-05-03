@@ -14,6 +14,34 @@ export function formatCurrency(amount: number | string, currency = "ARS") {
   }).format(num)
 }
 
+/**
+ * Versión "compacta" para KPI cards con poco ancho: sin decimales y
+ * abreviado a partir de 1M (ej: $1,2M / $850K). Pensado para que
+ * cuando los números crecen, no se desborden las tarjetas.
+ */
+export function formatCurrencyCompact(amount: number | string, currency = "ARS"): string {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount
+  if (!isFinite(num)) return "$0"
+  const abs = Math.abs(num)
+  // >= 1M → $1,2M
+  if (abs >= 1_000_000) {
+    const millions = num / 1_000_000
+    const fixed = Math.abs(millions) >= 10 ? millions.toFixed(0) : millions.toFixed(1)
+    return `$${fixed.replace(".", ",")}M`
+  }
+  // >= 100K → $850K
+  if (abs >= 100_000) {
+    return `$${Math.round(num / 1000)}K`
+  }
+  // Resto → sin decimales
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num)
+}
+
 export function formatDate(date: string | Date, opts?: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",
