@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import { TrendingUp, TrendingDown, Minus } from "lucide-react"
-import { SparklineMini } from "./SparklineMini"
+import { MiniBars } from "./MiniBars"
 
 interface StatCardProps {
   title: string
@@ -134,7 +134,7 @@ export default function StatCard({
         </div>
         {sparkline && sparkline.length > 1 && (
           <div className={cn("flex-shrink-0", sparkTone)}>
-            <SparklineMini data={sparkline} width={72} height={28} strokeClass="stroke-current text-current" />
+            <MiniBars data={sparkline} width={80} height={32} fillClass="fill-current text-current" />
           </div>
         )}
       </div>
