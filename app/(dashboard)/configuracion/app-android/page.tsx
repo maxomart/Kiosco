@@ -1,12 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Smartphone, ExternalLink, Check, X, Copy, Terminal } from "lucide-react"
+import { Smartphone, ExternalLink, Check, X, Copy, Terminal, Download, Upload, FileWarning } from "lucide-react"
 import toast from "react-hot-toast"
+
+interface AppInfo { available: boolean; version?: string; sizeMB?: number; lastModified?: string }
 
 export default function AppAndroidPage() {
   const [origin, setOrigin] = useState("")
   const [assetLinks, setAssetLinks] = useState<any[] | null>(null)
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
 
   useEffect(() => {
     setOrigin(window.location.origin)
@@ -14,9 +17,14 @@ export default function AppAndroidPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setAssetLinks(Array.isArray(d) ? d : []))
       .catch(() => setAssetLinks([]))
+    fetch("/api/app/latest", { cache: "no-store" })
+      .then((r) => r.json())
+      .then(setAppInfo)
+      .catch(() => setAppInfo({ available: false }))
   }, [])
 
   const configured = assetLinks && assetLinks.length > 0
+  const apkAvailable = !!appInfo?.available
 
   const copy = async (text: string) => {
     await navigator.clipboard.writeText(text)
@@ -37,7 +45,78 @@ export default function AppAndroidPage() {
         </div>
       </div>
 
-      {/* Estado */}
+      {/* Distribución directa (sideload) — la opción rápida */}
+      <section className="bg-gradient-to-br from-emerald-950/30 via-gray-900 to-gray-900 border border-emerald-700/30 rounded-xl p-5 relative overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/20 blur-3xl rounded-full pointer-events-none" />
+        <div className="relative">
+          <div className="flex items-start gap-3 mb-4">
+            <Download className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-white font-semibold">Distribución directa</h2>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 rounded-full px-2 py-0.5 font-bold uppercase tracking-wider">
+                  Recomendado
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Subís el APK acá → tus clientes lo descargan desde{" "}
+                <a href="/descargar" target="_blank" rel="noopener" className="text-emerald-300 underline">
+                  cobraorvex.com/descargar
+                </a>. Sin Play Store, sin USD 25, sin esperar 5 días de revisión.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-3 mb-4">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-2">
+              Estado del APK
+            </p>
+            {apkAvailable ? (
+              <div className="space-y-1">
+                <p className="text-sm text-emerald-200 flex items-center gap-2">
+                  <Check size={14} className="text-emerald-400" />
+                  <strong>v{appInfo?.version}</strong> disponible · {appInfo?.sizeMB} MB
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  Subido {appInfo?.lastModified ? new Date(appInfo.lastModified).toLocaleString("es-AR") : "—"}
+                </p>
+                <a
+                  href="/descargar"
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 mt-2 text-xs text-emerald-300 hover:text-emerald-200"
+                >
+                  Ver página pública <ExternalLink size={11} />
+                </a>
+              </div>
+            ) : (
+              <p className="text-sm text-amber-200 flex items-center gap-2">
+                <FileWarning size={14} className="text-amber-400" />
+                APK aún no subido
+              </p>
+            )}
+          </div>
+
+          <div className="bg-gray-900/40 border border-gray-800 rounded-lg p-4 space-y-2">
+            <p className="text-xs text-gray-300 font-semibold flex items-center gap-1.5">
+              <Upload size={12} className="text-emerald-400" />
+              Cómo subir el APK
+            </p>
+            <ol className="space-y-1 text-xs text-gray-400 list-decimal list-inside">
+              <li>Generá el APK con bubblewrap (sección "Cómo armar el APK" abajo)</li>
+              <li>Renombrá el archivo a <code className="text-emerald-300 bg-black/40 px-1.5 py-0.5 rounded">orvex.apk</code></li>
+              <li>Subilo a <code className="text-emerald-300 bg-black/40 px-1.5 py-0.5 rounded">public/downloads/orvex.apk</code> en el repo de Railway</li>
+              <li>Opcionalmente seteá la env var <code className="text-emerald-300 bg-black/40 px-1.5 py-0.5 rounded">APP_ANDROID_VERSION=1.0.0</code></li>
+              <li>Push a main → Railway redeploya solo → la página de descarga muestra el archivo</li>
+            </ol>
+            <p className="text-[11px] text-gray-500 pt-2 border-t border-gray-800">
+              💡 Para futuras versiones: regenerás el APK, lo reemplazás en <code className="text-emerald-300">orvex.apk</code> y bumpeás <code className="text-emerald-300">APP_ANDROID_VERSION</code>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Estado de Play Store / TWA assetlinks */}
       <section className={`rounded-xl border p-5 ${
         configured ? "bg-emerald-950/30 border-emerald-700/30" : "bg-amber-950/30 border-amber-700/30"
       }`}>
