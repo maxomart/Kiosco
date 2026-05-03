@@ -18,6 +18,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { cn, PLAN_LABELS } from "@/lib/utils"
 import type { Plan } from "@/lib/utils"
 import NotificationsBell from "@/components/shared/NotificationsBell"
+import { InstallAppMenuItem } from "@/components/shared/InstallAppMenuItem"
 
 interface HeaderProps {
   plan?: Plan
@@ -237,6 +238,7 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
                   />
                 </div>
                 <div className="p-1.5 border-t border-gray-800">
+                  <InstallAppMenuItem onClick={() => setMenuOpen(false)} />
                   <button
                     type="button"
                     onClick={() => {

@@ -129,7 +129,6 @@ export type PlanFeature =
   | "feature:public_storefront" // Carta pública /k/<slug>
   | "feature:commissions"     // % de comisión por venta a empleados
   | "feature:supplier_orders" // Pedidos a proveedor automáticos (IA)
-  | "feature:android_twa"     // App de Android (TWA)
   | "feature:predictive_ai"   // IA predictiva (3 cards en /inicio)
 
 type PlanGate = Record<PlanFeature, Plan[]>
@@ -162,7 +161,6 @@ const PLAN_FEATURES: PlanGate = {
   "feature:commissions":       ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:supplier_orders":   ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:predictive_ai":     ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:android_twa":       ["BUSINESS", "ENTERPRISE"],
 }
 
 /** Per-day AI message quota by plan (soft cap).
