@@ -119,11 +119,19 @@ export async function PUT(req: NextRequest) {
   const data = parsed.data
   const email = data.email ? data.email : null
 
+  // Plan gating server-side — para que un user con plan Básico no pueda
+  // mandar themeColor/themeMode/logoUrl directo via Postman.
+  const { getTenantPlan } = await import("@/lib/plan-guard")
+  const { hasFeature } = await import("@/lib/permissions")
+  const plan = await getTenantPlan(tenantId!)
+  const themeAllowed = hasFeature(plan, "feature:theme_picker")
+  const logoAllowed = hasFeature(plan, "feature:custom_logo")
+
   // Build the theme + WhatsApp + logo + loyalty partial conditionally so DBs missing
   // the columns still accept writes for the legacy fields.
   const extraData: Record<string, unknown> = {}
-  if (data.themeColor !== undefined) extraData.themeColor = data.themeColor || null
-  if (data.themeMode !== undefined) extraData.themeMode = data.themeMode || null
+  if (data.themeColor !== undefined && themeAllowed) extraData.themeColor = data.themeColor || null
+  if (data.themeMode !== undefined && themeAllowed) extraData.themeMode = data.themeMode || null
   if (data.whatsappPhone !== undefined) extraData.whatsappPhone = data.whatsappPhone || null
   if (data.whatsappLowStockAlerts !== undefined) extraData.whatsappLowStockAlerts = data.whatsappLowStockAlerts
   if (data.whatsappDailySummary !== undefined) extraData.whatsappDailySummary = data.whatsappDailySummary
@@ -133,7 +141,7 @@ export async function PUT(req: NextRequest) {
   if (data.emailWeeklySummary !== undefined) extraData.emailWeeklySummary = data.emailWeeklySummary
   if (data.emailMonthlySummary !== undefined) extraData.emailMonthlySummary = data.emailMonthlySummary
   if (data.emailIncludeAIInsights !== undefined) extraData.emailIncludeAIInsights = data.emailIncludeAIInsights
-  if (data.logoUrl !== undefined) extraData.logoUrl = data.logoUrl ? data.logoUrl : null
+  if (data.logoUrl !== undefined && logoAllowed) extraData.logoUrl = data.logoUrl ? data.logoUrl : null
   if (data.loyaltyEnabled !== undefined) extraData.loyaltyEnabled = data.loyaltyEnabled
   if (data.loyaltyPointsPerPeso !== undefined) extraData.loyaltyPointsPerPeso = data.loyaltyPointsPerPeso
   if (data.loyaltyPointValue !== undefined) extraData.loyaltyPointValue = data.loyaltyPointValue

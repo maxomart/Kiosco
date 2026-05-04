@@ -126,7 +126,6 @@ export type PlanFeature =
   | "feature:cash_movements"  // Caja chica (retiros / depósitos en sesión)
   | "feature:labels"          // Imprimir etiquetas con código de barras
   | "feature:tv_mode"         // Modo TV / pantalla pública con stats live
-  | "feature:public_storefront" // Carta pública /k/<slug>
   | "feature:supplier_orders" // Pedidos a proveedor automáticos (IA)
   | "feature:predictive_ai"   // IA predictiva (3 cards en /inicio)
 
@@ -142,21 +141,21 @@ type PlanGate = Record<PlanFeature, Plan[]>
 //     WhatsApp, multi-caja, predicciones, soporte prioritario, CSV).
 //   - BUSINESS para escala: + multi-tienda + API + ilimitado en todo.
 const PLAN_FEATURES: PlanGate = {
-  // Operación básica — STARTER+
+  // Operación bare-bones — STARTER+ (lo mínimo para probar Orvex)
   "feature:reports_basic":     ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:expenses":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:recharges":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:suppliers":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:multiple_users":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:custom_logo":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:advanced_pos":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 
   // "La maravilla" — PROFESSIONAL+
+  "feature:multiple_users":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"], // Básico = 1 user solo
+  "feature:custom_logo":       ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:theme_picker":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:reports_full":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_import":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_export":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:theme_picker":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant_full": ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:whatsapp":          ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
@@ -164,7 +163,6 @@ const PLAN_FEATURES: PlanGate = {
   "feature:priority_support":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:cash_movements":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:labels":            ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:public_storefront": ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:tv_mode":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:supplier_orders":   ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:predictive_ai":     ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],

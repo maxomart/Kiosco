@@ -75,12 +75,12 @@ export default async function LandingPage({
     {
       plan: "Básico",
       price: PLAN_PRICES_ARS.STARTER,
-      desc: "Lo justo para arrancar",
+      desc: "Para probar Orvex",
       features: [
-        "POS + inventario hasta 500 productos",
-        "2 usuarios · clientes con cuenta corriente",
+        "Hasta 100 productos · 1 usuario",
+        "POS + inventario + caja",
         "AFIP — 50 facturas/mes",
-        "Reportes 30 días",
+        "Reportes 7 días",
         "POS offline-first",
       ],
       cta: "Probar 7 días",
@@ -93,10 +93,10 @@ export default async function LandingPage({
       desc: "Todo lo cool — el más elegido",
       features: [
         "5.000 productos · 10 usuarios",
-        "🎨 Tema custom · 📷 Scanner · 🏷️ Etiquetas",
-        "🌐 Carta pública · ⭐ Loyalty · 💬 WhatsApp",
-        "📊 IA predictiva · 🤖 Chatbot · 📺 Modo TV",
-        "🚚 Pedidos a proveedor con IA",
+        "🎨 Tema y logo personalizados",
+        "📷 Scanner · 🏷️ Etiquetas · 💰 Caja chica",
+        "⭐ Loyalty · 💬 WhatsApp · 📺 Modo TV",
+        "📊 IA predictiva · 🤖 Chatbot · 🚚 Pedidos IA",
       ],
       cta:
         activePromo && activePromo.planGranted === "PROFESSIONAL"

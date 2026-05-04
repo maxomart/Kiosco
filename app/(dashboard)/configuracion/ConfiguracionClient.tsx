@@ -62,6 +62,7 @@ export default function ConfiguracionPage() {
   const waUnlocked = plan !== "FREE"
   const logoUnlocked = hasFeature(plan as Plan, "feature:custom_logo")
   const loyaltyUnlocked = hasFeature(plan as Plan, "feature:loyalty")
+  const themeUnlocked = hasFeature(plan as Plan, "feature:theme_picker")
 
   const testWhatsapp = async () => {
     setTestingWa(true)
@@ -152,7 +153,6 @@ export default function ConfiguracionPage() {
     { icon: Keyboard, label: "Atajos de teclado", href: "/configuracion/atajos", desc: "Personalizar F1, F2, etc.", color: "text-emerald-400", bg: "bg-emerald-900/40", border: "border-emerald-700/40" },
     { icon: FileCheck2, label: "Facturación AFIP", href: "/configuracion/afip", desc: "Emití facturas A/B/C con CAE", color: "text-amber-400", bg: "bg-amber-900/40", border: "border-amber-700/40", requiredPlan: "STARTER" as const },
     { icon: Gift, label: "Recomendar Orvex", href: "/configuracion/referidos", desc: "1 mes gratis por cada amigo que se sume", color: "text-emerald-400", bg: "bg-emerald-900/40", border: "border-emerald-700/40" },
-    { icon: Globe, label: "Carta pública", href: "/configuracion/carta-publica", desc: "Vidriera online con tus productos", color: "text-pink-400", bg: "bg-pink-900/40", border: "border-pink-700/40" },
     { icon: Star, label: "Programa de fidelidad", href: "/configuracion/loyalty", desc: "Puntos por compra + canje como descuento", color: "text-amber-400", bg: "bg-amber-900/40", border: "border-amber-700/40" },
     { icon: Smartphone, label: "Instalar como app", href: "/descargar", desc: "Instalá Orvex en celu, tablet o compu", color: "text-emerald-400", bg: "bg-emerald-900/40", border: "border-emerald-700/40" },
     { icon: Building2, label: "Multi-tienda", href: "/configuracion/multi-tienda", desc: "Gestionar varias sucursales", color: "text-purple-400", bg: "bg-purple-900/40", border: "border-purple-700/40", requiredPlan: "BUSINESS" as const },
@@ -302,14 +302,34 @@ export default function ConfiguracionPage() {
             </div>
           )}
 
-          {/* Logo del kiosco */}
+          {/* Logo del kiosco — Pro+ */}
           {config && (
-            <LogoSection
-              logoUrl={config.logoUrl}
-              onChange={(url) => set("logoUrl", url)}
-              onSave={handleSave}
-              saving={saving}
-            />
+            logoUnlocked ? (
+              <LogoSection
+                logoUrl={config.logoUrl}
+                onChange={(url) => set("logoUrl", url)}
+                onSave={handleSave}
+                saving={saving}
+              />
+            ) : (
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                  <Lock className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-semibold">Logo del kiosco</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Subir logo personalizado requiere plan <strong className="text-purple-300">Profesional</strong>.
+                  </p>
+                </div>
+                <Link
+                  href="/configuracion/suscripcion"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 border border-purple-700/40 font-medium flex-shrink-0"
+                >
+                  Ver planes
+                </Link>
+              </div>
+            )
           )}
 
           {/* Email notifications */}
@@ -447,8 +467,29 @@ export default function ConfiguracionPage() {
               )}
             </div>
           )}
-          <ThemePicker />
-          <SurfacePicker />
+          {themeUnlocked ? (
+            <>
+              <ThemePicker />
+              <SurfacePicker />
+            </>
+          ) : (
+            <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+                <Lock className="w-5 h-5 text-amber-400" />
+              </div>
+              <h3 className="text-white font-semibold mb-1">Personalización bloqueada</h3>
+              <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+                El color de marca, el modo claro/oscuro y los presets de fondo están disponibles a partir del plan <strong className="text-purple-300">Profesional</strong>.
+              </p>
+              <Link
+                href="/configuracion/suscripcion"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold"
+              >
+                Ver planes
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
         </div>
 
       </div>

@@ -89,13 +89,13 @@ export function generatePassword(length = 16): string {
 //   - ENTERPRISE → legacy / custom (no se ofrece más al público)
 export const PLAN_LIMITS = {
   STARTER: {
-    products: 500,
-    users: 2,
-    clients: 50,
-    suppliers: 20,
-    categories: 30,
-    salesPerMonth: 2000,
-    historyDays: 30,
+    products: 100,
+    users: 1,
+    clients: 15,
+    suppliers: 10,
+    categories: 15,
+    salesPerMonth: 500,
+    historyDays: 7,
     api: false,
   },
   PROFESSIONAL: {
