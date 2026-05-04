@@ -27,10 +27,10 @@ interface Props {
 // Plan acá puede llegar como FREE (no incluido en lib/utils Plan type) por
 // el upgradedFrom — usamos string indexing en vez de Record para flexibilidad.
 const PLAN_LABELS: Record<string, string> = {
-  FREE: "Gratis",
+  FREE: "Sin plan",
   STARTER: "Básico",
   PROFESSIONAL: "Profesional",
-  BUSINESS: "Negocio",
+  BUSINESS: "Empresa",
   ENTERPRISE: "Enterprise",
 }
 

@@ -118,10 +118,7 @@ export default function SubscriptionStatusBanner({
               ? `Tu período gratuito de ${plan} terminó`
               : `Tu prueba gratuita terminó`}
           </Title>
-          <Sub>
-            Pasaste a Gratis. Es posible que veas productos, usuarios o reportes limitados.
-            Suscribite para recuperar el acceso completo.
-          </Sub>
+          <Sub>Suscribite para recuperar el acceso completo.</Sub>
         </Copy>
         <CTA href={upgradeHref} variant="solid-rose">
           <Crown className="w-3.5 h-3.5" />
@@ -131,6 +128,35 @@ export default function SubscriptionStatusBanner({
     )
   }
 
+  if (kind === "past-due-grace") {
+    // No es dismissable — el user tiene que arreglar el pago
+    return (
+      <div
+        role="status"
+        className="mx-4 lg:mx-6 mt-4 rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-500/15 to-orange-500/5 p-3 sm:p-3.5 flex items-start gap-3"
+      >
+        <IconCircle className="bg-amber-500/20 text-amber-200">
+          <AlertCircle className="w-4 h-4" />
+        </IconCircle>
+        <Copy>
+          <Title>Tu pago de {plan} no se procesó</Title>
+          <Sub>
+            Mercado Pago no pudo cobrar el último ciclo. Tenés{" "}
+            <strong className="text-amber-100">
+              {daysLeft} día{daysLeft === 1 ? "" : "s"}
+            </strong>{" "}
+            para arreglar la tarjeta antes de perder acceso al dashboard.
+          </Sub>
+        </Copy>
+        <CTA href={upgradeHref} variant="solid-amber">
+          Arreglar pago
+        </CTA>
+      </div>
+    )
+  }
+
+  // kind === "blocked" se maneja en el layout con un modal full-screen,
+  // no como banner.
   return null
 }
 

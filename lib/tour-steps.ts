@@ -158,7 +158,7 @@ const PLAN_WELCOME: Record<Plan, WelcomeContent> = {
     ],
   },
   BUSINESS: {
-    title: "Bienvenido a Negocio",
+    title: "Bienvenido a Empresa",
     subtitle: "Tu plan ya está activo. Esto es lo que desbloqueaste:",
     bullets: [
       "Todo ilimitado: productos, ventas, usuarios",
@@ -223,7 +223,7 @@ function planLabel(plan: Plan): string {
     case "PROFESSIONAL":
       return "Profesional"
     case "BUSINESS":
-      return "Negocio"
+      return "Empresa"
     case "ENTERPRISE":
       return "Enterprise"
   }

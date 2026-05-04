@@ -12,6 +12,8 @@ import { UpgradeWelcomeModal } from "@/components/shared/UpgradeWelcomeModal"
 import SupportWidget from "@/components/shared/SupportWidget"
 import { InstallPrompt } from "@/components/shared/InstallPrompt"
 import { OfflineGlobalBanner } from "@/components/shared/OfflineGlobalBanner"
+import { SubscriptionGateClient } from "@/components/shared/SubscriptionGateClient"
+import { isBlockingState } from "@/lib/subscription-banner"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
 import SubscriptionStatusBanner from "@/components/shared/SubscriptionStatusBanner"
@@ -182,6 +184,17 @@ export default async function DashboardLayout({
             {showTour && <TourOverlay plan={plan as any} upgradedFrom={upgradedFrom} />}
             {showUpgradeWelcome && upgradedFrom && (
               <UpgradeWelcomeModal from={upgradedFrom} to={plan as any} />
+            )}
+            {/* Bloqueo full-screen si trial vencido o pago en grace period agotado.
+                El client decide si mostrarse según el pathname (no muestra
+                en /configuracion/suscripcion para que el user pueda pagar). */}
+            {isBlockingState(bannerData.kind) && (
+              <SubscriptionGateClient
+                reason={
+                  bannerData.plan === "un plan pago" ? "trial-expired" : "payment-failed"
+                }
+                ownerEmail={session.user.email ?? null}
+              />
             )}
           </div>
         </ConfirmProvider>

@@ -155,8 +155,8 @@ export const PLAN_PRICES_USD: Record<Plan, number> = {
 export const PLAN_LABELS_AR: Record<Plan, string> = {
   STARTER: "Básico",
   PROFESSIONAL: "Profesional",
-  BUSINESS: "Negocio",
-  ENTERPRISE: "Empresa",
+  BUSINESS: "Empresa",
+  ENTERPRISE: "Enterprise (custom)",
 }
 
 export const PLAN_LABELS: Record<Plan, string> = {

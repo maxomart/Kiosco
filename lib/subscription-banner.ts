@@ -4,7 +4,17 @@
 
 import { PLAN_LABELS_AR } from "@/lib/utils"
 
-export type BannerKind = "trial" | "promo" | "expired-promo" | "expired-trial" | null
+/** Días que le damos al cliente para arreglar un pago fallido antes de cortar acceso. */
+export const GRACE_PERIOD_DAYS = 3
+
+export type BannerKind =
+  | "trial"
+  | "promo"
+  | "expired-promo"
+  | "expired-trial"
+  | "past-due-grace"   // pago falló pero está dentro de los 3 días de gracia
+  | "blocked"          // trial vencido o gracia agotada → bloquear acceso
+  | null
 
 export interface BannerData {
   kind: BannerKind
@@ -28,11 +38,30 @@ export function deriveBannerState(args: {
   hadPromo: boolean
   promoPlan?: string | null
 }): BannerData {
-  const { plan, currentPeriodEnd, paymentProvider, hadPromo, promoPlan } = args
+  const { plan, status, currentPeriodEnd, paymentProvider, hadPromo, promoPlan } = args
   const now = new Date()
 
   const daysUntil = (d: Date | null | undefined): number =>
     d ? Math.max(0, Math.ceil((d.getTime() - now.getTime()) / 86_400_000)) : 0
+
+  const daysSince = (d: Date | null | undefined): number =>
+    d ? Math.max(0, Math.floor((now.getTime() - d.getTime()) / 86_400_000)) : 0
+
+  // ─── Pago vencido (PAST_DUE) ───
+  // El proveedor está, pero el último cobro falló. Damos GRACE_PERIOD_DAYS
+  // de margen para que arregle la tarjeta antes de bloquear.
+  if (status === "PAST_DUE" && currentPeriodEnd) {
+    const overdueDays = daysSince(currentPeriodEnd)
+    if (overdueDays < GRACE_PERIOD_DAYS) {
+      return {
+        kind: "past-due-grace",
+        plan: label(plan),
+        daysLeft: GRACE_PERIOD_DAYS - overdueDays, // días que le quedan antes del corte
+      }
+    }
+    // Más allá del grace → bloqueo
+    return { kind: "blocked", plan: label(plan) }
+  }
 
   // Paid plan + payment provider set → real customer, no banner.
   if (plan !== "FREE" && paymentProvider) {
@@ -56,7 +85,7 @@ export function deriveBannerState(args: {
     }
   }
 
-  // FREE with a past currentPeriodEnd and no provider → trial expired.
+  // FREE con period vencido y sin provider → trial agotado → bloqueo total.
   if (
     !hadPromo &&
     plan === "FREE" &&
@@ -65,12 +94,18 @@ export function deriveBannerState(args: {
     !paymentProvider
   ) {
     return {
-      kind: "expired-trial",
+      kind: "blocked",
       plan: "un plan pago",
     }
   }
 
+  // FREE recién creado con period futuro → trial activo (kind="trial" lo cubre arriba)
   return { kind: null, plan: "" }
+}
+
+/** True si el banner indica que hay que bloquear el acceso al dashboard. */
+export function isBlockingState(kind: BannerKind): boolean {
+  return kind === "blocked"
 }
 
 function label(plan: string): string {

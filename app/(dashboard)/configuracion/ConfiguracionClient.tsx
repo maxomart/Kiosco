@@ -159,7 +159,7 @@ export default function ConfiguracionPage() {
   ]
 
   // Plan helpers
-  const PLAN_LABELS: Record<string, string> = { FREE: "Gratis", STARTER: "Básico", PROFESSIONAL: "Profesional", BUSINESS: "Negocio", ENTERPRISE: "Enterprise" }
+  const PLAN_LABELS: Record<string, string> = { FREE: "Sin plan", STARTER: "Básico", PROFESSIONAL: "Profesional", BUSINESS: "Empresa", ENTERPRISE: "Enterprise" }
   const planLabel = PLAN_LABELS[plan] ?? plan
   const planRank: Record<string, number> = { FREE: 0, STARTER: 1, PROFESSIONAL: 2, BUSINESS: 3, ENTERPRISE: 4 }
   const isLocked = (req?: "STARTER" | "PROFESSIONAL" | "BUSINESS") => req && planRank[plan] < planRank[req]

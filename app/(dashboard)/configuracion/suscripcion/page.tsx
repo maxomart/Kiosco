@@ -341,9 +341,12 @@ export default function SuscripcionPage() {
 
   return (
     <div className="p-6 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Suscripción</h1>
-        <p className="text-gray-400 text-sm mt-1">Gestioná tu plan y facturación</p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Suscripción</h1>
+          <p className="text-gray-400 text-sm mt-1">Gestioná tu plan y facturación</p>
+        </div>
+        <MpEnvBadge />
       </div>
 
       {/* Welcome banner after MP payment */}
@@ -500,6 +503,7 @@ export default function SuscripcionPage() {
                   {cancelling ? "Cancelando..." : "Cancelar suscripción"}
                 </button>
               )}
+              <RefundButton planLabel={PLAN_LABELS_AR[sub.plan as keyof typeof PLAN_LABELS_AR] ?? sub.plan} />
             </div>
           </div>
         </div>
@@ -522,6 +526,31 @@ export default function SuscripcionPage() {
           </div>
           <BillingToggle value={period} onChange={setPeriod} annualDiscount={ANNUAL_DISCOUNT} />
         </div>
+
+        {/* Política de cambio de plan — explicación honesta */}
+        {sub?.plan && sub.plan !== "FREE" && sub.status !== "CANCELLED" && (
+          <div className="mb-5 bg-gray-900/50 border border-gray-800 rounded-xl p-4 flex gap-3">
+            <Sparkles size={14} className="text-purple-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-gray-400 leading-relaxed">
+              <strong className="text-gray-200">¿Cómo funciona el cambio de plan?</strong>
+              <ul className="mt-1.5 space-y-1">
+                <li>
+                  • <strong className="text-emerald-300">Si subís de plan</strong> (ej: Básico → Profesional): se aplica al toque, cobramos el nuevo plan desde hoy. Si te queda saldo del plan actual, te lo acreditamos manualmente vía Mercado Pago.
+                </li>
+                <li>
+                  • <strong className="text-amber-300">Si bajás de plan</strong> (ej: Profesional → Básico): mantenés tus features hasta el fin del ciclo actual y a partir de ahí seguís con el plan menor. No reembolsamos lo ya pagado.
+                </li>
+                <li>
+                  • Para casos especiales escribinos a{" "}
+                  <a href="mailto:cobraorvex@gmail.com" className="text-purple-300 underline">
+                    cobraorvex@gmail.com
+                  </a>{" "}
+                  o pedinos un reembolso desde acá arriba.
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
         {sub?.plan === "ENTERPRISE" && sub.status !== "CANCELLED" && (
           <div className="mb-5 rounded-2xl card-glow p-6 flex items-start gap-4">
             <div className="shrink-0 w-12 h-12 rounded-xl bg-accent-soft border border-accent/30 flex items-center justify-center">
@@ -787,5 +816,128 @@ export default function SuscripcionPage() {
         />
       )}
     </div>
+  )
+}
+
+/** Botón "Pedir reembolso" que abre un modal y crea un ticket de soporte
+ * con prioridad alta + escalado al admin. La devolución no es automática
+ * — el admin la procesa a mano vía MP, dentro de los 14 días por ley. */
+function RefundButton({ planLabel }: { planLabel: string }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+
+  const submit = async () => {
+    if (reason.trim().length < 5) {
+      toast.error("Decinos brevemente por qué pedís el reembolso")
+      return
+    }
+    setSubmitting(true)
+    try {
+      const r = await fetch("/api/soporte/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: `Pedido de reembolso — Plan ${planLabel}`,
+          message: `Hola, quisiera pedir el reembolso de mi suscripción.\n\nMotivo:\n${reason.trim()}\n\nPor favor revísenlo. Gracias.`,
+        }),
+      })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        toast.error(d.error ?? "No pudimos abrir el ticket")
+        return
+      }
+      toast.success("Ticket de reembolso creado — el admin te va a contactar", { duration: 5000 })
+      setOpen(false)
+      setReason("")
+    } catch {
+      toast.error("Error de red")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-gray-200 text-sm transition-colors border border-gray-700"
+        title="Crear ticket de reembolso (revisión manual)"
+      >
+        Pedir reembolso
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md p-5 space-y-4">
+            <h2 className="text-white font-bold text-lg">Pedir reembolso</h2>
+            <p className="text-sm text-gray-400">
+              Vas a crear un ticket de soporte con prioridad alta. El equipo te contesta en menos de 24hs y procesa la devolución vía Mercado Pago si corresponde (hasta 14 días desde el cobro).
+            </p>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1.5">
+                ¿Por qué pedís el reembolso?
+              </label>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value.slice(0, 800))}
+                rows={4}
+                placeholder="Ej: pagué por error, no es lo que esperaba, ya no necesito el servicio…"
+                className="w-full bg-gray-800 border border-gray-700 hover:border-gray-600 focus:border-purple-500 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
+              />
+              <p className="text-[10px] text-gray-500 mt-1">{reason.length}/800</p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setOpen(false)}
+                disabled={submitting}
+                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={submit}
+                disabled={submitting || reason.trim().length < 5}
+                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm font-semibold"
+              >
+                {submitting ? "Enviando…" : "Enviar pedido"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Badge que muestra si MP está en TEST o PRODUCCIÓN. Solo OWNER lo ve. */
+function MpEnvBadge() {
+  const [info, setInfo] = useState<{ mode: "test" | "production" | "missing" } | null>(null)
+  useEffect(() => {
+    fetch("/api/billing/mp/env", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setInfo)
+      .catch(() => setInfo(null))
+  }, [])
+  if (!info) return null
+  if (info.mode === "production") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold uppercase tracking-wider">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        MP Producción
+      </span>
+    )
+  }
+  if (info.mode === "test") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-bold uppercase tracking-wider" title="MP en sandbox — los pagos son ficticios">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+        MP Test (sandbox)
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-300 text-[11px] font-bold uppercase tracking-wider" title="MP_ACCESS_TOKEN no configurado en Railway">
+      MP No configurado
+    </span>
   )
 }
