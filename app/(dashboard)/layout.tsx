@@ -11,6 +11,7 @@ import TourOverlay from "@/components/shared/TourOverlay"
 import { UpgradeWelcomeModal } from "@/components/shared/UpgradeWelcomeModal"
 import SupportWidget from "@/components/shared/SupportWidget"
 import { InstallPrompt } from "@/components/shared/InstallPrompt"
+import { OfflineGlobalBanner } from "@/components/shared/OfflineGlobalBanner"
 import { db } from "@/lib/db"
 import { hasFeature } from "@/lib/permissions"
 import SubscriptionStatusBanner from "@/components/shared/SubscriptionStatusBanner"
@@ -170,6 +171,7 @@ export default async function DashboardLayout({
             <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative z-10">
               <Header user={session.user} plan={plan as any} />
               <main className="flex-1 overflow-auto">
+                <OfflineGlobalBanner />
                 <SubscriptionStatusBanner {...bannerData} />
                 <div className="p-4 lg:p-6">{children}</div>
               </main>
