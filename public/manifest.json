@@ -40,9 +40,9 @@
     }
   ],
   "shortcuts": [
-    { "name": "Punto de venta", "short_name": "POS", "url": "/pos" },
+    { "name": "POS Offline", "short_name": "POS", "url": "/pos-app" },
+    { "name": "Inicio", "short_name": "Inicio", "url": "/inicio" },
     { "name": "Ventas", "short_name": "Ventas", "url": "/ventas" },
-    { "name": "Modo TV", "short_name": "TV", "url": "/tv" },
     { "name": "Caja", "short_name": "Caja", "url": "/caja" }
   ],
   "prefer_related_applications": false,

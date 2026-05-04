@@ -413,6 +413,13 @@ export default function POSPage() {
             >
               <Camera size={14} />
             </button>
+            <Link
+              href="/pos-app"
+              className="hidden sm:flex items-center gap-1 text-gray-400 hover:text-emerald-300 transition-colors"
+              title="POS offline (funciona sin internet)"
+            >
+              <span className="text-[10px] uppercase tracking-wider font-bold">Offline</span>
+            </Link>
             <button
               onClick={() => setShowShortcutsHelp(true)}
               className="hidden lg:flex items-center gap-1 text-gray-500 hover:text-accent transition-colors"

@@ -19,7 +19,7 @@
  * la lista de assets pre-cacheados o las rutas críticas.
  */
 
-const VERSION = "v3"
+const VERSION = "v4"
 const CACHE = `orvex-${VERSION}`
 const API_CACHE = `orvex-api-${VERSION}`
 const API_TTL_MS = 60 * 60 * 1000 // 1h fallback for /api/productos GETs
@@ -33,8 +33,12 @@ const STATIC_ASSETS = [
 ]
 
 // Páginas críticas que pre-cacheamos en install para que el POS arranque
-// offline aún si no las visitó antes.
-const CRITICAL_PAGES = ["/pos", "/inicio", "/caja"]
+// offline aún si no las visitó antes. /pos-app es el POS standalone que
+// funciona 100% offline; los demás son backup.
+const CRITICAL_PAGES = ["/pos-app", "/pos", "/inicio", "/caja"]
+
+// Endpoints clave que cacheamos para que el POS-app pueda arrancar offline.
+const CRITICAL_API = ["/api/auth/session", "/api/productos?activo=true"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -48,6 +52,15 @@ self.addEventListener("install", (event) => {
         CRITICAL_PAGES.map((path) =>
           fetch(path, { credentials: "include" })
             .then((res) => res.ok && cache.put(path, res.clone()))
+            .catch(() => {})
+        )
+      )
+      // Pre-cachear API críticas para que el POS app arranque offline
+      const apiCache = await caches.open(API_CACHE)
+      await Promise.all(
+        CRITICAL_API.map((path) =>
+          fetch(path, { credentials: "include" })
+            .then((res) => res.ok && apiCache.put(path, res.clone()))
             .catch(() => {})
         )
       )
@@ -76,7 +89,13 @@ self.addEventListener("fetch", (event) => {
   // Skip cross-origin / non-GET
   if (req.method !== "GET" || url.origin !== self.location.origin) return
 
-  // /api/auth/* — never cache, always live (sessions/tokens).
+  // /api/auth/session — cacheable con TTL para que el POS-app pueda
+  // arrancar offline con la sesión cacheada. El resto de /api/auth/* sigue
+  // siendo network-only (login, signout, etc).
+  if (url.pathname === "/api/auth/session") {
+    event.respondWith(networkFirstWithCache(req))
+    return
+  }
   if (url.pathname.startsWith("/api/auth/")) {
     event.respondWith(fetch(req))
     return
