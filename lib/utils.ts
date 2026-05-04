@@ -81,25 +81,31 @@ export function generatePassword(length = 16): string {
 
 // Numeric hard limits per plan. Use Number.POSITIVE_INFINITY for "unlimited".
 // historyDays = how far back the user can see their own data (sales, reports).
+// Numeric hard limits per plan. Use Number.POSITIVE_INFINITY for "unlimited".
+// Filosofía:
+//   - STARTER (Básico) → kiosco chico real, lo mínimo para operar
+//   - PROFESSIONAL → "la maravilla", todo lo cool
+//   - BUSINESS → cadenas / multi-sucursal, escala
+//   - ENTERPRISE → legacy / custom (no se ofrece más al público)
 export const PLAN_LIMITS = {
   STARTER: {
     products: 500,
-    users: 3,
-    clients: Number.POSITIVE_INFINITY,
-    suppliers: Number.POSITIVE_INFINITY,
-    categories: Number.POSITIVE_INFINITY,
+    users: 2,
+    clients: 50,
+    suppliers: 20,
+    categories: 30,
     salesPerMonth: 2000,
-    historyDays: 90,
+    historyDays: 30,
     api: false,
   },
   PROFESSIONAL: {
     products: 5000,
     users: 10,
-    clients: Number.POSITIVE_INFINITY,
-    suppliers: Number.POSITIVE_INFINITY,
+    clients: 1000,
+    suppliers: 100,
     categories: Number.POSITIVE_INFINITY,
     salesPerMonth: Number.POSITIVE_INFINITY,
-    historyDays: 365,
+    historyDays: Number.POSITIVE_INFINITY,
     api: false,
   },
   BUSINESS: {

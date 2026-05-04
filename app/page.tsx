@@ -75,12 +75,13 @@ export default async function LandingPage({
     {
       plan: "Básico",
       price: PLAN_PRICES_ARS.STARTER,
-      desc: "Para kioscos chicos",
+      desc: "Lo justo para arrancar",
       features: [
-        "Hasta 500 productos",
-        "3 usuarios",
-        "Reportes completos",
-        "WhatsApp alertas de stock",
+        "POS + inventario hasta 500 productos",
+        "2 usuarios · clientes con cuenta corriente",
+        "AFIP — 50 facturas/mes",
+        "Reportes 30 días",
+        "POS offline-first",
       ],
       cta: "Probar 7 días",
       href: starterHref,
@@ -89,13 +90,13 @@ export default async function LandingPage({
     {
       plan: "Profesional",
       price: PLAN_PRICES_ARS.PROFESSIONAL,
-      desc: "El más elegido",
+      desc: "Todo lo cool — el más elegido",
       features: [
-        "5.000 productos",
-        "10 usuarios",
-        "Clientes + fidelidad",
-        "Multi-caja simultánea",
-        "IA 500 mensajes/día",
+        "5.000 productos · 10 usuarios",
+        "🎨 Tema custom · 📷 Scanner · 🏷️ Etiquetas",
+        "🌐 Carta pública · ⭐ Loyalty · 💬 WhatsApp",
+        "📊 IA predictiva · 🤖 Chatbot · 📺 Modo TV",
+        "🚚 Pedidos a proveedor con IA",
       ],
       cta:
         activePromo && activePromo.planGranted === "PROFESSIONAL"
@@ -105,14 +106,15 @@ export default async function LandingPage({
       highlight: true,
     },
     {
-      plan: "Negocio",
+      plan: "Empresa",
       price: PLAN_PRICES_ARS.BUSINESS,
       desc: "Para cadenas",
       features: [
         "Todo ilimitado",
-        "Usuarios ilimitados",
-        "Multi-tienda",
-        "Soporte prioritario",
+        "🏪 Multi-tienda (varias sucursales)",
+        "📡 API access + webhooks",
+        "🤖 IA Assistant ilimitado",
+        "👨‍💼 Account manager dedicado",
       ],
       cta: "Probar 7 días",
       href: businessHref,

@@ -133,32 +133,44 @@ export type PlanFeature =
 type PlanGate = Record<PlanFeature, Plan[]>
 
 // Which plans UNLOCK each feature. If a plan is in the list, it has access.
+//
+// Filosofía del rebalanceo (mayo 2026):
+//   - STARTER (Básico) bare-bones: POS + inventario + caja + reportes 30d +
+//     gastos + cargas + clientes con CC + AFIP + logo. NADA de cosas "wow".
+//   - PROFESSIONAL la maravilla: todo lo cool (loyalty, IA, modo TV,
+//     pedidos auto, etiquetas, carta pública, scanner, caja chica, tema,
+//     WhatsApp, multi-caja, predicciones, soporte prioritario, CSV).
+//   - BUSINESS para escala: + multi-tienda + API + ilimitado en todo.
 const PLAN_FEATURES: PlanGate = {
+  // Operación básica — STARTER+
   "feature:reports_basic":     ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:reports_full":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:expenses":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:recharges":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:suppliers":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multiple_users":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:custom_logo":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:advanced_pos":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+
+  // "La maravilla" — PROFESSIONAL+
+  "feature:reports_full":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_import":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_export":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:theme_picker":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:custom_logo":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:advanced_pos":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:ai_assistant":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:theme_picker":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:ai_assistant":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant_full": ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:whatsapp":          ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:multi_store":       ["BUSINESS", "ENTERPRISE"],
   "feature:priority_support":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  // ─── Nuevas ─── (acceso parejo: básicos para STARTER, premium para PROFESSIONAL+)
-  "feature:cash_movements":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:labels":            ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:public_storefront": ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:cash_movements":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:labels":            ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:public_storefront": ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:tv_mode":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:supplier_orders":   ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:predictive_ai":     ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+
+  // Escala / cadenas — BUSINESS+
+  "feature:multi_store":       ["BUSINESS", "ENTERPRISE"],
 }
 
 /** Per-day AI message quota by plan (soft cap).

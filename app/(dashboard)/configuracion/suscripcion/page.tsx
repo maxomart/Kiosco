@@ -43,32 +43,38 @@ interface Subscription {
 
 const PLAN_FEATURES: Record<string, string[]> = {
   STARTER: [
-    "Hasta 500 productos",
-    "Hasta 2.000 ventas/mes",
-    "3 usuarios",
-    "Clientes y categorías ilimitados",
-    "Proveedores, gastos y cargas",
-    "Logo personalizado",
-    "Historial de 30 días",
+    "POS + inventario hasta 500 productos",
+    "2 usuarios (vos + 1 cajero)",
+    "Clientes con cuenta corriente (50)",
+    "Gastos, cargas y proveedores",
+    "AFIP — facturas A/B/C (50/mes)",
+    "Logo del negocio",
+    "Reportes de los últimos 30 días",
+    "POS offline-first (vendés sin internet)",
   ],
   PROFESSIONAL: [
-    "Hasta 5.000 productos",
-    "Ventas ilimitadas",
-    "10 usuarios",
-    "Programa de fidelidad (puntos)",
-    "Multi-caja simultánea",
-    "WhatsApp resumen diario",
-    "Asistente IA — 500 mensajes/día",
-    "Historial de 1 año",
-    "Soporte prioritario por email",
+    "Todo lo del Básico, ampliado",
+    "Hasta 5.000 productos · 10 usuarios",
+    "Reportes ilimitados con comparaciones",
+    "AFIP — 500 facturas/mes",
+    "🎨 Tema personalizado + claro/oscuro",
+    "📷 Scanner cámara · 🏷️ Etiquetas · 💰 Caja chica",
+    "🌐 Carta pública del kiosco",
+    "⭐ Loyalty (puntos + canje)",
+    "📊 IA predictiva + 🤖 Chatbot IA",
+    "📺 Modo TV · 🚚 Pedidos a proveedor IA",
+    "💬 WhatsApp · Multi-caja · CSV import/export",
+    "🎯 Soporte prioritario",
   ],
   BUSINESS: [
-    "Todo ilimitado",
-    "Multi-tienda (varias sucursales)",
-    "API access",
-    "Asistente IA — 5.000 mensajes/día",
-    "Historial ilimitado",
-    "Soporte por WhatsApp directo",
+    "Todo del Profesional, sin límites",
+    "🏪 Multi-tienda (varias sucursales)",
+    "Productos, usuarios y clientes ilimitados",
+    "AFIP — 5.000 facturas/mes",
+    "📡 API access (REST + webhooks)",
+    "🤖 IA Assistant ilimitado",
+    "🏷️ White label parcial (sin marca Orvex)",
+    "👨‍💼 Account manager dedicado",
   ],
 }
 
@@ -290,7 +296,7 @@ export default function SuscripcionPage() {
     const ok = await confirm({
       title: "¿Cancelar suscripción?",
       description:
-        "Cancelás la renovación automática en Mercado Pago. Tu plan vuelve a Gratis al finalizar el período actual pagado.",
+        "Cancelás la renovación automática en Mercado Pago. Al finalizar el período actual pagado vas a tener que suscribirte de nuevo para seguir usando Orvex.",
       confirmText: "Sí, cancelar",
       cancelText: "Volver",
       tone: "danger",
@@ -316,7 +322,7 @@ export default function SuscripcionPage() {
 
   const STATUS_LABELS: Record<string, string> = {
     ACTIVE: "Activo", TRIALING: "Prueba gratuita", PAST_DUE: "Pago vencido",
-    CANCELLED: "Cancelado", FREE: "Plan gratuito",
+    CANCELLED: "Cancelado", FREE: "Sin plan activo",
   }
 
   const isMP = sub?.paymentProvider === "mercadopago"
@@ -476,7 +482,7 @@ export default function SuscripcionPage() {
               )}
               {sub.status === "CANCELLED" && (
                 <p className="text-[11px] text-red-300/80 mt-1 max-w-md">
-                  Cancelaste la suscripción. Seguís con todas las funciones hasta la fecha indicada y después pasás automáticamente al plan Gratis.
+                  Cancelaste la suscripción. Seguís con todas las funciones hasta la fecha indicada y después vas a tener que suscribirte de nuevo para seguir usando Orvex.
                 </p>
               )}
             </div>
