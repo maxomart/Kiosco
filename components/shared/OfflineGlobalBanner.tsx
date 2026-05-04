@@ -86,9 +86,9 @@ export function OfflineGlobalBanner() {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold leading-tight">Sin internet</p>
+              <p className="text-sm font-bold leading-tight">Sin internet — modo limitado</p>
               <p className="text-xs opacity-90 leading-tight hidden sm:block">
-                Esta página necesita conexión. Pasate al POS Offline para seguir vendiendo.
+                Podés ver datos pero no guardar cambios. Para seguir vendiendo, pasate al POS Offline.
               </p>
             </div>
             <Link

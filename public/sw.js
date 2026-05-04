@@ -19,7 +19,7 @@
  * la lista de assets pre-cacheados o las rutas críticas.
  */
 
-const VERSION = "v4"
+const VERSION = "v5"
 const CACHE = `orvex-${VERSION}`
 const API_CACHE = `orvex-api-${VERSION}`
 const API_TTL_MS = 60 * 60 * 1000 // 1h fallback for /api/productos GETs
@@ -32,10 +32,19 @@ const STATIC_ASSETS = [
   "/offline.html",
 ]
 
-// Páginas críticas que pre-cacheamos en install para que el POS arranque
-// offline aún si no las visitó antes. /pos-app es el POS standalone que
-// funciona 100% offline; los demás son backup.
-const CRITICAL_PAGES = ["/pos-app", "/pos", "/inicio", "/caja"]
+// Páginas críticas que pre-cacheamos en install. /pos-app es la app que
+// funciona 100% offline. Las demás cargan en modo "limitado / read-only"
+// (datos de la última visita online).
+const CRITICAL_PAGES = [
+  "/pos-app",
+  "/pos",
+  "/inicio",
+  "/caja",
+  "/inventario",
+  "/ventas",
+  "/clientes",
+  "/reportes",
+]
 
 // Endpoints clave que cacheamos para que el POS-app pueda arrancar offline.
 const CRITICAL_API = ["/api/auth/session", "/api/productos?activo=true"]
@@ -158,20 +167,32 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Pages: network-first, fall back to cache, then to /offline.html
+  // Cacheamos por pathname (sin query) — Next.js manda tokens RSC en query
+  // que cambian en cada nav, así con ignoreSearch metemos hits del cache
+  // aún cuando los query params son distintos.
   event.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone()
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {})
+        if (res.ok) {
+          const copy = res.clone()
+          // Guardamos bajo la URL pathname-only para que pegue al buscar offline
+          const cacheKey = new Request(url.origin + url.pathname, { method: "GET" })
+          caches.open(CACHE).then((c) => c.put(cacheKey, copy)).catch(() => {})
+        }
         return res
       })
-      .catch(() =>
-        caches.match(req).then(
-          (cached) =>
-            cached ||
-            caches.match("/offline.html").then((off) => off || Response.error())
-        )
-      )
+      .catch(async () => {
+        // 1) Buscar exact match
+        const exact = await caches.match(req)
+        if (exact) return exact
+        // 2) Buscar por pathname (sin query)
+        const pathOnly = new Request(url.origin + url.pathname, { method: "GET" })
+        const byPath = await caches.match(pathOnly)
+        if (byPath) return byPath
+        // 3) Fallback a la página offline
+        const off = await caches.match("/offline.html")
+        return off || Response.error()
+      })
   )
 })
 
