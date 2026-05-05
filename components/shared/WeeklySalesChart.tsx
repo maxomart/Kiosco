@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import {
   LineChart,
   Line,
@@ -70,6 +71,21 @@ export default function WeeklySalesChart({ data }: WeeklySalesChartProps) {
     count: d.count,
   }))
 
+  // En modo claro, el grid #1f2937 desaparece y los ticks oscuros también:
+  // adaptamos a colores con contraste contra fondo blanco. Se evalúa en
+  // cliente para no romper SSR.
+  const [isLight, setIsLight] = useState(false)
+  useEffect(() => {
+    const check = () => setIsLight(document.documentElement.dataset.theme === "light")
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] })
+    return () => observer.disconnect()
+  }, [])
+
+  const gridStroke = isLight ? "#e5e7eb" : "#1f2937"
+  const tickFill = isLight ? "#475569" : "#6b7280"
+
   return (
     <ResponsiveContainer width="100%" height={220}>
       <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -79,15 +95,15 @@ export default function WeeklySalesChart({ data }: WeeklySalesChartProps) {
             <stop offset="95%" stopColor="#9333ea" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
         <XAxis
           dataKey="day"
-          tick={{ fill: "#6b7280", fontSize: 11 }}
+          tick={{ fill: tickFill, fontSize: 11 }}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
-          tick={{ fill: "#6b7280", fontSize: 11 }}
+          tick={{ fill: tickFill, fontSize: 11 }}
           axisLine={false}
           tickLine={false}
           tickFormatter={formatCurrencyShort}

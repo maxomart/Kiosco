@@ -101,14 +101,511 @@ html[data-theme="light"] .text-gray-100 { color: #1e293b !important; }
 html[data-theme="light"] .text-gray-200 { color: #334155 !important; }
 html[data-theme="light"] .text-gray-300 { color: #475569 !important; }
 html[data-theme="light"] .text-gray-400 { color: #64748b !important; }
-html[data-theme="light"] .text-gray-500 { color: #94a3b8 !important; }
-html[data-theme="light"] .text-gray-600 { color: #cbd5e1 !important; }
+html[data-theme="light"] .text-gray-500 { color: #64748b !important; }
+html[data-theme="light"] .text-gray-600 { color: #94a3b8 !important; }
+html[data-theme="light"] .text-gray-700 { color: #475569 !important; }
+html[data-theme="light"] .text-gray-800 { color: #1e293b !important; }
+html[data-theme="light"] .text-gray-900 { color: #0f172a !important; }
 
 /* Hover de gris */
 html[data-theme="light"] .hover\:bg-gray-800:hover { background-color: #e2e8f0 !important; }
 html[data-theme="light"] .hover\:bg-gray-700:hover { background-color: #cbd5e1 !important; }
 html[data-theme="light"] .hover\:bg-white\/5:hover { background-color: rgba(15,23,42,0.05) !important; }
 html[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(15,23,42,0.08) !important; }
+
+/* Backgrounds white/N (translúcidos sobre claro = casi invisibles → invertimos) */
+html[data-theme="light"] .bg-white\/5 { background-color: rgba(15,23,42,0.04) !important; }
+html[data-theme="light"] .bg-white\/10 { background-color: rgba(15,23,42,0.06) !important; }
+
+/* Backgrounds gray-900 con opacidades adicionales */
+html[data-theme="light"] .bg-gray-900\/30 { background-color: rgba(255,255,255,0.7) !important; }
+html[data-theme="light"] .bg-gray-900\/20 { background-color: rgba(255,255,255,0.6) !important; }
+html[data-theme="light"] .bg-gray-800\/30 { background-color: rgba(241,245,249,0.5) !important; }
+html[data-theme="light"] .bg-gray-800\/40 { background-color: rgba(241,245,249,0.6) !important; }
+html[data-theme="light"] .bg-gray-800\/50 { background-color: rgba(241,245,249,0.7) !important; }
+html[data-theme="light"] .bg-gray-800\/60 { background-color: rgba(241,245,249,0.8) !important; }
+html[data-theme="light"] .hover\:bg-gray-800\/30:hover { background-color: rgba(226,232,240,0.6) !important; }
+
+/* Bordes gray con opacidades */
+html[data-theme="light"] .border-gray-800\/30,
+html[data-theme="light"] .border-gray-800\/40,
+html[data-theme="light"] .border-gray-800\/50,
+html[data-theme="light"] .border-gray-800\/60 { border-color: #e5e7eb !important; }
+
+/* ── Backgrounds semánticos oscuros con poca opacidad → invertirlos a tints claros ── */
+/* Amber */
+html[data-theme="light"] .bg-amber-950\/30,
+html[data-theme="light"] .bg-amber-950\/40,
+html[data-theme="light"] .bg-amber-900\/40,
+html[data-theme="light"] .bg-amber-900\/30,
+html[data-theme="light"] .bg-amber-900\/20 { background-color: #fef3c7 !important; }
+html[data-theme="light"] .border-amber-800\/30,
+html[data-theme="light"] .border-amber-800\/40,
+html[data-theme="light"] .border-amber-700\/40,
+html[data-theme="light"] .border-amber-700\/60,
+html[data-theme="light"] .border-amber-500\/40,
+html[data-theme="light"] .border-amber-500\/30 { border-color: #fbbf24 !important; }
+html[data-theme="light"] .text-amber-100,
+html[data-theme="light"] .text-amber-200 { color: #92400e !important; }
+html[data-theme="light"] .text-amber-300 { color: #b45309 !important; }
+html[data-theme="light"] .text-amber-300\/80,
+html[data-theme="light"] .text-amber-400\/70 { color: #b45309 !important; }
+
+/* Red / danger */
+html[data-theme="light"] .bg-red-950\/30,
+html[data-theme="light"] .bg-red-950\/40,
+html[data-theme="light"] .bg-red-950\/60,
+html[data-theme="light"] .bg-red-900\/40,
+html[data-theme="light"] .bg-red-900\/30,
+html[data-theme="light"] .bg-red-900\/20 { background-color: #fee2e2 !important; }
+html[data-theme="light"] .border-red-800\/30,
+html[data-theme="light"] .border-red-800\/40,
+html[data-theme="light"] .border-red-900\/50 { border-color: #fca5a5 !important; }
+html[data-theme="light"] .text-red-100,
+html[data-theme="light"] .text-red-200,
+html[data-theme="light"] .text-red-300 { color: #991b1b !important; }
+
+/* Emerald / green */
+html[data-theme="light"] .bg-emerald-950\/30,
+html[data-theme="light"] .bg-emerald-950\/40,
+html[data-theme="light"] .bg-emerald-950\/20,
+html[data-theme="light"] .bg-emerald-950\/60,
+html[data-theme="light"] .bg-emerald-900\/40,
+html[data-theme="light"] .bg-emerald-900\/30,
+html[data-theme="light"] .bg-green-900\/40,
+html[data-theme="light"] .bg-green-900\/20,
+html[data-theme="light"] .bg-green-500\/10 { background-color: #d1fae5 !important; }
+html[data-theme="light"] .border-emerald-700\/30,
+html[data-theme="light"] .border-emerald-700\/40,
+html[data-theme="light"] .border-emerald-800,
+html[data-theme="light"] .border-emerald-900\/40,
+html[data-theme="light"] .border-green-800 { border-color: #6ee7b7 !important; }
+html[data-theme="light"] .text-emerald-100,
+html[data-theme="light"] .text-emerald-200,
+html[data-theme="light"] .text-emerald-300,
+html[data-theme="light"] .text-emerald-300\/80,
+html[data-theme="light"] .text-green-300 { color: #047857 !important; }
+
+/* Blue / sky */
+html[data-theme="light"] .bg-blue-950\/30,
+html[data-theme="light"] .bg-blue-900\/40,
+html[data-theme="light"] .bg-blue-900\/30,
+html[data-theme="light"] .bg-sky-900\/30 { background-color: #dbeafe !important; }
+html[data-theme="light"] .border-blue-700\/60,
+html[data-theme="light"] .border-blue-800\/40 { border-color: #93c5fd !important; }
+html[data-theme="light"] .text-blue-100,
+html[data-theme="light"] .text-blue-200,
+html[data-theme="light"] .text-blue-300 { color: #1e40af !important; }
+
+/* Purple */
+html[data-theme="light"] .bg-purple-950\/40,
+html[data-theme="light"] .bg-purple-950\/30,
+html[data-theme="light"] .bg-purple-900\/40,
+html[data-theme="light"] .bg-purple-900\/30,
+html[data-theme="light"] .bg-purple-600\/10,
+html[data-theme="light"] .bg-purple-600\/20 { background-color: #ede9fe !important; }
+html[data-theme="light"] .border-purple-900\/30,
+html[data-theme="light"] .border-purple-900\/40,
+html[data-theme="light"] .border-purple-700\/60,
+html[data-theme="light"] .border-purple-500\/30,
+html[data-theme="light"] .border-purple-500\/50 { border-color: #c4b5fd !important; }
+html[data-theme="light"] .text-purple-100,
+html[data-theme="light"] .text-purple-200,
+html[data-theme="light"] .text-purple-300 { color: #6d28d9 !important; }
+
+/* Yellow / orange */
+html[data-theme="light"] .bg-yellow-900\/40,
+html[data-theme="light"] .bg-yellow-500\/10,
+html[data-theme="light"] .bg-orange-900\/30 { background-color: #fef9c3 !important; }
+html[data-theme="light"] .border-yellow-700\/50,
+html[data-theme="light"] .border-yellow-500\/30 { border-color: #facc15 !important; }
+
+/* Rose */
+html[data-theme="light"] .bg-rose-900\/30,
+html[data-theme="light"] .bg-rose-500\/20 { background-color: #ffe4e6 !important; }
+
+/* Gradientes problemáticos (cards con `from-* via-* to-*`) — overrides al
+   usar el wrapper. Tailwind compone los gradients via custom props, así que
+   neutralizamos via background plano cuando se ven los stops oscuros. */
+html[data-theme="light"] .from-gray-900,
+html[data-theme="light"] .via-gray-900,
+html[data-theme="light"] .to-gray-900,
+html[data-theme="light"] .from-gray-950,
+html[data-theme="light"] .via-gray-950,
+html[data-theme="light"] .to-gray-950 {
+  --tw-gradient-from: #ffffff !important;
+  --tw-gradient-via: #f8fafc !important;
+  --tw-gradient-to: #f1f5f9 !important;
+}
+html[data-theme="light"] .from-gray-900\/50,
+html[data-theme="light"] .from-gray-900\/40 { --tw-gradient-from: #f8fafc !important; }
+html[data-theme="light"] .from-purple-950\/40,
+html[data-theme="light"] .from-purple-500\/20 { --tw-gradient-from: #ede9fe !important; }
+html[data-theme="light"] .via-purple-500\/5 { --tw-gradient-via: #f5f3ff !important; }
+html[data-theme="light"] .from-emerald-900\/40,
+html[data-theme="light"] .from-emerald-500\/20 { --tw-gradient-from: #d1fae5 !important; }
+html[data-theme="light"] .via-emerald-500\/5 { --tw-gradient-via: #ecfdf5 !important; }
+html[data-theme="light"] .from-amber-500\/20 { --tw-gradient-from: #fef3c7 !important; }
+html[data-theme="light"] .via-amber-500\/5 { --tw-gradient-via: #fffbeb !important; }
+html[data-theme="light"] .from-rose-500\/20 { --tw-gradient-from: #ffe4e6 !important; }
+html[data-theme="light"] .via-rose-500\/5 { --tw-gradient-via: #fff1f2 !important; }
+html[data-theme="light"] .from-sky-500\/20 { --tw-gradient-from: #dbeafe !important; }
+html[data-theme="light"] .via-sky-500\/5 { --tw-gradient-via: #eff6ff !important; }
+html[data-theme="light"] .from-purple-500,
+html[data-theme="light"] .to-purple-700,
+html[data-theme="light"] .to-purple-400,
+html[data-theme="light"] .from-purple-600 { /* mantener purple en CTA, no tocar */ }
+
+/* Wrappers específicos del dashboard: forzamos background-image al gradient
+   claro equivalente — esto sí gana sin importar el sistema de gradient stops
+   interno de Tailwind v4 (belt-and-suspenders). */
+html[data-theme="light"] .bg-gradient-to-br.from-purple-950\/40 {
+  background-image: linear-gradient(to bottom right, #ede9fe, #ffffff, #f8fafc) !important;
+}
+html[data-theme="light"] .bg-gradient-to-br.from-emerald-900\/40 {
+  background-image: linear-gradient(to bottom right, #d1fae5, #ecfdf5) !important;
+}
+html[data-theme="light"] .bg-gradient-to-br.from-gray-900 {
+  background-image: linear-gradient(to bottom right, #ffffff, #f8fafc) !important;
+}
+html[data-theme="light"] .bg-gradient-to-br.from-purple-500\/20 {
+  background-image: linear-gradient(to bottom right, #ede9fe, #f5f3ff, transparent) !important;
+}
+html[data-theme="light"] .bg-gradient-to-br.from-emerald-500\/20 {
+  background-image: linear-gradient(to bottom right, #d1fae5, #ecfdf5, transparent) !important;
+}
+html[data-theme="light"] .bg-gradient-to-br.from-amber-500\/20 {
+  background-image: linear-gradient(to bottom right, #fef3c7, #fffbeb, transparent) !important;
+}
+html[data-theme="light"] .bg-gradient-to-br.from-rose-500\/20 {
+  background-image: linear-gradient(to bottom right, #ffe4e6, #fff1f2, transparent) !important;
+}
+html[data-theme="light"] .bg-gradient-to-br.from-sky-500\/20 {
+  background-image: linear-gradient(to bottom right, #dbeafe, #eff6ff, transparent) !important;
+}
+
+/* Bottom bar fade del POS mobile (gradient negro a transparente que tapa) */
+html[data-theme="light"] .from-gray-950\/95 { --tw-gradient-from: rgba(248,250,252,0.95) !important; }
+html[data-theme="light"] .to-gray-950\/0 { --tw-gradient-to: rgba(248,250,252,0) !important; }
+html[data-theme="light"] .bg-gradient-to-t.from-gray-950 {
+  background-image: linear-gradient(to top, #f8fafc, rgba(248,250,252,0.95), transparent) !important;
+}
+html[data-theme="light"] .bg-gradient-to-r.from-emerald-950\/40 {
+  background-image: linear-gradient(to right, #d1fae5, transparent) !important;
+}
+html[data-theme="light"] .bg-gradient-to-r.from-accent-soft\/40 {
+  /* Inventario discoverability hint — accent-soft ya respeta tenant en claro */
+  background-image: linear-gradient(to right, var(--color-accent-soft), color-mix(in oklab, var(--color-accent-soft) 30%, transparent)) !important;
+}
+
+/* Backdrop oscuro de modales y drawers (mantener oscuro pero más liviano) */
+html[data-theme="light"] .bg-black\/60,
+html[data-theme="light"] .bg-black\/70,
+html[data-theme="light"] .bg-black\/80 { background-color: rgba(15,23,42,0.4) !important; }
+
+/* shadow-black usados como elevación se ven feos en claro */
+html[data-theme="light"] .shadow-black\/20,
+html[data-theme="light"] .shadow-black\/50 { --tw-shadow-color: rgba(15,23,42,0.10) !important; }
+
+/* Ring offset para focus rings (gray-950 → bg claro) */
+html[data-theme="light"] .ring-offset-gray-950 { --tw-ring-offset-color: #ffffff !important; }
+
+/* ─── Gaps page-specific (ventas, caja, clientes, cargas) ──────────────────
+   Estos overrides cubren patrones puntuales que aparecen en esas páginas y
+   no estaban en la sección genérica de arriba. Mantienen dark mode intacto. */
+
+/* gray-950 con opacidades — usado en filas header/footer y resumen sticky */
+html[data-theme="light"] .bg-gray-950\/30 { background-color: #f8fafc !important; }
+html[data-theme="light"] .bg-gray-950\/40 { background-color: #f8fafc !important; }
+html[data-theme="light"] .bg-gray-950\/50 { background-color: #f1f5f9 !important; }
+html[data-theme="light"] .bg-gray-950\/95 { background-color: rgba(255,255,255,0.95) !important; }
+
+/* gray-900/80 — header tabla cargas AI */
+html[data-theme="light"] .bg-gray-900\/80 { background-color: #f8fafc !important; }
+
+/* divide-gray-800/50 — divisores de tabla con opacidad */
+html[data-theme="light"] .divide-gray-800\/50 > * + * { border-color: #e5e7eb !important; }
+
+/* Bordes 700 con opacidad */
+html[data-theme="light"] .border-gray-700\/40,
+html[data-theme="light"] .border-gray-700\/30 { border-color: #d1d5db !important; }
+
+/* Gradientes KPI con sufijo /30 (caja: emerald, sky, purple, orange, red, amber) */
+html[data-theme="light"] .from-emerald-900\/30 { --tw-gradient-from: #ecfdf5 !important; }
+html[data-theme="light"] .to-emerald-950\/30,
+html[data-theme="light"] .to-emerald-950\/40 { --tw-gradient-to: #d1fae5 !important; }
+html[data-theme="light"] .from-sky-900\/30,
+html[data-theme="light"] .from-sky-900\/20 { --tw-gradient-from: #f0f9ff !important; }
+html[data-theme="light"] .to-sky-950\/30,
+html[data-theme="light"] .to-sky-950\/40 { --tw-gradient-to: #e0f2fe !important; }
+html[data-theme="light"] .from-purple-900\/30 { --tw-gradient-from: #faf5ff !important; }
+html[data-theme="light"] .to-purple-950\/30 { --tw-gradient-to: #ede9fe !important; }
+html[data-theme="light"] .from-orange-900\/30 { --tw-gradient-from: #fff7ed !important; }
+html[data-theme="light"] .to-orange-950\/30 { --tw-gradient-to: #ffedd5 !important; }
+html[data-theme="light"] .from-red-900\/30 { --tw-gradient-from: #fef2f2 !important; }
+html[data-theme="light"] .to-red-950\/30 { --tw-gradient-to: #fee2e2 !important; }
+html[data-theme="light"] .from-amber-900\/30 { --tw-gradient-from: #fffbeb !important; }
+html[data-theme="light"] .from-accent-soft\/50,
+html[data-theme="light"] .from-accent-soft\/40 { --tw-gradient-from: var(--color-accent-soft) !important; }
+html[data-theme="light"] .to-accent-soft\/10 { --tw-gradient-to: rgba(255,255,255,0) !important; }
+
+/* Borders KPI 800/40 */
+html[data-theme="light"] .border-emerald-800\/40,
+html[data-theme="light"] .border-emerald-800\/30 { border-color: #6ee7b7 !important; }
+html[data-theme="light"] .border-sky-800\/40,
+html[data-theme="light"] .border-sky-700\/40,
+html[data-theme="light"] .border-sky-700\/20 { border-color: #7dd3fc !important; }
+html[data-theme="light"] .border-purple-800\/40 { border-color: #c4b5fd !important; }
+html[data-theme="light"] .border-orange-800\/40,
+html[data-theme="light"] .border-orange-700\/40 { border-color: #fdba74 !important; }
+html[data-theme="light"] .border-red-700\/40,
+html[data-theme="light"] .border-red-800\/40 { border-color: #fca5a5 !important; }
+html[data-theme="light"] .border-rose-800\/30 { border-color: #fda4af !important; }
+html[data-theme="light"] .border-emerald-500\/20,
+html[data-theme="light"] .border-emerald-500\/40 { border-color: #6ee7b7 !important; }
+html[data-theme="light"] .border-purple-500\/20,
+html[data-theme="light"] .border-purple-500\/40 { border-color: #c4b5fd !important; }
+html[data-theme="light"] .border-yellow-500\/30 { border-color: #fde68a !important; }
+html[data-theme="light"] .border-green-500\/20 { border-color: #86efac !important; }
+html[data-theme="light"] .border-rose-500\/40 { border-color: #fda4af !important; }
+
+/* Toggle backgrounds (botones tipo retiro/depósito en /caja) */
+html[data-theme="light"] .bg-emerald-600\/20 { background-color: #ecfdf5 !important; }
+html[data-theme="light"] .bg-rose-600\/20 { background-color: #fef2f2 !important; }
+
+/* Wash claros adicionales detectados en estas páginas */
+html[data-theme="light"] .bg-emerald-900\/50 { background-color: #d1fae5 !important; }
+html[data-theme="light"] .bg-emerald-900\/20 { background-color: #d1fae5 !important; }
+html[data-theme="light"] .bg-sky-900\/40,
+html[data-theme="light"] .bg-sky-900\/20 { background-color: #e0f2fe !important; }
+html[data-theme="light"] .bg-purple-600\/30 { background-color: #ddd6fe !important; }
+
+/* bg-gray-700 plano (chip "Cerrada", "Inactivo") — oscuro en dark, slate-200 en light */
+html[data-theme="light"] .bg-gray-700 { background-color: #e2e8f0 !important; }
+
+/* Backgrounds adicionales */
+html[data-theme="light"] .bg-orange-500\/10,
+html[data-theme="light"] .bg-orange-900\/30 { background-color: #fff7ed !important; }
+html[data-theme="light"] .bg-yellow-500\/20 { background-color: #fef3c7 !important; }
+html[data-theme="light"] .bg-purple-500\/5 { background-color: #faf5ff !important; }
+html[data-theme="light"] .bg-emerald-500\/15 { background-color: #d1fae5 !important; }
+html[data-theme="light"] .bg-red-500\/15 { background-color: #fef2f2 !important; }
+
+/* Botones sólidos coloreados (bg-purple-600, bg-amber-600, bg-red-600, etc.)
+   tienen text-white y deben mantenerlo blanco aún en light. La regla genérica
+   .text-white { color: #0f172a } los rompe. Restauramos blanco en este caso. */
+html[data-theme="light"] .bg-purple-600.text-white,
+html[data-theme="light"] .bg-purple-700.text-white,
+html[data-theme="light"] .bg-purple-500.text-white,
+html[data-theme="light"] .bg-amber-600.text-white,
+html[data-theme="light"] .bg-amber-500.text-white,
+html[data-theme="light"] .bg-red-600.text-white,
+html[data-theme="light"] .bg-red-700.text-white,
+html[data-theme="light"] .bg-emerald-600.text-white,
+html[data-theme="light"] .bg-green-600.text-white,
+html[data-theme="light"] .bg-blue-600.text-white,
+html[data-theme="light"] .bg-sky-600.text-white { color: #ffffff !important; }
+
+/* Texto colores 400 puros — sobre fondos claros tienen poco contraste */
+html[data-theme="light"] .text-emerald-400 { color: #047857 !important; }
+html[data-theme="light"] .text-sky-400 { color: #0369a1 !important; }
+html[data-theme="light"] .text-purple-400 { color: #6d28d9 !important; }
+html[data-theme="light"] .text-orange-400 { color: #c2410c !important; }
+html[data-theme="light"] .text-amber-400 { color: #b45309 !important; }
+html[data-theme="light"] .text-red-400 { color: #b91c1c !important; }
+html[data-theme="light"] .text-rose-400 { color: #be123c !important; }
+html[data-theme="light"] .text-rose-200 { color: #be123c !important; }
+html[data-theme="light"] .text-green-400 { color: #047857 !important; }
+html[data-theme="light"] .text-yellow-400,
+html[data-theme="light"] .text-yellow-300 { color: #a16207 !important; }
+html[data-theme="light"] .text-yellow-200 { color: #854d0e !important; }
+
+/* ─── Shared/POS/Billing/AI specifics ──────────────────────────────────────
+   Patrones puntuales en componentes shared/pos/billing/ai que no estaban
+   cubiertos arriba. Mantienen dark mode intacto. */
+
+/* Header dropdown menu — bg-gray-950/95 ya cubierto. Plan badges sólidos */
+html[data-theme="light"] .bg-amber-900\/60 { background-color: #fef3c7 !important; }
+html[data-theme="light"] .bg-emerald-900\/60 { background-color: #d1fae5 !important; }
+html[data-theme="light"] .bg-gray-800\/80 { background-color: #f1f5f9 !important; }
+html[data-theme="light"] .border-amber-700\/50 { border-color: #fbbf24 !important; }
+html[data-theme="light"] .border-emerald-700\/50 { border-color: #6ee7b7 !important; }
+html[data-theme="light"] .border-gray-700\/60 { border-color: #d1d5db !important; }
+html[data-theme="light"] .border-gray-700\/80 { border-color: #cbd5e1 !important; }
+
+/* Sidebar item activo: bg-accent-soft + text-accent-foreground (blanco) =
+   ilegible sobre lavanda. Forzamos texto accent oscuro en items activos. */
+html[data-theme="light"] aside .bg-accent-soft.text-accent-foreground { color: var(--color-accent) !important; }
+
+/* Header user dropdown: bg-violet-500/15 (badge IA), bg-amber-500/15 etc. */
+html[data-theme="light"] .bg-violet-500\/15 { background-color: #ede9fe !important; }
+html[data-theme="light"] .bg-violet-500\/20 { background-color: #ddd6fe !important; }
+html[data-theme="light"] .bg-amber-500\/15 { background-color: #fef3c7 !important; }
+html[data-theme="light"] .bg-amber-500\/20 { background-color: #fde68a !important; }
+html[data-theme="light"] .bg-emerald-500\/20 { background-color: #d1fae5 !important; }
+html[data-theme="light"] .bg-rose-500\/20 { background-color: #ffe4e6 !important; }
+html[data-theme="light"] .bg-sky-500\/15 { background-color: #dbeafe !important; }
+html[data-theme="light"] .bg-blue-500\/15 { background-color: #dbeafe !important; }
+html[data-theme="light"] .bg-blue-500\/20 { background-color: #dbeafe !important; }
+html[data-theme="light"] .bg-purple-500\/30 { background-color: #ddd6fe !important; }
+html[data-theme="light"] .bg-purple-500\/10 { background-color: #ede9fe !important; }
+
+/* Bordes coloreados con opacidades en SupportWidget/NotifBell/AssistantWidget */
+html[data-theme="light"] .border-violet-400\/20,
+html[data-theme="light"] .border-violet-400\/25 { border-color: #c4b5fd !important; }
+html[data-theme="light"] .border-violet-500\/30 { border-color: #c4b5fd !important; }
+html[data-theme="light"] .border-violet-500\/40 { border-color: #a78bfa !important; }
+html[data-theme="light"] .border-violet-500\/60 { border-color: #8b5cf6 !important; }
+html[data-theme="light"] .border-blue-400\/25 { border-color: #93c5fd !important; }
+html[data-theme="light"] .border-emerald-400\/25 { border-color: #6ee7b7 !important; }
+html[data-theme="light"] .border-purple-400\/60 { border-color: #c4b5fd !important; }
+html[data-theme="light"] .border-amber-500\/30 { border-color: #fbbf24 !important; }
+html[data-theme="light"] .border-amber-500\/40 { border-color: #f59e0b !important; }
+html[data-theme="light"] .border-purple-700\/40 { border-color: #c4b5fd !important; }
+html[data-theme="light"] .bg-purple-600\/20 { background-color: #ede9fe !important; }
+
+/* Bordes gris con opacidad alta en ConfirmDialog y otros */
+html[data-theme="light"] .border-gray-500\/30 { border-color: #cbd5e1 !important; }
+html[data-theme="light"] .bg-gray-500\/15 { background-color: #f1f5f9 !important; }
+
+/* Bubbles de chat (SupportWidget) — opacity 0.04 / 0.08 */
+html[data-theme="light"] .from-violet-500\/\[0\.08\] { --tw-gradient-from: #ede9fe !important; }
+html[data-theme="light"] .to-fuchsia-500\/\[0\.04\] { --tw-gradient-to: #fdf4ff !important; }
+html[data-theme="light"] .bg-violet-500\/\[0\.08\] { background-color: #ede9fe !important; }
+html[data-theme="light"] .bg-emerald-500\/\[0\.08\] { background-color: #d1fae5 !important; }
+
+/* Texto coloreado (violet/fuchsia/orange) sobre tints claros */
+html[data-theme="light"] .text-violet-100,
+html[data-theme="light"] .text-violet-200,
+html[data-theme="light"] .text-violet-300 { color: #6d28d9 !important; }
+html[data-theme="light"] .text-fuchsia-300 { color: #a21caf !important; }
+html[data-theme="light"] .text-orange-300 { color: #c2410c !important; }
+html[data-theme="light"] .text-orange-700 { color: #c2410c !important; }
+html[data-theme="light"] .text-blue-300 { color: #1e40af !important; }
+html[data-theme="light"] .text-emerald-300 { color: #047857 !important; }
+html[data-theme="light"] .text-amber-200,
+html[data-theme="light"] .text-amber-100 { color: #92400e !important; }
+
+/* Bubbles light-text on light tint = ilegible */
+html[data-theme="light"] .text-blue-50 { color: #1e3a8a !important; }
+html[data-theme="light"] .text-emerald-50 { color: #064e3b !important; }
+html[data-theme="light"] .text-purple-50 { color: #4c1d95 !important; }
+
+/* AssistantWidget header gradient: from-accent/20 — bajar para no eclipsar */
+html[data-theme="light"] .from-accent\/20 { --tw-gradient-from: rgba(139, 92, 246, 0.10) !important; }
+
+/* Sombras coloreadas (modales SubscriptionBlock, InstallPrompt) */
+html[data-theme="light"] .shadow-purple-900\/40,
+html[data-theme="light"] .shadow-purple-950\/50,
+html[data-theme="light"] .shadow-orange-900\/40 { --tw-shadow-color: rgba(139, 92, 246, 0.18) !important; }
+
+/* OfflineBanner POS: bg-amber-900/30, bg-blue-900/30, bg-purple-900/30 con borde 700/60 */
+html[data-theme="light"] .bg-amber-900\/30 { background-color: #fef3c7 !important; }
+html[data-theme="light"] .bg-blue-900\/30 { background-color: #dbeafe !important; }
+html[data-theme="light"] .bg-purple-900\/30 { background-color: #ede9fe !important; }
+html[data-theme="light"] .border-amber-700\/60 { border-color: #fbbf24 !important; }
+html[data-theme="light"] .border-blue-700\/60 { border-color: #60a5fa !important; }
+html[data-theme="light"] .border-purple-700\/60 { border-color: #a78bfa !important; }
+html[data-theme="light"] .text-amber-100 { color: #92400e !important; }
+html[data-theme="light"] .text-blue-100 { color: #1e40af !important; }
+html[data-theme="light"] .text-purple-100 { color: #6d28d9 !important; }
+
+/* OfflineBanner reintentar: bg-purple-700 sólido (botón saturado, OK), text-white */
+html[data-theme="light"] .bg-purple-700 { background-color: #7c3aed !important; }
+html[data-theme="light"] .hover\:bg-purple-600:hover { background-color: #6d28d9 !important; }
+html[data-theme="light"] .bg-purple-700.text-white { color: #ffffff !important; }
+
+/* Sidebar logo placeholder bg-gray-800 ya cubierto. Sidebar logout hover bg-red-950/40 */
+html[data-theme="light"] .bg-red-950\/40 { background-color: #fee2e2 !important; }
+html[data-theme="light"] .hover\:bg-red-950\/40:hover { background-color: #fee2e2 !important; }
+html[data-theme="light"] .hover\:bg-red-500\/10:hover { background-color: #fee2e2 !important; }
+
+/* ── Reportes / gastos / configuración — overrides extra ───────────────── */
+
+/* Recharts (gráficos en /reportes y /tv).
+   Los axis ticks usan fill="#6b7280" / "#9ca3af" hardcodeado en el componente,
+   el grid stroke="#1f2937", el tooltip contentStyle bgColor="#111827".
+   En light queda casi invisible. Re-mapeamos via SVG selectors así no toco
+   cada Chart en JSX. */
+html[data-theme="light"] .recharts-cartesian-axis-tick text,
+html[data-theme="light"] .recharts-cartesian-axis text {
+  fill: #475569 !important;
+}
+html[data-theme="light"] .recharts-cartesian-grid line,
+html[data-theme="light"] .recharts-cartesian-grid-horizontal line,
+html[data-theme="light"] .recharts-cartesian-grid-vertical line {
+  stroke: #e2e8f0 !important;
+}
+html[data-theme="light"] .recharts-legend-item-text { color: #1e293b !important; }
+/* Tooltip: el contentStyle inline bg #111827. Wrapper + override fuerte. */
+html[data-theme="light"] .recharts-tooltip-wrapper .recharts-default-tooltip,
+html[data-theme="light"] .recharts-tooltip-wrapper > div {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.08) !important;
+}
+html[data-theme="light"] .recharts-tooltip-label,
+html[data-theme="light"] .recharts-tooltip-item,
+html[data-theme="light"] .recharts-tooltip-item-name,
+html[data-theme="light"] .recharts-tooltip-item-value {
+  color: #0f172a !important;
+}
+
+/* card-glow — usada en /configuracion/suscripcion para los cards de plan.
+   En dark tiene bg blanco translúcido sobre negro; en light queda invisible
+   (white sobre white). Le damos contorno slate. */
+html[data-theme="light"] .card-glow {
+  background: rgba(15,23,42,0.015) !important;
+  border-color: #e5e7eb !important;
+  box-shadow:
+    0 1px 0 rgba(15,23,42,0.03) inset,
+    0 18px 36px -22px rgba(15,23,42,0.18) !important;
+}
+html[data-theme="light"] .card-glow:hover {
+  border-color: color-mix(in oklab, var(--color-accent) 35%, #e5e7eb) !important;
+  box-shadow:
+    0 1px 0 rgba(15,23,42,0.05) inset,
+    0 20px 40px -20px color-mix(in oklab, var(--color-accent) 30%, transparent) !important;
+}
+
+/* Tabla rows con .hover:bg-gray-800/30 — desglose método de pago en /reportes */
+html[data-theme="light"] tr.hover\:bg-gray-800\/30:hover {
+  background-color: rgba(241,245,249,0.7) !important;
+}
+
+/* Banners con tints "400/10" — countdown trial en /configuracion/suscripcion
+   (urgente vs OK). Bajamos a colores legibles sobre fondo blanco. */
+html[data-theme="light"] .bg-amber-400\/10 { background-color: #fef3c7 !important; }
+html[data-theme="light"] .border-amber-400\/30 { border-color: #fbbf24 !important; }
+html[data-theme="light"] .bg-emerald-400\/10 { background-color: #d1fae5 !important; }
+html[data-theme="light"] .border-emerald-400\/30 { border-color: #6ee7b7 !important; }
+
+/* Shadows con color (purple-900/40 en CTAs AFIP, accent/20 en multi-tienda)
+   en light deben ser un slate suave para no quedar como halo gris feo. */
+html[data-theme="light"] .shadow-purple-900\/40,
+html[data-theme="light"] .shadow-accent\/20 { --tw-shadow-color: rgba(15,23,42,0.08) !important; }
+
+/* PageTip / banners con bg-accent-soft — el soft tiene alfa muy bajo y se
+   pierde en blanco. Le forzamos un mínimo perceptible. */
+html[data-theme="light"] .bg-accent-soft {
+  background-color: color-mix(in oklab, var(--color-accent) 12%, white) !important;
+}
+
+/* Tinted "amber-500/10" sobre cards (Loyalty/AFIP/Logo bloqueado y locks) */
+html[data-theme="light"] .bg-amber-500\/10 { background-color: rgba(245,158,11,0.13) !important; }
+html[data-theme="light"] .border-amber-500\/30 { border-color: rgba(245,158,11,0.45) !important; }
+
+/* Stripe "from-amber-900/30 to-amber-900/10" usado en chip "Plan: ..." en
+   header de /configuracion. Necesita un wash visible. */
+html[data-theme="light"] .from-amber-900\/30,
+html[data-theme="light"] .from-amber-900\/10 { --tw-gradient-from: #fef3c7 !important; }
+html[data-theme="light"] .to-amber-900\/10 { --tw-gradient-to: #fffbeb !important; }
+
+/* Buttons "bg-blue-600 hover:bg-blue-500" (download backup) y "bg-purple-600
+   hover:bg-purple-500" (generar cert AFIP) y "bg-amber-600 hover:bg-amber-500"
+   (loyalty) — son CTAs sólidos con text-white; los dejamos tal cual (text-white
+   ya está restaurado a blanco arriba). */
 
 /* Inputs */
 html[data-theme="light"] input,
