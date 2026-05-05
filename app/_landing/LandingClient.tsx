@@ -59,6 +59,12 @@ function mesesOdias(n: number): string {
   return n === 1 ? "1 día" : `${n} días`
 }
 
+// Misma constante que usa /configuracion/suscripcion y los endpoints de
+// MP/Mobbex para que el precio mostrado y el cobrado coincidan.
+const ANNUAL_DISCOUNT = 0.2
+
+type BillingPeriod = "monthly" | "annual"
+
 export default function LandingClient({
   plans,
   activePromo,
@@ -69,6 +75,7 @@ export default function LandingClient({
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 80])
+  const [period, setPeriod] = useState<BillingPeriod>("monthly")
 
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden relative landing-root selection:bg-violet-500/30 selection:text-white">
@@ -269,18 +276,55 @@ export default function LandingClient({
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-3">
               En pesos. Sin sustos.
             </h2>
-            <p className="text-gray-400 text-sm sm:text-base max-w-xl mx-auto">
+            <p className="text-gray-400 text-sm sm:text-base max-w-xl mx-auto mb-6 sm:mb-7">
               Empezás gratis. Si crecés, cambiás de plan. Si no te sirve, te bajás cuando quieras.
             </p>
+            <div className="inline-flex items-center gap-1 p-1 rounded-full border border-white/10 bg-white/[0.04] backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setPeriod("monthly")}
+                className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-colors ${
+                  period === "monthly"
+                    ? "bg-white text-black shadow"
+                    : "text-gray-400 hover:text-white"
+                }`}
+                aria-pressed={period === "monthly"}
+              >
+                Mensual
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriod("annual")}
+                className={`relative px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-colors ${
+                  period === "annual"
+                    ? "bg-white text-black shadow"
+                    : "text-gray-400 hover:text-white"
+                }`}
+                aria-pressed={period === "annual"}
+              >
+                Anual
+                <span
+                  className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide ${
+                    period === "annual"
+                      ? "bg-emerald-500/20 text-emerald-700"
+                      : "bg-emerald-500/15 text-emerald-300"
+                  }`}
+                >
+                  −{Math.round(ANNUAL_DISCOUNT * 100)}%
+                </span>
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {plans.map((p, i) => (
-              <PricingCard key={i} plan={p} index={i} />
+              <PricingCard key={i} plan={p} index={i} period={period} />
             ))}
           </div>
           <p className="text-center text-gray-600 text-[11px] sm:text-xs mt-8">
-            Cobramos por Mercado Pago en pesos · Tarjeta internacional vía Stripe · 20% de descuento
-            si pagás anual
+            Cobramos por Mercado Pago en pesos · Tarjeta internacional vía Stripe ·{" "}
+            {period === "annual"
+              ? "Pagás 12 meses por adelantado y ahorrás 20%"
+              : "Cambiá a anual y ahorrás 20%"}
           </p>
         </div>
       </section>
@@ -1549,7 +1593,22 @@ function Navbar({
   )
 }
 
-function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
+function PricingCard({
+  plan,
+  index,
+  period,
+}: {
+  plan: PlanCard
+  index: number
+  period: BillingPeriod
+}) {
+  const monthlyEffective =
+    plan.price > 0 && period === "annual"
+      ? Math.round(plan.price * (1 - ANNUAL_DISCOUNT))
+      : plan.price
+  const annualTotal =
+    plan.price > 0 ? Math.round(plan.price * 12 * (1 - ANNUAL_DISCOUNT)) : 0
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -1573,10 +1632,19 @@ function PricingCard({ plan, index }: { plan: PlanCard; index: number }) {
         <p className="text-gray-500 text-sm mt-1">{plan.desc}</p>
         <div className="my-5">
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-bold tracking-tight tabular-nums">{fmtARS(plan.price)}</span>
+            <span className="text-4xl font-bold tracking-tight tabular-nums">{fmtARS(monthlyEffective)}</span>
             {plan.price > 0 && <span className="text-gray-500 text-sm">/mes</span>}
           </div>
-          {plan.price > 0 && <p className="text-[11px] text-gray-600 mt-1">IVA incluido</p>}
+          {plan.price > 0 && (
+            period === "annual" ? (
+              <p className="text-[11px] text-gray-500 mt-1">
+                <span className="text-gray-700 line-through tabular-nums">{fmtARS(plan.price)}</span>{" "}
+                · Total anual {fmtARS(annualTotal)} · IVA incluido
+              </p>
+            ) : (
+              <p className="text-[11px] text-gray-600 mt-1">IVA incluido</p>
+            )
+          )}
         </div>
         <ul className="space-y-2 mb-6 flex-1">
           {plan.features.map((f, j) => (
