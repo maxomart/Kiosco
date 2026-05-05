@@ -153,18 +153,23 @@ const PLAN_FEATURES: PlanGate = {
   "feature:suppliers":         ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:advanced_pos":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 
-  // Básico — solo lo MÍNIMO extra para justificar los $9.999
+  // Básico — solo lo MÍNIMO extra para justificar los $9.999.
+  // Caja chica salió del Básico (no la usaba mucha gente y queremos
+  // upselling claro a Pro). Multi-caja sigue siendo Pro+.
   "feature:multiple_users":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:custom_logo":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:theme_picker":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_import":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_export":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:cash_movements":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:labels":            ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 
-  // "La maravilla" — PROFESSIONAL+ (acá vive todo lo wow + IA)
+  // "La maravilla" — PROFESSIONAL+ (acá vive todo lo wow + IA).
+  // Caja chica + multi-caja viven acá ahora. tv_mode y whatsapp se quedan
+  // como features gateadas pero no se promocionan en cards (TV es nicho,
+  // WhatsApp todavía no opera en producción).
   "feature:reports_full":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:cash_movements":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:tv_mode":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],

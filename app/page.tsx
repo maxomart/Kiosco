@@ -78,7 +78,7 @@ export default async function LandingPage({
       features: [
         "100 productos · 1 usuario",
         "POS + inventario + caja",
-        "AFIP — 50 facturas/mes",
+        "AFIP — 30 facturas/mes",
         "Reportes de los últimos 7 días",
         "POS offline-first",
       ],
@@ -91,12 +91,12 @@ export default async function LandingPage({
       price: PLAN_PRICES_ARS.STARTER,
       desc: "Tu marca + más espacio",
       features: [
-        "1.500 productos · 3 usuarios",
+        "1.000 productos · 3 usuarios",
         "Logo y tema con tu color",
-        "AFIP — 200 facturas/mes",
+        "AFIP — 100 facturas/mes",
         "Importar / exportar Excel",
         "Etiquetas con código de barras",
-        "Caja chica (movimientos)",
+        "History ilimitado",
       ],
       cta: "Probar 7 días",
       href: starterHref,
@@ -109,10 +109,11 @@ export default async function LandingPage({
       features: [
         "5.000 productos · 10 usuarios",
         "IA predictiva y chatbot integrado",
-        "Loyalty · Modo TV · Multi-caja",
         "Pedidos a proveedor con IA",
+        "Loyalty · Multi-caja · Caja chica",
         "Reportes con comparaciones IA",
-        "WhatsApp + soporte prioritario",
+        "Soporte prioritario",
+        "AFIP — 500 facturas/mes",
       ],
       cta:
         activePromo && activePromo.planGranted === "PROFESSIONAL"
