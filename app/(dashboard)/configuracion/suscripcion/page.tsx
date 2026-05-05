@@ -66,7 +66,6 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "IA predictiva y chatbot integrado",
     "Pedidos a proveedor con IA",
     "Loyalty (puntos + canje)",
-    "Caja chica (movimientos)",
     "Multi-caja simultánea",
     "Reportes IA con comparaciones",
     "AFIP — 500 facturas/mes",

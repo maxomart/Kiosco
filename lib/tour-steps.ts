@@ -155,7 +155,7 @@ const PLAN_WELCOME: Record<Plan, WelcomeContent> = {
       "Hasta 5.000 productos · 10 usuarios · 1.000 clientes",
       "IA predictiva y chatbot integrado",
       "Pedidos a proveedor con IA",
-      "Loyalty · Multi-caja · Caja chica",
+      "Loyalty · Multi-caja simultánea",
       "Reportes IA con comparaciones",
       "AFIP — 500 facturas/mes",
       "Soporte prioritario",

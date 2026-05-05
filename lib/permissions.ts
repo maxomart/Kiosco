@@ -123,7 +123,6 @@ export type PlanFeature =
   | "feature:multi_store"     // Multiple stores under one account
   | "feature:priority_support" // Priority support channel
   // ─── Features nuevas ────────────────────────────────────────────────
-  | "feature:cash_movements"  // Caja chica (retiros / depósitos en sesión)
   | "feature:labels"          // Imprimir etiquetas con código de barras
   | "feature:tv_mode"         // Modo TV / pantalla pública con stats live
   | "feature:supplier_orders" // Pedidos a proveedor automáticos (IA)
@@ -154,8 +153,7 @@ const PLAN_FEATURES: PlanGate = {
   "feature:advanced_pos":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 
   // Básico — solo lo MÍNIMO extra para justificar los $9.999.
-  // Caja chica salió del Básico (no la usaba mucha gente y queremos
-  // upselling claro a Pro). Multi-caja sigue siendo Pro+.
+  // Sacamos caja chica completamente del producto (no la usaba casi nadie).
   "feature:multiple_users":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:custom_logo":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:theme_picker":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
@@ -164,12 +162,10 @@ const PLAN_FEATURES: PlanGate = {
   "feature:labels":            ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 
   // "La maravilla" — PROFESSIONAL+ (acá vive todo lo wow + IA).
-  // Caja chica + multi-caja viven acá ahora. tv_mode y whatsapp se quedan
-  // como features gateadas pero no se promocionan en cards (TV es nicho,
-  // WhatsApp todavía no opera en producción).
+  // tv_mode y whatsapp se quedan gateadas pero no se promocionan en cards
+  // (TV es nicho, WhatsApp todavía no opera en producción).
   "feature:reports_full":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:cash_movements":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:tv_mode":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],

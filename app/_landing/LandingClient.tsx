@@ -149,7 +149,7 @@ export default function LandingClient({
       </section>
 
       {/* ─────────── DÍA EN EL KIOSCO ─────────── */}
-      <section id="dia" className="relative py-16 sm:py-24 px-4 sm:px-6">
+      <section id="dia" className="relative py-12 sm:py-16 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12 sm:mb-16">
             <p className="inline-flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.25em] text-violet-300/80 mb-3">
@@ -173,7 +173,7 @@ export default function LandingClient({
       </section>
 
       {/* ─────────── IA EN CADA PARTE ─────────── */}
-      <section className="relative py-20 sm:py-28 px-4 sm:px-6 overflow-hidden">
+      <section className="relative py-12 sm:py-16 px-4 sm:px-6 overflow-hidden">
         {/* Subtle accent backdrop so the AI section feels distinct without
             screaming. Two soft radial blobs in the brand violet/cyan. */}
         <div aria-hidden className="absolute inset-0 pointer-events-none">
@@ -220,7 +220,7 @@ export default function LandingClient({
       </section>
 
       {/* ─────────── HONESTIDAD ─────────── */}
-      <section className="relative py-20 sm:py-28 px-4 sm:px-6 border-y border-white/5 bg-black/40">
+      <section className="relative py-12 sm:py-16 px-4 sm:px-6 border-y border-white/5 bg-black/40">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-10 sm:mb-12">
             <p className="inline-flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gray-500 mb-3">
@@ -260,7 +260,7 @@ export default function LandingClient({
       </section>
 
       {/* ─────────── PRICING ─────────── */}
-      <section id="pricing" className="relative py-20 sm:py-28 px-4 sm:px-6">
+      <section id="pricing" className="relative py-12 sm:py-16 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10 sm:mb-14">
             <p className="inline-flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.25em] text-violet-300/80 mb-3">
@@ -286,7 +286,7 @@ export default function LandingClient({
       </section>
 
       {/* ─────────── PREGUNTAS REALES ─────────── */}
-      <section id="faq" className="relative py-20 sm:py-28 px-4 sm:px-6 border-t border-white/5">
+      <section id="faq" className="relative py-12 sm:py-16 px-4 sm:px-6 border-t border-white/5">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <p className="inline-flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gray-500 mb-3">
@@ -318,7 +318,7 @@ export default function LandingClient({
       </section>
 
       {/* ─────────── FINAL CTA ─────────── */}
-      <section className="relative py-20 sm:py-28 px-4 sm:px-6">
+      <section className="relative py-12 sm:py-16 px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}

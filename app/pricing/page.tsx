@@ -33,7 +33,7 @@ const PLANS = [
       "Logo y tema personalizados",
       "Importar / exportar Excel",
       "Etiquetas con código de barras",
-      "Loyalty / Multi-caja / Caja chica",
+      "Loyalty / Multi-caja simultánea",
       "IA predictiva y chatbot",
     ],
   },
@@ -60,7 +60,6 @@ const PLANS = [
     notIncluded: [
       "Loyalty (puntos + canje)",
       "Multi-caja simultánea",
-      "Caja chica (movimientos)",
       "IA predictiva y chatbot",
       "Pedidos a proveedor con IA",
       "Soporte prioritario",
@@ -83,7 +82,7 @@ const PLANS = [
       "1.000 clientes con cuenta corriente",
       "IA predictiva y chatbot integrado",
       "Pedidos a proveedor con IA",
-      "Loyalty · Multi-caja · Caja chica",
+      "Loyalty · Multi-caja simultánea",
       "Reportes IA con comparaciones",
       "AFIP — 500 facturas/mes",
       "Soporte prioritario",
@@ -103,7 +102,6 @@ const COMPARISON: { section: string; rows: [string, ...(string | boolean)[]][] }
   { section: "Ventas y POS", rows: [
     ["Ventas por mes", "500", "3.000", "Ilimitadas"],
     ["AFIP — facturas/mes", "30", "100", "500"],
-    ["Caja chica (movimientos)", false, false, true],
     ["Multi-caja simultánea", false, false, true],
     ["POS offline-first", true, true, true],
   ]},

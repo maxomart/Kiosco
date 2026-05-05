@@ -110,7 +110,7 @@ export default async function LandingPage({
         "5.000 productos · 10 usuarios",
         "IA predictiva y chatbot integrado",
         "Pedidos a proveedor con IA",
-        "Loyalty · Multi-caja · Caja chica",
+        "Loyalty · Multi-caja simultánea",
         "Reportes con comparaciones IA",
         "Soporte prioritario",
         "AFIP — 500 facturas/mes",
