@@ -19,7 +19,7 @@
  * la lista de assets pre-cacheados o las rutas críticas.
  */
 
-const VERSION = "v5"
+const VERSION = "v6"
 const CACHE = `orvex-${VERSION}`
 const API_CACHE = `orvex-api-${VERSION}`
 const API_TTL_MS = 60 * 60 * 1000 // 1h fallback for /api/productos GETs
