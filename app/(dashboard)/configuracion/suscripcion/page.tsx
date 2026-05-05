@@ -55,7 +55,6 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "1.000 productos · 3 usuarios",
     "200 clientes · 50 proveedores · categorías ilimitadas",
     "Logo y tema con tu color",
-    "AFIP — 100 facturas/mes",
     "Importar / exportar Excel",
     "Etiquetas con código de barras",
     "History ilimitado",

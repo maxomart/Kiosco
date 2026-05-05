@@ -14,17 +14,22 @@
 import { db } from "./db"
 import type { Plan } from "./utils"
 
-/** Cupo mensual de facturas según plan. INFINITY = sin límite. */
+/** Cupo mensual de facturas según plan. INFINITY = sin límite.
+ *
+ * AFIP es el diferencial principal del Profesional — el costo del slot
+ * AfipSDK (por CUIT) no se justifica en planes baratos, así que solo
+ * Profesional+ emite facturas electrónicas. Gratis y Básico operan
+ * sin AFIP (POS + ticket no fiscal). */
 export const INVOICE_LIMIT_BY_PLAN: Record<Plan, number> = {
   FREE: 0,
-  STARTER: 100,
+  STARTER: 0,
   PROFESSIONAL: 500,
   BUSINESS: 2000,
   ENTERPRISE: Number.POSITIVE_INFINITY,
 }
 
-// Plan gratis no incluye facturación electrónica — para emitir hay que pasar
-// a Básico ($9.999) o Profesional. Lo dejamos exportado para no romper imports.
+// Gratis y Básico no incluyen facturación electrónica — para emitir hay que
+// pasar a Profesional. Lo dejamos exportado para no romper imports.
 export const FREE_PLAN_LIMIT = 0
 
 export interface InvoiceQuota {

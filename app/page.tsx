@@ -92,8 +92,8 @@ export default async function LandingPage({
       desc: "Tu marca + más espacio",
       features: [
         "1.000 productos · 3 usuarios",
+        "200 clientes · 50 proveedores",
         "Logo y tema con tu color",
-        "AFIP — 100 facturas/mes",
         "Importar / exportar Excel",
         "Etiquetas con código de barras",
         "History ilimitado",

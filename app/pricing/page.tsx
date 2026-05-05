@@ -53,12 +53,12 @@ const PLANS = [
       "1.000 productos · 3 usuarios",
       "200 clientes · 50 proveedores",
       "Logo y tema con tu color",
-      "AFIP — 100 facturas/mes",
       "Importar / exportar Excel",
       "Etiquetas con código de barras",
       "History ilimitado",
     ],
     notIncluded: [
+      "Facturación electrónica AFIP",
       "Loyalty (puntos + canje)",
       "Multi-caja simultánea",
       "IA predictiva y chatbot",
@@ -102,7 +102,7 @@ const COMPARISON: { section: string; rows: [string, ...(string | boolean)[]][] }
   ]},
   { section: "Ventas y POS", rows: [
     ["Ventas por mes", "50", "3.000", "Ilimitadas"],
-    ["AFIP — facturas/mes", false, "100", "500"],
+    ["AFIP — facturas/mes", false, false, "500"],
     ["Multi-caja simultánea", false, false, true],
     ["POS offline-first", true, true, true],
   ]},

@@ -133,7 +133,7 @@ const PLAN_WELCOME: Record<Plan, WelcomeContent> = {
       "POS con códigos de barras + todos los métodos de pago locales",
       "Caja diaria con apertura y cierre",
       "Reportes de los últimos 7 días",
-      "Pasá a Básico para emitir facturas AFIP",
+      "Pasá a Profesional para emitir facturas AFIP",
     ],
   },
   STARTER: {
@@ -144,8 +144,8 @@ const PLAN_WELCOME: Record<Plan, WelcomeContent> = {
       "Logo y tema con tu color",
       "Importar / exportar Excel",
       "Etiquetas con código de barras",
-      "AFIP — 100 facturas/mes",
       "History ilimitado",
+      "Para emitir facturas AFIP, pasá a Profesional",
     ],
   },
   PROFESSIONAL: {
