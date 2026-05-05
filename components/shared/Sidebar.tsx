@@ -200,8 +200,8 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="overflow-y-auto py-3 px-2 space-y-0.5">
+      {/* Navigation — flex-1 fuerza al bloque de usuario a anclarse abajo */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
         {visibleTop.map((item) => renderNavLink(item))}
 
         {/* BOTTOM — config */}
