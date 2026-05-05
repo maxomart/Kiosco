@@ -95,7 +95,7 @@ export const PLAN_LIMITS = {
     clients: 15,
     suppliers: 10,
     categories: 15,
-    salesPerMonth: 500,
+    salesPerMonth: 50,
     historyDays: 7,
     api: false,
   },

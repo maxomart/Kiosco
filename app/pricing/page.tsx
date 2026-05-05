@@ -23,13 +23,14 @@ const PLANS = [
     highlight: null as string | null,
     features: [
       "Hasta 100 productos · 1 usuario",
+      "Hasta 50 ventas por mes",
       "15 clientes · 10 proveedores",
       "POS + inventario + caja",
-      "AFIP — 30 facturas/mes",
       "Reportes de los últimos 7 días",
       "POS offline-first",
     ],
     notIncluded: [
+      "Facturación electrónica AFIP",
       "Logo y tema personalizados",
       "Importar / exportar Excel",
       "Etiquetas con código de barras",
@@ -47,7 +48,7 @@ const PLANS = [
     href: "/signup?plan=STARTER",
     icon: Zap,
     accent: "border-blue-500 ring-2 ring-blue-500/30",
-    highlight: null as string | null,
+    highlight: "Más elegido",
     features: [
       "1.000 productos · 3 usuarios",
       "200 clientes · 50 proveedores",
@@ -68,14 +69,14 @@ const PLANS = [
   {
     id: "PROFESSIONAL",
     name: "Profesional",
-    tagline: "Todo lo cool — el más elegido",
+    tagline: "Todo lo cool — el más completo",
     priceUSD: PLAN_PRICES_USD.PROFESSIONAL,
     priceARS: PLAN_PRICES_ARS.PROFESSIONAL,
     cta: "Probar 7 días",
     href: "/signup?plan=PROFESSIONAL",
     icon: Crown,
     accent: "border-violet-700",
-    highlight: "Más elegido",
+    highlight: null as string | null,
     features: [
       "Todo lo del Básico + lo cool",
       "5.000 productos · 10 usuarios",
@@ -100,8 +101,8 @@ const COMPARISON: { section: string; rows: [string, ...(string | boolean)[]][] }
     ["Etiquetas con código de barras", false, true, true],
   ]},
   { section: "Ventas y POS", rows: [
-    ["Ventas por mes", "500", "3.000", "Ilimitadas"],
-    ["AFIP — facturas/mes", "30", "100", "500"],
+    ["Ventas por mes", "50", "3.000", "Ilimitadas"],
+    ["AFIP — facturas/mes", false, "100", "500"],
     ["Multi-caja simultánea", false, false, true],
     ["POS offline-first", true, true, true],
   ]},
@@ -238,7 +239,7 @@ export default function PricingPage() {
                 <Link
                   href={plan.href}
                   className={`flex items-center justify-center gap-2 w-full min-h-[44px] py-2.5 rounded-xl font-semibold text-sm transition mb-6 ${
-                    plan.id === "PROFESSIONAL"
+                    plan.id === "STARTER"
                       ? "bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white shadow-lg shadow-blue-900/30"
                       : "bg-gray-800 hover:bg-gray-700 text-gray-100"
                   }`}
@@ -287,7 +288,7 @@ export default function PricingPage() {
                     {PLANS.map((p) => (
                       <th key={p.id} className="text-center p-3 sm:p-4 font-semibold text-white min-w-[110px] sm:min-w-[120px]">
                         {p.name}
-                        {p.id === "PROFESSIONAL" && (
+                        {p.id === "STARTER" && (
                           <span className="block mt-0.5 text-[10px] font-normal text-blue-400 uppercase tracking-wide">
                             Más elegido
                           </span>

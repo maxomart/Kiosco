@@ -129,11 +129,11 @@ const PLAN_WELCOME: Record<Plan, WelcomeContent> = {
     title: "Bienvenido a Orvex",
     subtitle: "Estás en el plan Gratis. Esto es lo que ya tenés activo:",
     bullets: [
-      "Hasta 100 productos y 500 ventas/mes",
+      "Hasta 100 productos y 50 ventas/mes",
       "POS con códigos de barras + todos los métodos de pago locales",
       "Caja diaria con apertura y cierre",
-      "AFIP — 30 facturas electrónicas por mes",
       "Reportes de los últimos 7 días",
+      "Pasá a Básico para emitir facturas AFIP",
     ],
   },
   STARTER: {

@@ -44,9 +44,9 @@ interface Subscription {
 const PLAN_FEATURES: Record<string, string[]> = {
   FREE: [
     "Hasta 100 productos · 1 usuario",
+    "Hasta 50 ventas por mes",
     "15 clientes · 10 proveedores · 15 categorías",
     "POS + inventario + caja",
-    "AFIP — 30 facturas/mes",
     "Reportes de los últimos 7 días",
     "POS offline-first",
     "Para arrancar gratis sin tarjeta",
@@ -588,7 +588,7 @@ export default function SuscripcionPage() {
                 ? Math.round(monthlyARS * (1 - ANNUAL_DISCOUNT))
                 : monthlyARS
               const features = PLAN_FEATURES[plan]
-              const isPopular = plan === "PROFESSIONAL" && !isCurrent
+              const isPopular = plan === "STARTER" && !isCurrent
 
               return (
                 <motion.div

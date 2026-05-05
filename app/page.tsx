@@ -77,8 +77,8 @@ export default async function LandingPage({
       desc: "Para arrancar sin tarjeta",
       features: [
         "100 productos · 1 usuario",
+        "Hasta 50 ventas por mes",
         "POS + inventario + caja",
-        "AFIP — 30 facturas/mes",
         "Reportes de los últimos 7 días",
         "POS offline-first",
       ],
@@ -100,12 +100,12 @@ export default async function LandingPage({
       ],
       cta: "Probar 7 días",
       href: starterHref,
-      highlight: false,
+      highlight: true,
     },
     {
       plan: "Profesional",
       price: PLAN_PRICES_ARS.PROFESSIONAL,
-      desc: "Todo lo cool — el más elegido",
+      desc: "Todo lo cool — el más completo",
       features: [
         "5.000 productos · 10 usuarios",
         "IA predictiva y chatbot integrado",
@@ -120,7 +120,7 @@ export default async function LandingPage({
           ? "Reclamar promo"
           : "Probar 7 días",
       href: professionalHref,
-      highlight: true,
+      highlight: false,
     },
   ]
 
