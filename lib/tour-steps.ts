@@ -15,8 +15,8 @@
  * components (Sidebar, Header). Using a data attribute (not a class) means
  * Tailwind/styling refactors don't accidentally break the tour.
  */
-import type { Plan, PlanFeature } from "@/lib/utils"
-import { hasFeature } from "@/lib/permissions"
+import type { Plan } from "@/lib/utils"
+import { hasFeature, type PlanFeature } from "@/lib/permissions"
 
 export type TourStep =
   | {
@@ -127,52 +127,57 @@ export interface WelcomeContent {
 const PLAN_WELCOME: Record<Plan, WelcomeContent> = {
   FREE: {
     title: "Bienvenido a Orvex",
-    subtitle: "Empezamos. Esto es lo que ya tenés activo en el plan Gratis:",
+    subtitle: "Estás en el plan Gratis. Esto es lo que ya tenés activo:",
     bullets: [
-      "Hasta 50 productos y 200 ventas/mes",
-      "POS con códigos de barras y todos los métodos de pago locales",
+      "Hasta 100 productos y 500 ventas/mes",
+      "POS con códigos de barras + todos los métodos de pago locales",
       "Caja diaria con apertura y cierre",
-      "Reportes del día y asistente IA con 5 mensajes/día",
+      "AFIP — 50 facturas electrónicas por mes",
+      "Reportes de los últimos 7 días",
     ],
   },
   STARTER: {
     title: "Bienvenido a Básico",
     subtitle: "Tu plan ya está activo. Esto es lo que desbloqueaste:",
     bullets: [
-      "Hasta 500 productos y 2.000 ventas/mes",
-      "Hasta 3 usuarios con roles separados",
-      "Importar/exportar Excel + alertas de stock por WhatsApp",
-      "Reportes avanzados con gráficos y top productos",
-      "Asistente IA con 50 mensajes/día",
+      "Hasta 1.500 productos · 3 usuarios · 200 clientes",
+      "Logo y tema con tu color",
+      "Importar / exportar Excel",
+      "Etiquetas con código de barras",
+      "Caja chica (movimientos)",
+      "AFIP — 200 facturas/mes",
+      "History ilimitado",
     ],
   },
   PROFESSIONAL: {
     title: "Bienvenido a Profesional",
     subtitle: "Tu plan ya está activo. Esto es lo que desbloqueaste:",
     bullets: [
-      "Hasta 5.000 productos y ventas ilimitadas",
-      "Hasta 10 usuarios con multi-caja simultánea",
-      "Programa de fidelidad y clientes con cuenta corriente",
+      "Hasta 5.000 productos · 10 usuarios · 1.000 clientes",
+      "IA predictiva y chatbot integrado",
+      "Pedidos a proveedor con IA",
+      "Loyalty · Modo TV · Multi-caja simultánea",
+      "Reportes IA con comparaciones",
       "WhatsApp con resumen diario automático",
-      "Asistente IA con 500 mensajes/día e insights personalizados",
+      "AFIP — 500 facturas/mes",
+      "Soporte prioritario",
     ],
   },
   BUSINESS: {
-    title: "Bienvenido a Empresa",
-    subtitle: "Tu plan ya está activo. Esto es lo que desbloqueaste:",
+    title: "Bienvenido a Empresa (legacy)",
+    subtitle: "Plan legacy con todas las funciones sin límites:",
     bullets: [
       "Todo ilimitado: productos, ventas, usuarios",
       "Multi-tienda con reportes consolidados",
       "API access para integraciones externas",
-      "Asistente IA con 5.000 mensajes/día",
-      "Soporte prioritario por WhatsApp directo",
+      "Todo lo del Profesional + IA ilimitada",
     ],
   },
   ENTERPRISE: {
-    title: "Bienvenido a Enterprise",
-    subtitle: "Plan custom activo. Tu equipo de soporte ya tiene el contexto.",
+    title: "Bienvenido a Enterprise (legacy)",
+    subtitle: "Plan custom legacy. Tu equipo de soporte ya tiene el contexto.",
     bullets: [
-      "Todo de Business sin límites",
+      "Todo de Empresa sin límites",
       "SLA y onboarding dedicado",
       "Integraciones a medida",
     ],

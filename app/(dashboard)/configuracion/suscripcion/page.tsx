@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { CheckCircle, Zap, Crown, Building2, ArrowRight, ArrowDown, ExternalLink, AlertCircle, CreditCard, Sparkles } from "lucide-react"
+import { CheckCircle, Zap, Crown, ArrowDown, ExternalLink, AlertCircle, CreditCard, Sparkles } from "lucide-react"
 import NumberFlow from "@number-flow/react"
 import { motion } from "framer-motion"
 import toast from "react-hot-toast"
@@ -42,50 +42,48 @@ interface Subscription {
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  STARTER: [
-    "Hasta 100 productos",
-    "1 usuario (solo el dueño)",
+  FREE: [
+    "Hasta 100 productos · 1 usuario",
     "15 clientes · 10 proveedores · 15 categorías",
-    "POS + caja básica",
+    "POS + inventario + caja",
     "AFIP — 50 facturas/mes",
     "Reportes de los últimos 7 días",
     "POS offline-first",
-    "Para probar Orvex y kioscos muy chicos",
+    "Para arrancar gratis sin tarjeta",
+  ],
+  STARTER: [
+    "1.500 productos · 3 usuarios",
+    "200 clientes · 50 proveedores · categorías ilimitadas",
+    "Logo y tema con tu color",
+    "AFIP — 200 facturas/mes",
+    "Importar / exportar Excel",
+    "Etiquetas con código de barras",
+    "Caja chica (movimientos)",
+    "History ilimitado",
   ],
   PROFESSIONAL: [
-    "Todo lo del Básico, sin las trabas",
+    "Todo lo del Básico + lo cool",
+    "5.000 productos · 10 usuarios · 1.000 clientes",
     "IA predictiva y chatbot integrado",
-    "Hasta 5.000 productos · 10 usuarios",
-    "1.000 clientes con cuenta corriente",
-    "Reportes automáticos con comparaciones",
-    "AFIP — 500 facturas/mes",
-    "Tema y logo personalizados",
-    "Loyalty (puntos + canje)",
     "Pedidos a proveedor con IA",
+    "Loyalty (puntos + canje)",
     "Modo TV / pantalla pública",
     "Multi-caja simultánea",
-    "CSV import/export",
+    "Reportes IA con comparaciones",
+    "WhatsApp con resumen diario",
+    "AFIP — 500 facturas/mes",
     "Soporte prioritario",
-  ],
-  BUSINESS: [
-    "Todo del Profesional, sin límites",
-    "Multi-tienda (varias sucursales)",
-    "Productos, usuarios y clientes ilimitados",
-    "AFIP — 5.000 facturas/mes",
-    "API access (REST + webhooks)",
-    "IA Assistant ilimitado",
-    "White label parcial (sin marca Orvex)",
-    "Account manager dedicado",
   ],
 }
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
+  FREE: Sparkles,
   STARTER: Zap,
   PROFESSIONAL: Crown,
-  BUSINESS: Building2,
 }
 
 const PLAN_BADGE_COLORS: Record<string, string> = {
+  FREE: "bg-gray-800/80 text-gray-300 border border-gray-700/60",
   STARTER: "bg-accent-soft text-accent border border-accent/40",
   PROFESSIONAL: "bg-accent-soft text-accent border border-accent/40",
   BUSINESS: "bg-accent-soft text-accent border border-accent/40",
@@ -111,7 +109,7 @@ export default function SuscripcionPage() {
   const [mpModal, setMpModal] = useState<{ plan: string; email: string; error?: string } | null>(null)
   // Card-in-app modal (MP Brick) — el flow principal. mpModal queda como
   // fallback "redirigirme a MP" si por algún motivo el Brick no carga.
-  const [cardModal, setCardModal] = useState<{ plan: "STARTER" | "PROFESSIONAL" | "BUSINESS"; amount: number } | null>(null)
+  const [cardModal, setCardModal] = useState<{ plan: "STARTER" | "PROFESSIONAL"; amount: number } | null>(null)
   const confirm = useConfirm()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -552,19 +550,20 @@ export default function SuscripcionPage() {
             </div>
           </div>
         )}
-        {sub?.plan === "ENTERPRISE" && sub.status !== "CANCELLED" && (
+        {(sub?.plan === "ENTERPRISE" || sub?.plan === "BUSINESS") && sub.status !== "CANCELLED" && (
           <div className="mb-5 rounded-2xl card-glow p-6 flex items-start gap-4">
             <div className="shrink-0 w-12 h-12 rounded-xl bg-accent-soft border border-accent/30 flex items-center justify-center">
               <Crown size={22} className="text-accent" />
             </div>
             <div className="flex-1">
-              <p className="text-white font-semibold">Ya estás en el plan Empresa</p>
+              <p className="text-white font-semibold">Estás en un plan legacy ({PLAN_LABELS_AR[sub.plan as keyof typeof PLAN_LABELS_AR] ?? sub.plan})</p>
               <p className="text-sm text-gray-400 mt-1">
-                Tenés acceso a todas las funciones sin límites. Si necesitás reducir tu plan o
-                cambiar las condiciones comerciales, contactá al equipo de soporte.
+                Tenés acceso a todas las funciones sin límites. Este plan ya no se ofrece a clientes
+                nuevos pero seguís con todas tus features. Si querés cambiar a Básico o Profesional,
+                contactá al equipo de soporte.
               </p>
               <a
-                href="mailto:soporte@cobraorvex.com?subject=Cambio%20de%20plan%20Enterprise"
+                href="mailto:soporte@cobraorvex.com?subject=Cambio%20de%20plan"
                 className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover text-accent-foreground text-sm font-semibold transition"
               >
                 Contactar soporte
@@ -572,15 +571,15 @@ export default function SuscripcionPage() {
             </div>
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(() => {
-            const PLAN_ORDER = ["STARTER", "PROFESSIONAL", "BUSINESS"] as const
-            // "ENTERPRISE" se muestra en una card aparte (arriba). En este grid
-            // marcamos todos como "ya desbloqueado" para el tenant Enterprise.
+            const PLAN_ORDER = ["STARTER", "PROFESSIONAL"] as const
+            // "ENTERPRISE" / "BUSINESS" legacy se muestran en cards aparte (arriba).
+            // En este grid marcamos todos como "ya desbloqueado" para legacy.
             const subPlan = sub?.plan
-            const isEnterprise = subPlan === "ENTERPRISE"
-            const orderIdx = subPlan ? PLAN_ORDER.indexOf(subPlan as typeof PLAN_ORDER[number]) : 0
-            const currentIdx = isEnterprise ? PLAN_ORDER.length : (orderIdx === -1 ? 0 : orderIdx)
+            const isLegacyHigher = subPlan === "ENTERPRISE" || subPlan === "BUSINESS"
+            const orderIdx = subPlan ? PLAN_ORDER.indexOf(subPlan as typeof PLAN_ORDER[number]) : -1
+            const currentIdx = isLegacyHigher ? PLAN_ORDER.length : (orderIdx === -1 ? -1 : orderIdx)
 
             return PLAN_ORDER.map((plan, idx) => {
               const Icon = PLAN_ICONS[plan]
@@ -664,10 +663,10 @@ export default function SuscripcionPage() {
                       - isCurrent → "Estás en este plan"
                       - isDowngrade → mensaje discreto "Plan inferior" (no botón activo)
                       - isUpgrade → MP + Stripe (Stripe solo mensual)
-                      - Enterprise actual → todos son downgrade */}
-                  {isEnterprise ? (
+                      - Legacy (BUSINESS / ENTERPRISE) → todos son downgrade */}
+                  {isLegacyHigher ? (
                     <div className="w-full py-2.5 rounded-lg bg-accent-soft border border-accent/30 text-center text-accent text-xs font-medium">
-                      Incluido en tu plan Empresa
+                      Incluido en tu plan legacy
                     </div>
                   ) : isCurrent ? (
                     <div className="w-full py-2.5 rounded-lg bg-accent-soft border border-accent/40 text-center text-accent text-sm font-medium">
@@ -686,7 +685,7 @@ export default function SuscripcionPage() {
                           const amount = period === "annual"
                             ? Math.round(monthly * 12 * (1 - ANNUAL_DISCOUNT))
                             : monthly
-                          setCardModal({ plan: plan as "STARTER" | "PROFESSIONAL" | "BUSINESS", amount })
+                          setCardModal({ plan: plan as "STARTER" | "PROFESSIONAL", amount })
                         }}
                         disabled={!!upgrading}
                         className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 bg-accent hover:bg-accent-hover text-accent-foreground"

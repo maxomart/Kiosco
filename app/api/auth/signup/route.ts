@@ -17,7 +17,10 @@ const VALID_BUSINESS_TYPES = [
   "OTRO",
 ] as const
 
-const VALID_PLANS = ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS"] as const
+// Sólo aceptamos los planes vigentes — BUSINESS / ENTERPRISE son legacy y
+// no se permite registrarse en ellos. El default sigue siendo FREE para
+// quien se registre sin elegir nada (entrada gratis sin tarjeta).
+const VALID_PLANS = ["FREE", "STARTER", "PROFESSIONAL"] as const
 
 const signupSchema = z.object({
   businessName: z

@@ -16,13 +16,17 @@ import type { Plan } from "./utils"
 
 /** Cupo mensual de facturas según plan. INFINITY = sin límite. */
 export const INVOICE_LIMIT_BY_PLAN: Record<Plan, number> = {
-  STARTER: 50,
-  PROFESSIONAL: 300,
+  FREE: 50,
+  STARTER: 200,
+  PROFESSIONAL: 500,
   BUSINESS: 2000,
   ENTERPRISE: Number.POSITIVE_INFINITY,
 }
 
-export const FREE_PLAN_LIMIT = 0 // FREE no incluye facturas
+// Legacy export — antes el plan FREE no incluía facturas. Ahora sí (50/mes).
+// Lo dejamos exportado para no romper imports existentes pero apunta al cupo
+// real del plan FREE.
+export const FREE_PLAN_LIMIT = INVOICE_LIMIT_BY_PLAN.FREE
 
 export interface InvoiceQuota {
   /** Plan actual del tenant */

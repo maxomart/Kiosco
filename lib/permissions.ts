@@ -133,41 +133,48 @@ type PlanGate = Record<PlanFeature, Plan[]>
 
 // Which plans UNLOCK each feature. If a plan is in the list, it has access.
 //
-// Filosofía del rebalanceo (mayo 2026):
-//   - STARTER (Básico) bare-bones: POS + inventario + caja + reportes 30d +
-//     gastos + cargas + clientes con CC + AFIP + logo. NADA de cosas "wow".
-//   - PROFESSIONAL la maravilla: todo lo cool (loyalty, IA, modo TV,
-//     pedidos auto, etiquetas, carta pública, scanner, caja chica, tema,
-//     WhatsApp, multi-caja, predicciones, soporte prioritario, CSV).
-//   - BUSINESS para escala: + multi-tienda + API + ilimitado en todo.
+// Filosofía (mayo 2026 — pivot a 2 planes pagos + free permanente):
+//   - FREE → bare-bones (POS + inventario + caja + reportes 7d + gastos +
+//     cargas + clientes + AFIP 50 fact). Nada custom, nada IA.
+//   - STARTER (Básico) → mucho más básico: solo más límites + lo MÍNIMO
+//     extra (logo y tema custom, multi-usuario, CSV, etiquetas, cash
+//     movements, history ilimitado, 200 facturas AFIP). Sin loyalty, sin
+//     modo TV, sin multi-caja, sin IA. La presión a upgrade es real.
+//   - PROFESSIONAL → maravilla: todo lo del Básico + loyalty + modo TV +
+//     multi-caja + IA (predictive, assistant) + WhatsApp + reportes IA
+//     + supplier_orders auto + soporte prioritario. Acá sacamos profit
+//     por OpenAI / Twilio.
+//   - BUSINESS / ENTERPRISE → legacy, no se ofrece más al público.
 const PLAN_FEATURES: PlanGate = {
-  // Operación bare-bones — STARTER+ (lo mínimo para probar Orvex)
-  "feature:reports_basic":     ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:expenses":          ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:recharges":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:suppliers":         ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:advanced_pos":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  // Operación bare-bones — disponible para todos los planes (FREE incluido)
+  "feature:reports_basic":     ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:expenses":          ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:recharges":         ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:suppliers":         ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:advanced_pos":      ["FREE", "STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 
-  // "La maravilla" — PROFESSIONAL+
-  "feature:multiple_users":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"], // Básico = 1 user solo
-  "feature:custom_logo":       ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:theme_picker":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  // Básico — solo lo MÍNIMO extra para justificar los $9.999
+  "feature:multiple_users":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:custom_logo":       ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:theme_picker":      ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:csv_import":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:csv_export":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:cash_movements":    ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:labels":            ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+
+  // "La maravilla" — PROFESSIONAL+ (acá vive todo lo wow + IA)
   "feature:reports_full":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:csv_import":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:csv_export":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:loyalty":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:tv_mode":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant":      ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:ai_assistant_full": ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:whatsapp":          ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:multi_cash":        ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:priority_support":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:cash_movements":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:labels":            ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:tv_mode":           ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
-  "feature:supplier_orders":   ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:predictive_ai":     ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:supplier_orders":   ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:whatsapp":          ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:priority_support":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 
-  // Escala / cadenas — BUSINESS+
+  // Escala / cadenas — BUSINESS+ (legacy)
   "feature:multi_store":       ["BUSINESS", "ENTERPRISE"],
 }
 
@@ -178,7 +185,8 @@ const PLAN_FEATURES: PlanGate = {
  * complaints, re-raise per plan.
  */
 export const AI_DAILY_QUOTA: Record<Plan, number> = {
-  STARTER: 20,
+  FREE: 0,           // sin IA en plan gratuito
+  STARTER: 0,        // sin IA en Básico — IA arranca en Profesional
   PROFESSIONAL: 100,
   BUSINESS: 1000,
   ENTERPRISE: 10000,

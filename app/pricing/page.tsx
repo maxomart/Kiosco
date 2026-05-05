@@ -1,16 +1,19 @@
 import Link from "next/link"
-import { Check, X, Sparkles, ArrowRight, Zap, Crown, Building2 } from "lucide-react"
+import { Fragment } from "react"
+import { Check, X, Sparkles, ArrowRight, Zap, Crown } from "lucide-react"
 import { OrvexLogo } from "@/components/shared/OrvexLogo"
 
 // Native ARS pricing — primary source of truth. USD shown as secondary reference.
 // Edit lib/utils.ts → PLAN_PRICES_ARS for the canonical numbers.
 import { PLAN_PRICES_ARS, PLAN_PRICES_USD } from "@/lib/utils"
 
+// Solo 3 ofertas vigentes: Gratis, Básico, Profesional. Los planes BUSINESS /
+// ENTERPRISE quedaron como legacy y no se muestran en el funnel público.
 const PLANS = [
   {
     id: "FREE",
     name: "Gratis",
-    tagline: "Para arrancar y conocer la herramienta",
+    tagline: "Para arrancar sin tarjeta",
     priceUSD: 0,
     priceARS: 0,
     cta: "Empezar gratis",
@@ -19,174 +22,137 @@ const PLANS = [
     accent: "border-gray-700",
     highlight: null as string | null,
     features: [
-      "Hasta 50 productos",
-      "Hasta 200 ventas/mes",
-      "1 usuario",
-      "POS y caja básicos",
-      "Hasta 25 clientes",
-      "Hasta 3 categorías",
-      "Reportes del día (KPIs básicos)",
-      "Asistente IA — 5 mensajes/día",
-      "Historial de 7 días",
+      "Hasta 100 productos · 1 usuario",
+      "15 clientes · 10 proveedores",
+      "POS + inventario + caja",
+      "AFIP — 50 facturas/mes",
+      "Reportes de los últimos 7 días",
+      "POS offline-first",
     ],
     notIncluded: [
-      "Proveedores",
-      "Gastos",
-      "Cargas / recargas",
-      "WhatsApp alertas",
-      "Reportes avanzados (gráficos, top productos)",
-      "Importar/exportar CSV",
-      "Logo personalizado",
-      "Programa de fidelidad",
+      "Logo y tema personalizados",
+      "Importar / exportar Excel",
+      "Etiquetas con código de barras",
+      "Caja chica (movimientos)",
+      "Loyalty / Modo TV / Multi-caja",
+      "IA predictiva y chatbot",
     ],
   },
   {
     id: "STARTER",
-    name: "Starter",
-    tagline: "Para tu primer kiosco / almacén",
+    name: "Básico",
+    tagline: "Tu marca + más espacio",
     priceUSD: PLAN_PRICES_USD.STARTER,
     priceARS: PLAN_PRICES_ARS.STARTER,
-    cta: "Empezar prueba",
-    href: "/signup",
+    cta: "Probar 7 días",
+    href: "/signup?plan=STARTER",
     icon: Zap,
     accent: "border-blue-500 ring-2 ring-blue-500/30",
-    highlight: "Más elegido",
+    highlight: null as string | null,
     features: [
-      "Hasta 500 productos",
-      "Hasta 2.000 ventas/mes",
-      "3 usuarios",
-      "Clientes y categorías ilimitados",
-      "Proveedores ilimitados",
-      "Gastos y cargas",
-      "Historial de 90 días",
-      "Reportes avanzados (gráficos + top productos + métodos de pago)",
-      "WhatsApp — alertas de stock bajo",
-      "Importar / exportar CSV",
-      "Logo personalizado",
-      "Asistente IA — 50 mensajes/día",
+      "1.500 productos · 3 usuarios",
+      "200 clientes · 50 proveedores",
+      "Logo y tema con tu color",
+      "AFIP — 200 facturas/mes",
+      "Importar / exportar Excel",
+      "Etiquetas con código de barras",
+      "Caja chica (movimientos)",
+      "History ilimitado",
     ],
     notIncluded: [
-      "Programa de fidelidad",
+      "Loyalty (puntos + canje)",
+      "Modo TV / pantalla pública",
       "Multi-caja simultánea",
-      "API access",
-      "Soporte prioritario",
+      "IA predictiva y chatbot",
+      "Pedidos a proveedor con IA",
+      "WhatsApp + soporte prioritario",
     ],
   },
   {
     id: "PROFESSIONAL",
-    name: "Professional",
-    tagline: "Para crecer y profesionalizarte",
+    name: "Profesional",
+    tagline: "Todo lo cool — el más elegido",
     priceUSD: PLAN_PRICES_USD.PROFESSIONAL,
     priceARS: PLAN_PRICES_ARS.PROFESSIONAL,
-    cta: "Empezar prueba",
-    href: "/signup",
+    cta: "Probar 7 días",
+    href: "/signup?plan=PROFESSIONAL",
     icon: Crown,
     accent: "border-violet-700",
-    highlight: null as string | null,
+    highlight: "Más elegido",
     features: [
-      "Hasta 5.000 productos",
-      "Ventas ilimitadas",
-      "10 usuarios",
-      "Todo lo de Starter, más:",
-      "Programa de fidelidad (puntos)",
-      "Multi-caja simultánea",
-      "Historial de 1 año",
-      "WhatsApp — resumen diario automático",
-      "Asistente IA — 500 mensajes/día",
-      "Soporte prioritario por email (24h)",
-    ],
-    notIncluded: [
-      "API access",
-      "Multi-tienda",
-      "Soporte por WhatsApp",
-    ],
-  },
-  {
-    id: "BUSINESS",
-    name: "Business",
-    tagline: "Para cadenas y operaciones grandes",
-    priceUSD: PLAN_PRICES_USD.BUSINESS,
-    priceARS: PLAN_PRICES_ARS.BUSINESS,
-    cta: "Empezar prueba",
-    href: "/signup",
-    icon: Building2,
-    accent: "border-amber-700",
-    highlight: null as string | null,
-    features: [
-      "Productos y ventas ilimitados",
-      "Usuarios ilimitados",
-      "Todo lo de Professional, más:",
-      "Multi-tienda (varias sucursales)",
-      "API access",
-      "Historial ilimitado",
-      "Asistente IA — 5.000 mensajes/día",
-      "Soporte prioritario por WhatsApp",
+      "Todo lo del Básico + lo cool",
+      "5.000 productos · 10 usuarios",
+      "1.000 clientes con cuenta corriente",
+      "IA predictiva y chatbot integrado",
+      "Pedidos a proveedor con IA",
+      "Loyalty · Modo TV · Multi-caja",
+      "Reportes IA con comparaciones",
+      "WhatsApp con resumen diario",
+      "AFIP — 500 facturas/mes",
+      "Soporte prioritario",
     ],
     notIncluded: [],
   },
 ]
 
 const COMPARISON: { section: string; rows: [string, ...(string | boolean)[]][] }[] = [
-  { section: "Inventario", rows: [
-    ["Productos", "50", "500", "5.000", "Ilimitados"],
-    ["Categorías", "3", "Ilimitadas", "Ilimitadas", "Ilimitadas"],
-    ["Importar / exportar CSV", false, true, true, true],
-    ["Logo personalizado", false, true, true, true],
+  { section: "Inventario y catálogo", rows: [
+    ["Productos", "100", "1.500", "5.000"],
+    ["Categorías", "15", "Ilimitadas", "Ilimitadas"],
+    ["Logo y tema custom", false, true, true],
+    ["Importar / exportar Excel", false, true, true],
+    ["Etiquetas con código de barras", false, true, true],
   ]},
   { section: "Ventas y POS", rows: [
-    ["Ventas por mes", "200", "2.000", "Ilimitadas", "Ilimitadas"],
-    ["Caja", true, true, true, true],
-    ["Multi-caja simultánea", false, false, true, true],
-    ["Métodos de pago argentinos", true, true, true, true],
-    ["Historial de ventas", "7 días", "90 días", "1 año", "Ilimitado"],
+    ["Ventas por mes", "500", "5.000", "Ilimitadas"],
+    ["AFIP — facturas/mes", "50", "200", "500"],
+    ["Caja chica (movimientos)", false, true, true],
+    ["Multi-caja simultánea", false, false, true],
+    ["Modo TV / pantalla", false, false, true],
+    ["POS offline-first", true, true, true],
   ]},
   { section: "Clientes y proveedores", rows: [
-    ["Clientes", "25", "Ilimitados", "Ilimitados", "Ilimitados"],
-    ["Proveedores", false, true, true, true],
-    ["Gastos", false, true, true, true],
-    ["Cargas / recargas", false, true, true, true],
-    ["Programa de fidelidad", false, false, true, true],
+    ["Clientes", "15", "200", "1.000"],
+    ["Proveedores", "10", "50", "100"],
+    ["Loyalty (puntos + canje)", false, false, true],
+    ["Pedidos a proveedor manuales", true, true, true],
+    ["Pedidos a proveedor con IA", false, false, true],
   ]},
   { section: "Reportes e IA", rows: [
-    ["KPIs del día", true, true, true, true],
-    ["Gráficos y top productos", false, true, true, true],
-    ["Comparativas históricas", false, false, true, true],
-    ["Asistente IA (mensajes/día)", "5", "50", "500", "5.000"],
-    ["Recomendaciones automáticas", true, true, true, true],
-  ]},
-  { section: "Notificaciones", rows: [
-    ["Notificaciones in-app", true, true, true, true],
-    ["WhatsApp — stock bajo", false, true, true, true],
-    ["WhatsApp — resumen diario", false, false, true, true],
+    ["KPIs del día", true, true, true],
+    ["Reportes con gráficos", false, false, true],
+    ["Comparativas IA", false, false, true],
+    ["IA predictiva (3 cards)", false, false, true],
+    ["Chatbot IA integrado", false, false, true],
+    ["History de ventas", "7 días", "Ilimitado", "Ilimitado"],
   ]},
   { section: "Equipo y soporte", rows: [
-    ["Usuarios", "1", "3", "10", "Ilimitados"],
-    ["Multi-tienda", false, false, false, true],
-    ["API access", false, false, false, true],
-    ["Soporte", "Comunidad", "Email 48h", "Email 24h", "WhatsApp directo"],
+    ["Usuarios", "1", "3", "10"],
+    ["WhatsApp resumen diario", false, false, true],
+    ["Soporte", "Comunidad", "Email", "Prioritario"],
   ]},
 ]
 
 const FAQ = [
   {
     q: "¿Puedo cambiar de plan en cualquier momento?",
-    a: "Sí. Subís o bajás de plan cuando quieras desde Configuración → Suscripción. El cambio se prorratea automáticamente.",
+    a: "Sí. Subís o bajás de plan cuando quieras desde Configuración → Suscripción. Si subís se aplica al toque; si bajás mantenés tus features hasta el fin del ciclo actual.",
   },
   {
-    q: "¿Hay periodo de prueba?",
-    a: "Sí, todos los planes pagos incluyen 7 días de prueba sin tarjeta. Si te gusta, seguís; si no, cancelás sin cargo.",
+    q: "¿Cómo es la prueba?",
+    a: "Cuando elegís Básico o Profesional tenés 7 días sin cargar tarjeta. Si no pagás, tu cuenta vuelve sola al plan Gratis con los límites menores y tus datos quedan ahí para cuando estés listo.",
   },
   {
-    q: "¿Qué pasa con mis datos si cancelo?",
-    a: "Tu cuenta vuelve al plan Gratis automáticamente. Conservás todos tus datos pero con los límites del plan Free (50 productos, 7 días de historial). Podés exportar todo antes vía CSV en cualquier plan pago.",
+    q: "¿Qué pasa con mis datos si dejo de pagar?",
+    a: "Tu cuenta vuelve al plan Gratis automáticamente. Conservás todos tus productos, ventas y clientes — solo se aplican los límites del plan Gratis. No borramos nada.",
   },
   {
     q: "¿Aceptan facturas A?",
-    a: "Sí, emitimos factura A o B según corresponda. Próximamente integración directa con AFIP para emisión electrónica desde el POS.",
+    a: "Sí, emitimos factura A o B según corresponda con AFIP integrado. Cada plan tiene su cupo mensual: 50 en Gratis, 200 en Básico, 500 en Profesional.",
   },
   {
-    q: "¿El precio es en pesos o en dólares?",
-    a: "Los precios son en pesos argentinos. Cobramos por MercadoPago (cualquier tarjeta + dinero en cuenta MP) o por Stripe (tarjeta internacional). Sin cargos ocultos. Revisamos los precios cada 6 meses según inflación.",
+    q: "¿El precio es en pesos?",
+    a: "Sí, todos los precios son en pesos argentinos. Cobramos por MercadoPago (cualquier tarjeta + dinero en cuenta) o tarjeta internacional vía Stripe. Sin cargos ocultos.",
   },
 ]
 
@@ -228,18 +194,18 @@ export default function PricingPage() {
             <Sparkles size={12} /> Precios en pesos · Pagás con MercadoPago o tarjeta
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-4 sm:mb-5">
-            Planes para cada etapa <br className="hidden md:block" />
-            de tu negocio
+            Tres planes <br className="hidden md:block" />
+            sin sustos.
           </h1>
           <p className="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto px-2">
-            Empezá gratis. Sin tarjeta. Crecé cuando estés listo. Cancelás cuando quieras.
+            Empezás gratis. Sin tarjeta. Crecés cuando estés listo. Cancelás cuando quieras.
           </p>
         </div>
       </section>
 
       {/* Plan cards */}
       <section className="px-4 sm:px-6 pb-16 sm:pb-20">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
           {PLANS.map((plan) => {
             const Icon = plan.icon
             return (
@@ -279,7 +245,7 @@ export default function PricingPage() {
                 <Link
                   href={plan.href}
                   className={`flex items-center justify-center gap-2 w-full min-h-[44px] py-2.5 rounded-xl font-semibold text-sm transition mb-6 ${
-                    plan.id === "STARTER"
+                    plan.id === "PROFESSIONAL"
                       ? "bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-400 hover:to-violet-400 text-white shadow-lg shadow-blue-900/30"
                       : "bg-gray-800 hover:bg-gray-700 text-gray-100"
                   }`}
@@ -328,7 +294,7 @@ export default function PricingPage() {
                     {PLANS.map((p) => (
                       <th key={p.id} className="text-center p-3 sm:p-4 font-semibold text-white min-w-[110px] sm:min-w-[120px]">
                         {p.name}
-                        {p.id === "STARTER" && (
+                        {p.id === "PROFESSIONAL" && (
                           <span className="block mt-0.5 text-[10px] font-normal text-blue-400 uppercase tracking-wide">
                             Más elegido
                           </span>
@@ -339,9 +305,9 @@ export default function PricingPage() {
                 </thead>
                 <tbody>
                   {COMPARISON.map((section) => (
-                    <>
-                      <tr key={`s-${section.section}`} className="bg-gray-800/30">
-                        <td colSpan={5} className="px-3 sm:px-4 py-2 text-xs font-semibold uppercase tracking-wide text-blue-400 sticky left-0 bg-gray-900">
+                    <Fragment key={section.section}>
+                      <tr className="bg-gray-800/30">
+                        <td colSpan={4} className="px-3 sm:px-4 py-2 text-xs font-semibold uppercase tracking-wide text-blue-400 sticky left-0 bg-gray-900">
                           {section.section}
                         </td>
                       </tr>
@@ -361,7 +327,7 @@ export default function PricingPage() {
                           ))}
                         </tr>
                       ))}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

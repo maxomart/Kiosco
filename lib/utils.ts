@@ -81,14 +81,15 @@ export function generatePassword(length = 16): string {
 
 // Numeric hard limits per plan. Use Number.POSITIVE_INFINITY for "unlimited".
 // historyDays = how far back the user can see their own data (sales, reports).
-// Numeric hard limits per plan. Use Number.POSITIVE_INFINITY for "unlimited".
-// Filosofía:
-//   - STARTER (Básico) → kiosco chico real, lo mínimo para operar
-//   - PROFESSIONAL → "la maravilla", todo lo cool
-//   - BUSINESS → cadenas / multi-sucursal, escala
-//   - ENTERPRISE → legacy / custom (no se ofrece más al público)
+//
+// Filosofía (mayo 2026 — pivot a 2 planes pagos + free permanente):
+//   - FREE → kiosco super chico, gratis para siempre, lo mínimo para operar
+//   - STARTER (Básico) → upgrade real con todo lo no-IA (tema, loyalty,
+//     multi-caja, modo TV, etiquetas, CSV, etc.) + más límites
+//   - PROFESSIONAL → IA + todo ilimitado, donde sacamos profit por OpenAI
+//   - BUSINESS / ENTERPRISE → legacy, no se ofrece más al público
 export const PLAN_LIMITS = {
-  STARTER: {
+  FREE: {
     products: 100,
     users: 1,
     clients: 15,
@@ -96,6 +97,16 @@ export const PLAN_LIMITS = {
     categories: 15,
     salesPerMonth: 500,
     historyDays: 7,
+    api: false,
+  },
+  STARTER: {
+    products: 1500,
+    users: 3,
+    clients: 200,
+    suppliers: 50,
+    categories: Number.POSITIVE_INFINITY,
+    salesPerMonth: 5000,
+    historyDays: Number.POSITIVE_INFINITY,
     api: false,
   },
   PROFESSIONAL: {
@@ -136,15 +147,17 @@ export type Plan = keyof typeof PLAN_LIMITS
 // Update these as inflation moves. Backend MercadoPago Suscripciones uses ARS;
 // Stripe legacy paths still consume the USD column (kept for international fallback).
 export const PLAN_PRICES_ARS: Record<Plan, number> = {
+  FREE: 0,              // Gratis permanente — kiosco super chico
   STARTER: 9999,        // Básico — anchor at "10 lucas"
   PROFESSIONAL: 24900,  // Pro
-  BUSINESS: 59900,      // Negocio
-  ENTERPRISE: 0,        // Custom — talk to sales
+  BUSINESS: 59900,      // Negocio (legacy)
+  ENTERPRISE: 0,        // Custom — talk to sales (legacy)
 }
 
 // USD column kept for Stripe + international display ("≈ USD X").
 // Recompute periodically: priceARS / blue-chip-rate.
 export const PLAN_PRICES_USD: Record<Plan, number> = {
+  FREE: 0,
   STARTER: 10,
   PROFESSIONAL: 25,
   BUSINESS: 60,
@@ -153,6 +166,7 @@ export const PLAN_PRICES_USD: Record<Plan, number> = {
 
 // Spanish-natural plan labels for the UI.
 export const PLAN_LABELS_AR: Record<Plan, string> = {
+  FREE: "Gratis",
   STARTER: "Básico",
   PROFESSIONAL: "Profesional",
   BUSINESS: "Empresa",
@@ -160,6 +174,7 @@ export const PLAN_LABELS_AR: Record<Plan, string> = {
 }
 
 export const PLAN_LABELS: Record<Plan, string> = {
+  FREE: "Free",
   STARTER: "Starter",
   PROFESSIONAL: "Professional",
   BUSINESS: "Business",

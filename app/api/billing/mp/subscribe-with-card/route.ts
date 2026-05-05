@@ -7,7 +7,9 @@ import { syncPaymentToSheet } from "@/lib/sheets-sync"
 export const dynamic = "force-dynamic"
 
 const MP_API = "https://api.mercadopago.com"
-const PAID_PLANS: Plan[] = ["STARTER", "PROFESSIONAL", "BUSINESS"]
+// Solo los 2 planes pagos vigentes — BUSINESS / ENTERPRISE son legacy y no
+// se permiten suscripciones nuevas.
+const PAID_PLANS: Plan[] = ["STARTER", "PROFESSIONAL"]
 const ANNUAL_DISCOUNT = 0.2
 
 /**

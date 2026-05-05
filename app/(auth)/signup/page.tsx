@@ -14,25 +14,24 @@ import {
   UserPlus,
   Zap,
   Crown,
-  Building2,
-  PartyPopper,
   Gift,
+  PartyPopper,
 } from "lucide-react"
 import { BUSINESS_TYPES, PLAN_LABELS_AR, PLAN_PRICES_ARS } from "@/lib/utils"
 
-const VALID_PLAN_PARAMS = ["STARTER", "PROFESSIONAL", "BUSINESS"] as const
+// Solo los planes pagos vigentes — el plan Gratis se selecciona dejando el
+// param de plan vacío (default sin tarjeta).
+const VALID_PLAN_PARAMS = ["STARTER", "PROFESSIONAL"] as const
 type PlanParam = typeof VALID_PLAN_PARAMS[number]
 
 const PLAN_ICON: Record<PlanParam, React.ElementType> = {
   STARTER: Zap,
   PROFESSIONAL: Crown,
-  BUSINESS: Building2,
 }
 
 const PLAN_PITCH: Record<PlanParam, string> = {
-  STARTER: "Kioscos chicos",
+  STARTER: "Tu marca + más espacio",
   PROFESSIONAL: "El más elegido",
-  BUSINESS: "Cadenas",
 }
 
 const fmtARS = (n: number) =>
@@ -387,7 +386,7 @@ function SignupForm() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
           {VALID_PLAN_PARAMS.map((plan) => {
             const Icon = PLAN_ICON[plan]
             const isSelected = selectedPlan === plan

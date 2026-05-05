@@ -8,10 +8,10 @@ export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
+  // Solo Stripe price IDs para planes pagos vigentes — BUSINESS legacy.
   const PRICE_IDS: Record<string, string> = {
     STARTER: process.env.STRIPE_PRICE_STARTER ?? "",
     PROFESSIONAL: process.env.STRIPE_PRICE_PROFESSIONAL ?? "",
-    BUSINESS: process.env.STRIPE_PRICE_BUSINESS ?? "",
   }
 
   let body: any

@@ -6,7 +6,9 @@ import { PLAN_PRICES_ARS, PLAN_LABELS_AR, type Plan } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
 
-const PAID_PLANS: Plan[] = ["STARTER", "PROFESSIONAL", "BUSINESS"]
+// Solo los 2 planes pagos vigentes. BUSINESS / ENTERPRISE quedaron como
+// legacy — no se ofrecen al público y no se pueden suscribir desde acá.
+const PAID_PLANS: Plan[] = ["STARTER", "PROFESSIONAL"]
 
 export async function POST(req: NextRequest) {
   const { error, tenantId, session } = await getSessionTenant()

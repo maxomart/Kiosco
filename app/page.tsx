@@ -69,19 +69,34 @@ export default async function LandingPage({
   const freeHref = buildSignupHref(undefined, promoCode)
   const starterHref = buildSignupHref("STARTER", promoCode)
   const professionalHref = buildSignupHref("PROFESSIONAL", promoCode)
-  const businessHref = buildSignupHref("BUSINESS", promoCode)
 
   const plans = [
     {
-      plan: "Básico",
-      price: PLAN_PRICES_ARS.STARTER,
-      desc: "Para probar Orvex",
+      plan: "Gratis",
+      price: 0,
+      desc: "Para arrancar sin tarjeta",
       features: [
-        "Hasta 100 productos · 1 usuario",
+        "100 productos · 1 usuario",
         "POS + inventario + caja",
         "AFIP — 50 facturas/mes",
-        "Reportes 7 días",
+        "Reportes de los últimos 7 días",
         "POS offline-first",
+      ],
+      cta: "Empezar gratis",
+      href: freeHref,
+      highlight: false,
+    },
+    {
+      plan: "Básico",
+      price: PLAN_PRICES_ARS.STARTER,
+      desc: "Tu marca + más espacio",
+      features: [
+        "1.500 productos · 3 usuarios",
+        "Logo y tema con tu color",
+        "AFIP — 200 facturas/mes",
+        "Importar / exportar Excel",
+        "Etiquetas con código de barras",
+        "Caja chica (movimientos)",
       ],
       cta: "Probar 7 días",
       href: starterHref,
@@ -94,9 +109,10 @@ export default async function LandingPage({
       features: [
         "5.000 productos · 10 usuarios",
         "IA predictiva y chatbot integrado",
-        "Tema y logo personalizados",
-        "Reportes automáticos con comparaciones",
-        "Loyalty · Modo TV · Pedidos IA",
+        "Loyalty · Modo TV · Multi-caja",
+        "Pedidos a proveedor con IA",
+        "Reportes con comparaciones IA",
+        "WhatsApp + soporte prioritario",
       ],
       cta:
         activePromo && activePromo.planGranted === "PROFESSIONAL"
@@ -104,21 +120,6 @@ export default async function LandingPage({
           : "Probar 7 días",
       href: professionalHref,
       highlight: true,
-    },
-    {
-      plan: "Empresa",
-      price: PLAN_PRICES_ARS.BUSINESS,
-      desc: "Para cadenas",
-      features: [
-        "Todo ilimitado",
-        "Multi-tienda (varias sucursales)",
-        "API access + webhooks",
-        "IA Assistant ilimitado",
-        "Account manager dedicado",
-      ],
-      cta: "Probar 7 días",
-      href: businessHref,
-      highlight: false,
     },
   ]
 
