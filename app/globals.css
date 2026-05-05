@@ -1115,3 +1115,57 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8 !
   .no-print { display: none !important; }
   body { background: white !important; color: black !important; }
 }
+
+/* ============================================================================
+   LIGHT MODE — overrides finales con alta especificidad para forzar el modo
+   claro sobre los gradientes y surfaces hardcodeados que las CSS vars no
+   alcanzan. Estos van al final del archivo para ganar a cualquier otra regla.
+   ========================================================================== */
+
+/* app-surface: el gradient principal del fondo del dashboard. Le sacamos
+   los radial-gradients de accent que en light se ven oscuros y forzamos
+   un fondo limpio. */
+html[data-theme="light"] .app-surface {
+  background:
+    linear-gradient(160deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+}
+html[data-theme="light"] .app-surface::before {
+  background-image: radial-gradient(rgba(15,23,42,0.04) 1px, transparent 1px) !important;
+}
+
+/* sidebar-surface: gradient lateral. */
+html[data-theme="light"] .sidebar-surface {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%) !important;
+  border-right: 1px solid #e5e7eb !important;
+}
+html[data-theme="light"] .sidebar-surface::after {
+  background: linear-gradient(180deg, transparent, rgba(15,23,42,0.06) 30%, rgba(15,23,42,0.06) 70%, transparent) !important;
+}
+
+/* nav-surface: la barra superior del header. */
+html[data-theme="light"] .nav-surface {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+/* card-glow: las cards del config grid. */
+html[data-theme="light"] .card-glow {
+  background: rgba(15, 23, 42, 0.02) !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.02) inset,
+    0 8px 16px -10px rgba(15, 23, 42, 0.08) !important;
+}
+html[data-theme="light"] .card-glow:hover {
+  box-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.02) inset,
+    0 12px 24px -10px rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Surface card (utility helper). */
+html[data-theme="light"] .surface-card {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
