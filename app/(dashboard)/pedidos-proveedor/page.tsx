@@ -46,19 +46,27 @@ export default function PedidosProveedorPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-amber-900/40 border border-amber-700/40 flex items-center justify-center">
-          <Truck className="w-5 h-5 text-amber-400" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-900/40 border border-amber-700/40 flex items-center justify-center">
+            <Truck className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+              Sugerencias IA
+              <Sparkles size={14} className="text-amber-400" />
+            </h1>
+            <p className="text-sm text-gray-400">
+              Plantillas automáticas según velocidad de venta.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            Pedidos a proveedores
-            <Sparkles size={14} className="text-amber-400" />
-          </h1>
-          <p className="text-sm text-gray-400">
-            La IA arma plantillas de pedido para cada proveedor según lo que se está por agotar.
-          </p>
-        </div>
+        <a
+          href="/cargas"
+          className="text-sm text-gray-400 hover:text-white inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700"
+        >
+          ← Volver a pedidos
+        </a>
       </div>
 
       <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 text-xs text-gray-400 leading-relaxed">

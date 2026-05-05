@@ -172,6 +172,13 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
           <button onClick={exportCSV} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
             <Download size={14} /> CSV
           </button>
+          <a
+            href="/tv"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 border border-purple-700/40 text-sm font-medium transition-colors"
+            title="Vista full-screen para mostrar en TV/cartelera"
+          >
+            Pantalla TV
+          </a>
         </div>
       </div>
 

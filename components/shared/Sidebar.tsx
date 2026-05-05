@@ -21,11 +21,6 @@ import {
   ShoppingBag,
   Lock,
   X,
-  Tag,
-  Tv,
-  Sparkles,
-  Wrench,
-  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { canAny, hasFeature, type Permission, type PlanFeature } from "@/lib/permissions"
@@ -57,7 +52,10 @@ type NavItem = {
   feature?: PlanFeature        // optional plan gate
 }
 
-// Top: lo más usado del día a día. Siempre visible.
+// Sidebar limpio — sin grupo "Herramientas":
+//   - Etiquetas vive dentro de Inventario (botón en la página)
+//   - Pedidos a proveedor se fusiona con Cargas (rebrand: "Pedidos a proveedores")
+//   - Modo TV se mueve a /reportes (botón "Pantalla TV" arriba)
 const NAV_TOP: NavItem[] = [
   { href: "/inicio", label: "Inicio", icon: Home },
   { href: "/pos", label: "POS", icon: ShoppingCart, permissions: ["sales:create"] },
@@ -65,16 +63,9 @@ const NAV_TOP: NavItem[] = [
   { href: "/ventas", label: "Ventas", icon: Receipt, permissions: ["sales:read"] },
   { href: "/caja", label: "Caja", icon: DollarSign, permissions: ["cash:read"] },
   { href: "/clientes", label: "Clientes", icon: Users, permissions: ["clients:read"] },
-  { href: "/reportes", label: "Reportes", icon: BarChart3, permissions: ["reports:read"] },
-]
-
-// Herramientas: secundarios. Colapsable para no saturar.
-const NAV_TOOLS: NavItem[] = [
-  { href: "/cargas", label: "Cargas", icon: Truck, permissions: ["recharges:read"], feature: "feature:recharges" },
+  { href: "/cargas", label: "Pedidos a proveedores", icon: Truck, permissions: ["recharges:read"], feature: "feature:recharges" },
   { href: "/gastos", label: "Gastos", icon: TrendingDown, permissions: ["expenses:read"], feature: "feature:expenses" },
-  { href: "/etiquetas", label: "Etiquetas", icon: Tag, permissions: ["products:read"], feature: "feature:labels" },
-  { href: "/pedidos-proveedor", label: "Pedidos a proveedor", icon: Sparkles, permissions: ["recharges:read"], feature: "feature:supplier_orders" },
-  { href: "/tv", label: "Modo TV", icon: Tv, permissions: ["reports:read"], feature: "feature:tv_mode" },
+  { href: "/reportes", label: "Reportes", icon: BarChart3, permissions: ["reports:read"] },
 ]
 
 const NAV_BOTTOM: NavItem[] = [
@@ -87,36 +78,10 @@ const ROLE_LABELS: Record<string, string> = {
   CASHIER: "Cajero/a",
 }
 
-const TOOLS_OPEN_KEY = "orvex:sidebar-tools-open"
-
 export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  // Auto-expand "Herramientas" si el path actual está adentro
-  const isToolsRoute = NAV_TOOLS.some(
-    (i) => pathname === i.href || pathname.startsWith(i.href + "/")
-  )
-  const [toolsOpen, setToolsOpen] = useState<boolean>(isToolsRoute)
-
-  // Restaurar preferencia del user (persistida en localStorage)
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    if (isToolsRoute) { setToolsOpen(true); return }
-    try {
-      const cached = localStorage.getItem(TOOLS_OPEN_KEY)
-      if (cached === "1") setToolsOpen(true)
-      else if (cached === "0") setToolsOpen(false)
-    } catch {}
-  }, [isToolsRoute])
-
-  const handleToggleTools = () => {
-    setToolsOpen((prev) => {
-      const next = !prev
-      try { localStorage.setItem(TOOLS_OPEN_KEY, next ? "1" : "0") } catch {}
-      return next
-    })
-  }
 
   // Filter por permisos. Items plan-gated igual se muestran con candado.
   const filterByPerm = (items: NavItem[]) =>
@@ -125,7 +90,6 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
       return canAny(user.role, item.permissions)
     })
   const visibleTop = filterByPerm(NAV_TOP)
-  const visibleTools = filterByPerm(NAV_TOOLS)
   const visibleBottom = filterByPerm(NAV_BOTTOM)
 
   // Close mobile sidebar on route change
@@ -237,45 +201,8 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {/* TOP — items principales */}
+      <nav className="overflow-y-auto py-3 px-2 space-y-0.5">
         {visibleTop.map((item) => renderNavLink(item))}
-
-        {/* GRUPO HERRAMIENTAS — colapsable */}
-        {visibleTools.length > 0 && (
-          <div className="pt-3">
-            {/* Toggle del grupo */}
-            <button
-              onClick={collapsed ? undefined : handleToggleTools}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors",
-                "text-gray-500 hover:text-gray-300 hover:bg-gray-800/40",
-                collapsed && "justify-center px-2"
-              )}
-              title={collapsed ? "Herramientas" : undefined}
-              aria-expanded={toolsOpen}
-            >
-              <Wrench className="w-4 h-4 flex-shrink-0" />
-              {!collapsed && (
-                <>
-                  <span className="flex-1 text-left">Herramientas</span>
-                  <ChevronDown
-                    className={cn(
-                      "w-3.5 h-3.5 transition-transform duration-200",
-                      toolsOpen ? "rotate-0" : "-rotate-90"
-                    )}
-                  />
-                </>
-              )}
-            </button>
-            {/* Contenido del grupo (visible cuando expandido OR cuando colapsado para no esconder items) */}
-            {(toolsOpen || collapsed) && (
-              <div className={cn("space-y-0.5", !collapsed && "mt-1 pl-2 border-l border-gray-800/60 ml-3")}>
-                {visibleTools.map((item) => renderNavLink(item))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* BOTTOM — config */}
         {visibleBottom.length > 0 && (

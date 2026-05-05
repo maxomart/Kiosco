@@ -93,10 +93,10 @@ export default async function LandingPage({
       desc: "Todo lo cool — el más elegido",
       features: [
         "5.000 productos · 10 usuarios",
-        "🎨 Tema y logo personalizados",
-        "📷 Scanner · 🏷️ Etiquetas · 💰 Caja chica",
-        "⭐ Loyalty · 💬 WhatsApp · 📺 Modo TV",
-        "📊 IA predictiva · 🤖 Chatbot · 🚚 Pedidos IA",
+        "IA predictiva y chatbot integrado",
+        "Tema y logo personalizados",
+        "Reportes automáticos con comparaciones",
+        "Loyalty · Modo TV · Pedidos IA",
       ],
       cta:
         activePromo && activePromo.planGranted === "PROFESSIONAL"
@@ -111,10 +111,10 @@ export default async function LandingPage({
       desc: "Para cadenas",
       features: [
         "Todo ilimitado",
-        "🏪 Multi-tienda (varias sucursales)",
-        "📡 API access + webhooks",
-        "🤖 IA Assistant ilimitado",
-        "👨‍💼 Account manager dedicado",
+        "Multi-tienda (varias sucursales)",
+        "API access + webhooks",
+        "IA Assistant ilimitado",
+        "Account manager dedicado",
       ],
       cta: "Probar 7 días",
       href: businessHref,
