@@ -200,6 +200,58 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
     }
   }
 
+  /**
+   * Stock muerto — productos con stock pero sin moverse en 60+ días.
+   * El CSV trae el capital atrapado por producto y total, ordenado por
+   * cuánto te está costando ese stock parado.
+   */
+  const exportDeadStock = async () => {
+    try {
+      const res = await fetch(`/api/reportes/stock-muerto?days=60&format=csv`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error ?? "No se pudo generar el reporte de stock muerto")
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `orvex-stock-muerto.csv`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (e) {
+      console.error("[exportDeadStock] failed", e)
+      alert("Error al generar el CSV de stock muerto")
+    }
+  }
+
+  /**
+   * Plan de compras — qué reponer y cuánto basado en velocidad de venta.
+   * El CSV trae cantidad sugerida y costo estimado por producto, ordenado
+   * por urgencia (productos que se quedan sin stock primero).
+   */
+  const exportPlanCompras = async () => {
+    try {
+      const res = await fetch(`/api/reportes/plan-compras?lookbackDays=14&targetDays=14&format=csv`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error ?? "No se pudo generar el plan de compras")
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `orvex-plan-compras.csv`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (e) {
+      console.error("[exportPlanCompras] failed", e)
+      alert("Error al generar el plan de compras")
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <PageTip id="reportes:ai-tip" tone="accent">
@@ -233,10 +285,16 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
               className="bg-transparent text-sm text-white focus:outline-none" />
           </div>
           <button onClick={exportCSV} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="Exportá fecha, cantidad, ingresos, costo, ganancia y margen del período">
-            <Download size={14} /> Exportar CSV
+            <Download size={14} /> CSV período
           </button>
           <button onClick={exportIVA} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="CSV listo para tu contador con cada venta y su IVA 21% discriminado">
-            <Download size={14} /> IVA del período
+            <Download size={14} /> IVA contador
+          </button>
+          <button onClick={exportDeadStock} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="Productos con stock pero sin venderse en 60 días — capital atrapado por producto">
+            <Download size={14} /> Stock muerto
+          </button>
+          <button onClick={exportPlanCompras} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="Qué reponer esta semana basado en velocidad de venta últimos 14 días">
+            <Download size={14} /> Plan de compras
           </button>
           <a
             href="/tv"
