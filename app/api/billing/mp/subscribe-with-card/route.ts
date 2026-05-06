@@ -126,16 +126,7 @@ export async function POST(req: NextRequest) {
 
   if (firstPayment?.status !== "approved") {
     const detail = firstPayment?.status_detail ?? firstPayment?.message ?? firstPayment?.status ?? "unknown"
-    let friendly = "La tarjeta fue rechazada por Mercado Pago."
-    const lower = String(detail).toLowerCase()
-    if (lower.includes("insufficient_amount")) friendly = "La tarjeta no tiene fondos suficientes."
-    else if (lower.includes("call_for_authorize")) friendly = "El banco rechazó el pago. Llamalo o usá otra tarjeta."
-    else if (lower.includes("high_risk")) friendly = "Mercado Pago rechazó el pago por seguridad. Probá con otra tarjeta."
-    else if (lower.includes("bad_filled_security_code") || lower.includes("invalid_security_code")) friendly = "El código de seguridad (CVV) es incorrecto."
-    else if (lower.includes("bad_filled_date")) friendly = "La fecha de vencimiento es incorrecta."
-    else if (lower.includes("cvv")) friendly = "El código de seguridad es obligatorio. Volvé a cargar la tarjeta."
-    else if (lower.includes("invalid_card") || lower.includes("invalid_token")) friendly = "La tarjeta no es válida. Volvé a cargarla."
-    else if (lower.includes("rejected")) friendly = "La tarjeta fue rechazada. Probá con otra."
+    const friendly = humanizeMpRejection(detail)
     console.error(`[mp/subscribe-with-card] payment NOT approved: status=${firstPayment?.status} detail=${detail}`)
     return NextResponse.json({
       error: friendly,
@@ -250,5 +241,47 @@ export async function POST(req: NextRequest) {
     plan,
     preapprovalId: preapproval?.id ?? null,
     paymentId: firstPayment.id,
+    // Si el preapproval falló pero el pago del primer mes pasó, avisamos
+    // explícitamente al cliente para que muestre un warning en lugar de
+    // "todo OK". Sin esto el user nunca se entera y descubre el problema
+    // recién cuando MP no le cobre el mes 2.
+    recurringWarning: preapproval
+      ? null
+      : "Tu primer pago se procesó OK pero la renovación automática no se pudo configurar. Vas a tener que volver a suscribirte el próximo mes. Si querés evitar el corte, contactá a soporte.",
   })
+}
+
+/**
+ * Mapea los códigos de rechazo de Mercado Pago a frases en español plano
+ * que un kiosquero pueda entender. La lista la cubrimos por keyword
+ * (incluye en lower-case) para tolerar tanto status_detail como message
+ * libres de MP. Si nada matchea volvemos a un fallback amable.
+ *
+ * Referencia: https://www.mercadopago.com.ar/developers/es/docs/checkout-api/response-handling/collection-results
+ */
+function humanizeMpRejection(detail: string): string {
+  const d = String(detail ?? "").toLowerCase()
+  if (d.includes("insufficient_amount") || d.includes("insufficient_funds"))
+    return "La tarjeta no tiene fondos suficientes para cobrar este plan. Probá con otra tarjeta."
+  if (d.includes("call_for_authorize"))
+    return "El banco te pide que lo llames antes de aprobar el pago. Probá con otra tarjeta o llamá al teléfono que figura atrás de la que usaste."
+  if (d.includes("high_risk") || d.includes("blacklist"))
+    return "Mercado Pago rechazó el pago por seguridad. Probá con otra tarjeta o pasá a la opción 'pagar en mercadopago.com.ar' (link abajo del modal)."
+  if (d.includes("bad_filled_security_code") || d.includes("invalid_security_code") || d.includes("cvv"))
+    return "El código de seguridad (los 3 números atrás de la tarjeta) está mal o falta. Volvé a cargar la tarjeta y prestale atención al CVV."
+  if (d.includes("bad_filled_date") || d.includes("invalid_expiration"))
+    return "La fecha de vencimiento de la tarjeta está mal. Revisá MM/AA y volvé a cargarla."
+  if (d.includes("bad_filled_card_number") || d.includes("invalid_card_number"))
+    return "El número de tarjeta tiene algún dígito mal. Revisalo y volvé a cargarla."
+  if (d.includes("invalid_card") || d.includes("invalid_token"))
+    return "La tarjeta no es válida. Volvé a cargarla — a veces la sesión expira si tardás mucho."
+  if (d.includes("max_attempts"))
+    return "Mercado Pago bloqueó la tarjeta por demasiados intentos seguidos. Esperá unos minutos antes de volver a probar."
+  if (d.includes("expired"))
+    return "La tarjeta está vencida. Usá otra."
+  if (d.includes("policy_error") || d.includes("country"))
+    return "Mercado Pago no permite este tipo de pago. Probá con una tarjeta argentina o desde una cuenta MP Argentina."
+  if (d.includes("rejected"))
+    return "La tarjeta fue rechazada. El motivo exacto no lo da Mercado Pago — probá con otra o contactá a tu banco."
+  return "La tarjeta fue rechazada por Mercado Pago. Probá con otra o usá la opción 'pagar en mercadopago.com.ar'."
 }

@@ -155,6 +155,22 @@ export function MPCardModal({ open, onClose, plan, planLabel, amount, period, on
       }
       setSuccess(true)
       toast.success("¡Suscripción activada!")
+      // Si el primer pago pasó pero no se pudo armar la suscripción
+      // recurrente, el backend nos manda un texto explicativo. Lo
+      // mostramos como toast warning persistente — sino el user nunca
+      // se entera y el mes que viene queda sin servicio.
+      if (data?.recurringWarning) {
+        toast(data.recurringWarning, {
+          duration: 12000,
+          icon: "⚠️",
+          style: {
+            maxWidth: "440px",
+            background: "#1f1607",
+            color: "#fcd34d",
+            border: "1px solid rgba(252,211,77,0.3)",
+          },
+        })
+      }
       setTimeout(() => {
         onSuccess()
         onClose()
