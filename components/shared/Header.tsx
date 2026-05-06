@@ -19,6 +19,7 @@ import { cn, PLAN_LABELS } from "@/lib/utils"
 import type { Plan } from "@/lib/utils"
 import NotificationsBell from "@/components/shared/NotificationsBell"
 import { InstallAppMenuItem } from "@/components/shared/InstallAppMenuItem"
+import { OfflineSyncBadge } from "@/components/shared/OfflineSyncBadge"
 
 interface HeaderProps {
   plan?: Plan
@@ -137,6 +138,10 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
       </h1>
 
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        {/* Badge persistente de ventas offline pendientes — solo se muestra
+            si hay algo que reportar (no contamina el header normalmente). */}
+        <OfflineSyncBadge />
+
         {/* Plan badge — full label on tablet+, compact on mobile */}
         <span
           className={cn(
