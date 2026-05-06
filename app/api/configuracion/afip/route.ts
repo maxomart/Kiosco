@@ -67,12 +67,16 @@ export async function PATCH(req: NextRequest) {
   if (data.businessName !== undefined)   updateData.afipBusinessName = data.businessName
   if (data.cert !== undefined && data.cert.trim()) {
     updateData.afipCertX509 = encryptAfipCert(data.cert.trim())
-    // Cambió el cert → resetear ready hasta que se vuelva a probar
+    // Cambió el cert → resetear ready y limpiar el último error guardado
+    // (sino el banner de error queda visible aún después de subir un cert
+    // nuevo que arregla el problema, y el user piensa que sigue roto).
     updateData.afipReady = false
+    updateData.afipLastError = null
   }
   if (data.privateKey !== undefined && data.privateKey.trim()) {
     updateData.afipCertPrivateKey = encryptAfipCert(data.privateKey.trim())
     updateData.afipReady = false
+    updateData.afipLastError = null
   }
 
   await db.tenantConfig.upsert({

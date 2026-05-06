@@ -277,7 +277,29 @@ function SignupForm() {
         if (res.status === 409) {
           // Server sends specific message — detect whether it's email or phone
           const message = String(data?.message ?? "").toLowerCase()
-          if (message.includes("celular") || message.includes("teléfono") || message.includes("telefono")) {
+          if (data?.code === "EMAIL_TAKEN") {
+            // Caso típico: el user ya tenía cuenta y se olvidó. En vez de
+            // dejarlo dando vueltas con el formulario, le tiramos un toast
+            // duradero con CTA directo a /login (con el email pre-cargado
+            // en el query param para una experiencia "te llevamos derecho").
+            const loginHref = `/login?email=${encodeURIComponent(form.email.trim())}`
+            setErrors({ email: "Ya existe una cuenta con este email" })
+            toast(
+              (t) => (
+                <span className="text-sm flex flex-wrap items-center gap-2">
+                  <span>Ya tenés una cuenta con este email.</span>
+                  <Link
+                    href={loginHref}
+                    onClick={() => toast.dismiss(t.id)}
+                    className="font-semibold text-purple-300 underline hover:text-white"
+                  >
+                    Iniciar sesión
+                  </Link>
+                </span>
+              ),
+              { duration: 8000, icon: "👤" }
+            )
+          } else if (message.includes("celular") || message.includes("teléfono") || message.includes("telefono")) {
             setErrors({ phone: data.message })
           } else if (message.includes("email")) {
             setErrors({ email: data.message })

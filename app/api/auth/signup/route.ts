@@ -172,7 +172,14 @@ export async function POST(req: Request) {
         !existing.emailVerified && existing.createdAt > orphanCutoff
       if (!isOrphan) {
         return NextResponse.json(
-          { message: "Este email ya está registrado." },
+          {
+            message: "Este email ya está registrado.",
+            // Code para que el cliente pueda mostrar un link a /login en
+            // lugar de un toast genérico. Si el user es alguien que ya
+            // tiene cuenta, queremos llevarlo derecho a iniciar sesión
+            // y no dejarlo dando vueltas.
+            code: "EMAIL_TAKEN",
+          },
           { status: 409 }
         )
       }
