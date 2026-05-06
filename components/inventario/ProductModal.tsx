@@ -1,8 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { X, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { X, Loader2, Sparkles, Users, BookOpen } from "lucide-react"
 import { HelpTip } from "@/components/ui/HelpTip"
+
+interface Suggestion {
+  name: string
+  barcode: string | null
+  category: string | null
+  supplier: string | null
+  suggestedSalePrice: number | null
+  suggestedCostPrice: number | null
+  tenantCount: number
+  source: "comunidad" | "catalogo-curado"
+}
 
 interface Product {
   id: string
@@ -41,6 +52,59 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
   })
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // ─── Autocomplete por catálogo de la comunidad ───────────────────────
+  // Mientras el user tipea el nombre, debouncemos 300ms y consultamos
+  // /api/productos/sugerencias. Si hay matches mostramos un dropdown
+  // con N kioscos que tienen ese producto + precio mediano sugerido.
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    // No buscamos cuando estamos editando un producto existente — sería
+    // ruido. Solo en alta nueva (incluyendo duplicate).
+    if (product && !duplicate) return
+    if (form.name.trim().length < 3) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        setLoadingSuggestions(true)
+        const res = await fetch(`/api/productos/sugerencias?q=${encodeURIComponent(form.name.trim())}`)
+        if (res.ok) {
+          const d = await res.json()
+          setSuggestions(d.suggestions ?? [])
+          setShowSuggestions((d.suggestions ?? []).length > 0)
+        }
+      } catch { /* silencioso */ }
+      finally { setLoadingSuggestions(false) }
+    }, 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [form.name, product, duplicate])
+
+  const applySuggestion = (s: Suggestion) => {
+    setForm(f => ({
+      ...f,
+      name: s.name,
+      barcode: s.barcode ?? f.barcode,
+      salePrice: s.suggestedSalePrice ? String(s.suggestedSalePrice) : f.salePrice,
+      costPrice: s.suggestedCostPrice ? String(s.suggestedCostPrice) : f.costPrice,
+      // Categoría + proveedor: solo aplicamos si match con uno existente
+      // del tenant (sino habría que crearlos, eso queda fuera del scope acá).
+      categoryId: s.category
+        ? (categories.find(c => c.name.toLowerCase() === s.category!.toLowerCase())?.id ?? f.categoryId)
+        : f.categoryId,
+      supplierId: s.supplier
+        ? (suppliers.find(sp => sp.name.toLowerCase() === s.supplier!.toLowerCase())?.id ?? f.supplierId)
+        : f.supplierId,
+    }))
+    setShowSuggestions(false)
+  }
 
   useEffect(() => {
     if (product) {
@@ -127,12 +191,65 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
             <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">{errors._global}</div>
           )}
 
-          {/* Name */}
-          <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Nombre *</label>
-            <input value={form.name} onChange={e => set("name", e.target.value)}
-              className={`w-full px-3 py-2.5 bg-gray-800 border rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 ${errors.name ? "border-red-500" : "border-gray-700"}`} />
+          {/* Name + autocomplete por catálogo de la comunidad */}
+          <div className="relative">
+            <label className="block text-sm text-gray-400 mb-1.5">
+              Nombre *
+              {loadingSuggestions && <Loader2 size={11} className="inline ml-2 text-gray-500 animate-spin" />}
+            </label>
+            <input
+              value={form.name}
+              onChange={e => set("name", e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              autoComplete="off"
+              className={`w-full px-3 py-2.5 bg-gray-800 border rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 ${errors.name ? "border-red-500" : "border-gray-700"}`}
+            />
             {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+
+            {/* Dropdown de sugerencias del catálogo agregado */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 mt-1 rounded-lg border border-gray-700 bg-gray-950 shadow-2xl overflow-hidden max-h-72 overflow-y-auto">
+                <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-gray-500 bg-gray-900 border-b border-gray-800 flex items-center gap-1.5">
+                  <Sparkles size={10} className="text-accent" />
+                  Sugerencias del catálogo de Orvex
+                </div>
+                {suggestions.map((s, i) => (
+                  <button
+                    key={`${s.barcode ?? s.name}-${i}`}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); applySuggestion(s) }}
+                    className="w-full px-3 py-2.5 hover:bg-gray-800 transition-colors text-left flex items-start gap-2 border-b border-gray-800 last:border-0"
+                  >
+                    <div className={`shrink-0 mt-0.5 ${s.source === "comunidad" ? "text-emerald-400" : "text-blue-400"}`}>
+                      {s.source === "comunidad"
+                        ? <Users size={13} />
+                        : <BookOpen size={13} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-sm text-white font-medium truncate">{s.name}</p>
+                        {s.suggestedSalePrice !== null && (
+                          <span className="text-xs text-emerald-300 tabular-nums shrink-0">
+                            ~${s.suggestedSalePrice.toLocaleString("es-AR")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                        {s.source === "comunidad"
+                          ? `${s.tenantCount} kioscos lo tienen`
+                          : "Catálogo de marcas argentinas"}
+                        {s.category && ` · ${s.category}`}
+                        {s.supplier && ` · ${s.supplier}`}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+                <div className="px-3 py-2 text-[10px] text-gray-600 bg-gray-900/50 border-t border-gray-800">
+                  Los precios son medianas entre kioscos. Ajustalo a tu costo real.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Barcode + SKU */}

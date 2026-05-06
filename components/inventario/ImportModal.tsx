@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import {
   X, Upload, FileText, CheckCircle, AlertTriangle, Download, Loader2,
-  Sparkles, ArrowLeft, ArrowRight, Wand2, Info,
+  Sparkles, ArrowLeft, ArrowRight, Wand2, Info, Camera, Image as ImageIcon,
 } from "lucide-react"
 import toast from "react-hot-toast"
 import { formatCurrency } from "@/lib/utils"
@@ -76,9 +76,19 @@ interface CommitResponse {
 }
 
 type Step = "upload" | "review" | "result"
+type Mode = "file" | "photo"
+
+interface PhotoItem {
+  name: string
+  price?: number
+  costPrice?: number
+  quantity?: number
+  barcode?: string
+}
 
 export default function ImportModal({ onClose, onDone }: Props) {
   const [step, setStep] = useState<Step>("upload")
+  const [mode, setMode] = useState<Mode>("file")
   const [file, setFile] = useState<File | null>(null)
   const [dragging, setDragging] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
@@ -90,6 +100,14 @@ export default function ImportModal({ onClose, onDone }: Props) {
   const [result, setResult] = useState<CommitResponse | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // ─── Modo foto ──────────────────────────────────────────────────────
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null)
+  const [photoItems, setPhotoItems] = useState<PhotoItem[] | null>(null)
+  const [photoImageType, setPhotoImageType] = useState<string | null>(null)
+  const [photoWarning, setPhotoWarning] = useState<string | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
   const handleFile = (f: File) => {
     if (!/\.(csv|xlsx|xls)$/i.test(f.name)) {
       toast.error("Solo se aceptan archivos CSV o Excel (.xlsx, .xls)")
@@ -100,6 +118,111 @@ export default function ImportModal({ onClose, onDone }: Props) {
       return
     }
     setFile(f)
+  }
+
+  const handlePhoto = (f: File) => {
+    if (!/^image\//.test(f.type)) {
+      toast.error("Solo se aceptan imágenes (jpg, png, webp)")
+      return
+    }
+    if (f.size > 8 * 1024 * 1024) {
+      toast.error("Imagen demasiado grande (máx 8 MB)")
+      return
+    }
+    setPhotoFile(f)
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl)
+    setPhotoPreviewUrl(URL.createObjectURL(f))
+    setPhotoItems(null)
+    setPhotoWarning(null)
+  }
+
+  /**
+   * Manda la foto al endpoint Vision y muestra los productos detectados
+   * en el "review" — el user los puede borrar antes de confirmar la
+   * importación masiva.
+   */
+  const handleAnalyzePhoto = async () => {
+    if (!photoFile) return
+    setAnalyzing(true)
+    try {
+      const fd = new FormData()
+      fd.append("image", photoFile)
+      const res = await fetch("/api/productos/importar/foto", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "No se pudo procesar la imagen")
+        return
+      }
+      if (!data.items || data.items.length === 0) {
+        toast.error("La IA no detectó productos en esta imagen. Probá con una más clara.")
+        return
+      }
+      setPhotoItems(data.items as PhotoItem[])
+      setPhotoImageType(data.imageType ?? null)
+      setPhotoWarning(data.warning ?? null)
+      setStep("review")
+    } catch {
+      toast.error("Error de red al subir la imagen")
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  /**
+   * Una vez que el user revisó y confirmó los items detectados, los
+   * mandamos al endpoint /bulk para crear los productos en lote.
+   * Si la imagen era ticket de mayorista usamos costPrice y dejamos que
+   * el server calcule precio de venta con el ratio default. Si era lista
+   * de venta usamos price tal cual.
+   */
+  const handleCommitPhoto = async () => {
+    if (!photoItems || photoItems.length === 0) return
+    setImporting(true)
+    try {
+      const products = photoItems.map((it) => {
+        const isTicket = photoImageType === "ticket-mayorista"
+        const cost = it.costPrice ?? (isTicket ? it.price : null)
+        const sale = it.price ?? (isTicket && it.costPrice ? Math.round(it.costPrice / defaultCostRatio) : null)
+        return {
+          name: it.name,
+          barcode: it.barcode ?? null,
+          salePrice: sale ?? 0,
+          costPrice: cost ?? 0,
+          stock: it.quantity ?? 0,
+          minStock: 5,
+        }
+      }).filter(p => p.salePrice > 0 || p.costPrice > 0)
+
+      const res = await fetch("/api/productos/bulk-create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? "No se pudieron importar los productos")
+        return
+      }
+      // Si el plan llegó al límite y se saltaron items, lo decimos explícito.
+      if (data.skippedDueToPlan > 0) {
+        toast(`Se saltaron ${data.skippedDueToPlan} productos por límite del plan. Pasá a un plan superior para subirlos.`, {
+          duration: 8000,
+          icon: "⚠️",
+        })
+      }
+      setResult({
+        imported: data.created ?? 0,
+        updated: data.updated ?? 0,
+        skipped: (data.skipped ?? 0) + (data.skippedDueToPlan ?? 0),
+        errors: (data.errors ?? []).map((e: any, i: number) => ({ row: i + 1, name: e.name, message: e.message })),
+        totalRows: products.length,
+      })
+      setStep("result")
+    } catch {
+      toast.error("Error de red al importar")
+    } finally {
+      setImporting(false)
+    }
   }
 
   const handleAnalyze = async () => {
@@ -205,6 +328,30 @@ export default function ImportModal({ onClose, onDone }: Props) {
           {/* ── STEP 1: UPLOAD ────────────────────────────────────────────── */}
           {step === "upload" && (
             <>
+              {/* Selector Excel / Foto */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-gray-800/60 border border-gray-700 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setMode("file")}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    mode === "file" ? "bg-accent text-accent-foreground shadow" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <FileText size={14} /> Excel / CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("photo")}
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    mode === "photo" ? "bg-accent text-accent-foreground shadow" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Camera size={14} /> Foto con IA
+                  <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">Nuevo</span>
+                </button>
+              </div>
+
+              {mode === "file" && (
               <div className="flex items-center justify-between p-3 bg-gray-800/40 rounded-xl border border-gray-700">
                 <div className="flex items-center gap-2 text-sm text-gray-300">
                   <FileText size={16} className="text-accent" />
@@ -214,48 +361,96 @@ export default function ImportModal({ onClose, onDone }: Props) {
                   <Download size={14} /> Ejemplo CSV
                 </button>
               </div>
+              )}
 
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  setDragging(false)
-                  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0])
-                }}
-                onClick={() => inputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${
-                  dragging ? "border-accent bg-accent-soft"
-                    : file ? "border-emerald-500 bg-emerald-500/5"
-                    : "border-gray-700 hover:border-gray-600"
-                }`}
-              >
-                <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden"
-                  onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-                {file ? (
-                  <>
-                    <CheckCircle size={36} className="text-emerald-400 mx-auto mb-2" />
-                    <p className="text-emerald-400 font-medium">{file.name}</p>
-                    <p className="text-gray-500 text-sm mt-1">{(file.size / 1024).toFixed(1)} KB</p>
-                    <p className="text-xs text-gray-600 mt-2">Click para cambiar</p>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={36} className="text-gray-500 mx-auto mb-3" />
-                    <p className="text-gray-200 font-medium">Arrastrá tu Excel acá</p>
-                    <p className="text-gray-500 text-sm mt-1">o hacé click para elegir un archivo</p>
-                    <p className="text-xs text-gray-600 mt-3">Formatos: .xlsx · .xls · .csv (máx 10 MB)</p>
-                  </>
-                )}
-              </div>
+              {mode === "file" && (
+                <>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setDragging(false)
+                      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0])
+                    }}
+                    onClick={() => inputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${
+                      dragging ? "border-accent bg-accent-soft"
+                        : file ? "border-emerald-500 bg-emerald-500/5"
+                        : "border-gray-700 hover:border-gray-600"
+                    }`}
+                  >
+                    <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden"
+                      onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+                    {file ? (
+                      <>
+                        <CheckCircle size={36} className="text-emerald-400 mx-auto mb-2" />
+                        <p className="text-emerald-400 font-medium">{file.name}</p>
+                        <p className="text-gray-500 text-sm mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+                        <p className="text-xs text-gray-600 mt-2">Click para cambiar</p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={36} className="text-gray-500 mx-auto mb-3" />
+                        <p className="text-gray-200 font-medium">Arrastrá tu Excel acá</p>
+                        <p className="text-gray-500 text-sm mt-1">o hacé click para elegir un archivo</p>
+                        <p className="text-xs text-gray-600 mt-3">Formatos: .xlsx · .xls · .csv (máx 10 MB)</p>
+                      </>
+                    )}
+                  </div>
 
-              <div className="bg-accent-soft border border-accent/30 rounded-xl p-3 flex gap-3 items-start">
-                <Wand2 size={16} className="text-accent mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-gray-300 leading-relaxed">
-                  <p className="font-medium text-accent mb-0.5">No tenés que cambiar tu archivo</p>
-                  La IA detecta automáticamente qué columna es el precio, el código de barras, el stock, la categoría, etc. Si solo tenés el precio (sin costo), asumimos un margen del 25% (configurable después).
-                </div>
-              </div>
+                  <div className="bg-accent-soft border border-accent/30 rounded-xl p-3 flex gap-3 items-start">
+                    <Wand2 size={16} className="text-accent mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-gray-300 leading-relaxed">
+                      <p className="font-medium text-accent mb-0.5">No tenés que cambiar tu archivo</p>
+                      La IA detecta automáticamente qué columna es el precio, el código de barras, el stock, la categoría, etc. Si solo tenés el precio (sin costo), asumimos un margen del 25% (configurable después).
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {mode === "photo" && (
+                <>
+                  <div
+                    onClick={() => photoInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${
+                      photoFile ? "border-emerald-500 bg-emerald-500/5" : "border-gray-700 hover:border-gray-600"
+                    }`}
+                  >
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && handlePhoto(e.target.files[0])}
+                    />
+                    {photoPreviewUrl ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photoPreviewUrl} alt="preview" className="mx-auto max-h-48 rounded-lg shadow-lg" />
+                        <p className="text-emerald-400 font-medium mt-3">{photoFile?.name}</p>
+                        <p className="text-xs text-gray-600 mt-1">Click para cambiar</p>
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon size={36} className="text-gray-500 mx-auto mb-3" />
+                        <p className="text-gray-200 font-medium">Sacá foto o subí imagen</p>
+                        <p className="text-gray-500 text-sm mt-1">Ticket de mayorista · Lista en papel · Góndola</p>
+                        <p className="text-xs text-gray-600 mt-3">JPG · PNG · WebP (máx 8 MB)</p>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="bg-emerald-500/[0.08] border border-emerald-500/30 rounded-xl p-3 flex gap-3 items-start">
+                    <Sparkles size={16} className="text-emerald-300 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs text-gray-300 leading-relaxed">
+                      <p className="font-medium text-emerald-300 mb-0.5">¿Cómo funciona?</p>
+                      Sacá foto a tu ticket de Maxi/Vital/Diarco, a tu lista escrita o a la góndola. La IA detecta los productos con sus precios y los carga en bloque. Vas a poder revisar y borrar items antes de confirmar.
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -443,6 +638,100 @@ export default function ImportModal({ onClose, onDone }: Props) {
             </>
           )}
 
+          {/* ── STEP 2 (modo foto): REVIEW de items detectados ────────────── */}
+          {step === "review" && mode === "photo" && photoItems && (
+            <>
+              <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="text-accent" />
+                  <span className="text-sm font-medium text-gray-100">
+                    {photoItems.length} producto{photoItems.length === 1 ? "" : "s"} detectado{photoItems.length === 1 ? "" : "s"}
+                  </span>
+                  {photoImageType && (
+                    <span className="ml-auto text-[10px] uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-0.5">
+                      {photoImageType === "ticket-mayorista" ? "Ticket de mayorista" : photoImageType === "lista" ? "Lista" : "Góndola"}
+                    </span>
+                  )}
+                </div>
+                {photoWarning && (
+                  <div className="flex gap-2 items-start text-xs text-amber-300">
+                    <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
+                    <span>{photoWarning}</span>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Revisá los items antes de importar. Tocá la X para descartar productos
+                  detectados con error. {photoImageType === "ticket-mayorista" && "Los precios del ticket los tomamos como costo y calculamos precio de venta con tu margen configurado."}
+                </p>
+              </div>
+
+              <div className="border border-gray-800 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto max-h-[40vh] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-800/60 text-gray-400 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-1.5 text-left font-medium">Nombre</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Precio</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Costo</th>
+                        <th className="px-2 py-1.5 text-right font-medium">Cant.</th>
+                        <th className="px-2 py-1.5"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {photoItems.map((it, idx) => (
+                        <tr key={idx}>
+                          <td className="px-2 py-1.5 text-gray-100">{it.name}</td>
+                          <td className="px-2 py-1.5 text-right text-emerald-300">
+                            {it.price ? formatCurrency(it.price) : "—"}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-gray-400">
+                            {it.costPrice ? formatCurrency(it.costPrice) : "—"}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-gray-300">{it.quantity ?? 0}</td>
+                          <td className="px-2 py-1.5 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setPhotoItems((items) => (items ?? []).filter((_, i) => i !== idx))}
+                              className="text-gray-500 hover:text-red-400 p-1"
+                              aria-label="Descartar"
+                            >
+                              <X size={12} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {photoImageType !== "ticket-mayorista" && (
+                <div className="bg-amber-500/5 border border-amber-500/30 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Info size={14} className="text-amber-400" />
+                    <span className="text-sm font-medium text-amber-200">
+                      ¿Qué margen asumimos?
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={50}
+                      max={95}
+                      step={5}
+                      value={Math.round(defaultCostRatio * 100)}
+                      onChange={(e) => setDefaultCostRatio(parseInt(e.target.value) / 100)}
+                      className="flex-1 accent-amber-500"
+                    />
+                    <div className="text-xs text-gray-300 min-w-[110px] text-right">
+                      Costo = <strong className="text-amber-200">{Math.round(defaultCostRatio * 100)}%</strong> del precio
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* ── STEP 3: RESULT ─────────────────────────────────────────────── */}
           {step === "result" && result && (
             <div className="space-y-3">
@@ -483,7 +772,7 @@ export default function ImportModal({ onClose, onDone }: Props) {
 
         {/* Footer */}
         <div className="flex gap-2 p-5 border-t border-gray-800">
-          {step === "upload" && (
+          {step === "upload" && mode === "file" && (
             <>
               <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition">
                 Cancelar
@@ -498,7 +787,22 @@ export default function ImportModal({ onClose, onDone }: Props) {
               </button>
             </>
           )}
-          {step === "review" && (
+          {step === "upload" && mode === "photo" && (
+            <>
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition">
+                Cancelar
+              </button>
+              <button
+                onClick={handleAnalyzePhoto}
+                disabled={!photoFile || analyzing}
+                className="flex-1 py-2.5 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 text-accent-foreground text-sm font-semibold transition flex items-center justify-center gap-2"
+              >
+                {analyzing ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                {analyzing ? "Detectando productos…" : "Detectar productos"}
+              </button>
+            </>
+          )}
+          {step === "review" && mode === "file" && (
             <>
               <button
                 onClick={() => { setStep("upload"); setPreview(null) }}
@@ -514,6 +818,24 @@ export default function ImportModal({ onClose, onDone }: Props) {
               >
                 {importing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
                 {importing ? "Importando..." : `Importar ${preview?.totalRows ?? 0} filas`}
+              </button>
+            </>
+          )}
+          {step === "review" && mode === "photo" && (
+            <>
+              <button
+                onClick={() => { setStep("upload"); setPhotoItems(null) }}
+                className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium transition flex items-center gap-1.5"
+              >
+                <ArrowLeft size={14} /> Volver
+              </button>
+              <button
+                onClick={handleCommitPhoto}
+                disabled={importing || !photoItems || photoItems.length === 0}
+                className="flex-1 py-2.5 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-accent-foreground text-sm font-semibold transition flex items-center justify-center gap-2"
+              >
+                {importing ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+                {importing ? "Importando..." : `Importar ${photoItems?.length ?? 0} producto${(photoItems?.length ?? 0) === 1 ? "" : "s"}`}
               </button>
             </>
           )}
