@@ -181,7 +181,7 @@ function Wrapper({
         type="button"
         onClick={onDismiss}
         aria-label="Cerrar"
-        className="shrink-0 p-1 -m-1 rounded-md text-white/50 hover:text-white/90 transition-colors"
+        className="shrink-0 p-1 -m-1 rounded-md text-gray-400 hover:text-gray-100 transition-colors"
       >
         <X className="w-4 h-4" />
       </button>
@@ -204,12 +204,16 @@ function Copy({ children }: { children: React.ReactNode }) {
   return <div className="flex-1 min-w-0">{children}</div>
 }
 
+// text-white y text-gray-300 ya tienen overrides en globals.css para light
+// mode (text-white → slate-900, text-gray-300 → slate-600). Antes usábamos
+// text-white/70 (translúcido) — sobre los fondos amber/emerald claros del
+// light mode el subtítulo quedaba prácticamente invisible.
 function Title({ children }: { children: React.ReactNode }) {
   return <p className="text-sm font-semibold text-white leading-snug">{children}</p>
 }
 
 function Sub({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-white/70 mt-0.5 leading-relaxed">{children}</p>
+  return <p className="text-xs text-gray-300 mt-0.5 leading-relaxed">{children}</p>
 }
 
 function CTA({
