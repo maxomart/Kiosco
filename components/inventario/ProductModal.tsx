@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Loader2, Sparkles, Users, BookOpen } from "lucide-react"
+import { X, Loader2, Sparkles, Users, BookOpen, Package } from "lucide-react"
 import { HelpTip } from "@/components/ui/HelpTip"
 
 interface Suggestion {
@@ -12,7 +12,7 @@ interface Suggestion {
   suggestedSalePrice: number | null
   suggestedCostPrice: number | null
   tenantCount: number
-  source: "comunidad" | "catalogo-curado"
+  source: "comunidad" | "catalogo-argentino" | "catalogo-curado"
 }
 
 interface Product {
@@ -245,9 +245,17 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
                     onClick={() => applySuggestion(s)}
                     className="w-full px-3 py-2.5 hover:bg-gray-800 transition-colors text-left flex items-start gap-2 border-b border-gray-800 last:border-0"
                   >
-                    <div className={`shrink-0 mt-0.5 ${s.source === "comunidad" ? "text-emerald-400" : "text-blue-400"}`}>
+                    <div className={`shrink-0 mt-0.5 ${
+                      s.source === "comunidad"
+                        ? "text-emerald-400"
+                        : s.source === "catalogo-argentino"
+                        ? "text-amber-400"
+                        : "text-blue-400"
+                    }`}>
                       {s.source === "comunidad"
                         ? <Users size={13} />
+                        : s.source === "catalogo-argentino"
+                        ? <Package size={13} />
                         : <BookOpen size={13} />}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -262,6 +270,8 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
                       <p className="text-[11px] text-gray-500 mt-0.5 truncate">
                         {s.source === "comunidad"
                           ? `${s.tenantCount} kioscos lo tienen`
+                          : s.source === "catalogo-argentino"
+                          ? "Catálogo Orvex · precio orientativo"
                           : "Catálogo de marcas argentinas"}
                         {s.category && ` · ${s.category}`}
                         {s.supplier && ` · ${s.supplier}`}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { lookupKnownBrand } from "@/lib/known-brands-ar"
+import { searchCatalog } from "@/lib/argentine-product-catalog"
 
 export const dynamic = "force-dynamic"
 
@@ -41,8 +42,10 @@ interface Suggestion {
   suggestedCostPrice: number | null
   /** Cuántos kioscos lo tienen cargado. */
   tenantCount: number
-  /** Origen de la sugerencia: "comunidad" o "catalogo-curado". */
-  source: "comunidad" | "catalogo-curado"
+  /** Origen de la sugerencia: "comunidad" (medianas de otros kioscos),
+   * "catalogo-argentino" (productos típicos seed con variantes) o
+   * "catalogo-curado" (diccionario de marcas como fallback genérico). */
+  source: "comunidad" | "catalogo-argentino" | "catalogo-curado"
 }
 
 function normalize(s: string): string {
@@ -63,14 +66,13 @@ function median(numbers: number[]): number {
 }
 
 export async function GET(req: NextRequest) {
-  // El autocomplete de inventario lo queremos disponible para TODOS los
-  // planes y todos los roles (incluso CASHIER) — sino el cajero tipea un
-  // producto nuevo y no recibe ayuda del catálogo. Con sesión cualquiera
-  // ve sugerencias agregadas (no expone data específica de un kiosco).
+  // El autocomplete de inventario está disponible para TODOS los planes y
+  // todos los roles (incluso CASHIER) — sino el cajero tipea un producto
+  // nuevo y no recibe ayuda del catálogo. Sin sesión devolvemos solo el
+  // catálogo argentino seed (productos típicos públicos), sin el agregado
+  // de la comunidad (eso requiere autenticación).
   const session = await auth()
-  if (!session) return NextResponse.json({ suggestions: [] })
-
-  const tenantId = session.user.tenantId ?? null
+  const tenantId = session?.user?.tenantId ?? null
 
   const { searchParams } = new URL(req.url)
   const rawQ = (searchParams.get("q") ?? "").trim()
@@ -79,13 +81,12 @@ export async function GET(req: NextRequest) {
   const q = normalize(rawQ)
   const isBarcode = /^\d{8,14}$/.test(rawQ)
 
-  // 1) Buscamos productos en otros tenants que matcheen el query.
-  //    Para ser eficientes traemos ~300 candidatos y agregamos en JS.
+  // 1) Buscamos productos en otros tenants que matcheen el query — solo
+  //    si hay sesión activa. Trae candidatos de hasta 300 productos y
+  //    agrega en JS por barcode/nombre normalizado.
   //    Si la app crece a 100K productos esto va a doler — ahí migramos
   //    a una vista materializada actualizada por job nocturno.
-  //    Si el user es SUPER_ADMIN sin tenant, "tenantId not in nada" =
-  //    todos los productos (no auto-filtrado, está OK para admin).
-  const candidates = await db.product.findMany({
+  const candidates = session ? await db.product.findMany({
     where: {
       ...(tenantId ? { tenantId: { not: tenantId } } : {}),
       active: true,
@@ -103,7 +104,7 @@ export async function GET(req: NextRequest) {
       supplier: { select: { name: true } },
     },
     take: 300,
-  })
+  }) : []
 
   // 2) Agrupamos por barcode (si existe) o por nombre normalizado.
   type Bucket = {
@@ -159,27 +160,58 @@ export async function GET(req: NextRequest) {
   }
   fromCommunity.sort((a, b) => b.tenantCount - a.tenantCount)
 
-  // 4) Si no llegamos a MAX_RESULTS, complementamos con el catálogo
-  //    curado de marcas argentinas (categoría + proveedor sugeridos).
-  const result: Suggestion[] = fromCommunity.slice(0, MAX_RESULTS)
-  if (result.length < MAX_RESULTS) {
+  // 4) Catálogo argentino — productos típicos con variantes específicas
+  //    (Coca-Cola 2.25L, Coca-Cola Zero 1.5L, Marlboro Box 20, etc.)
+  //    con precio orientativo. Esto es CRÍTICO para que el user vea
+  //    "Coca Cola Zero" y no solo "Coca Cola" genérico cuando tipea.
+  const fromCatalog: Suggestion[] = searchCatalog(rawQ, 8).map(p => ({
+    name: p.name,
+    barcode: null,
+    category: p.category,
+    supplier: p.supplier,
+    suggestedSalePrice: p.approxSalePrice ?? null,
+    suggestedCostPrice: p.approxCostPrice ?? null,
+    tenantCount: 0,
+    source: "catalogo-argentino" as const,
+  }))
+
+  // 5) Mergeo: priorizamos comunidad (precios reales) pero intercalamos
+  //    variantes del catálogo argentino que no estén ya cubiertas.
+  const result: Suggestion[] = []
+  const seen = new Set<string>()
+  const norm = (s: string) => normalize(s)
+
+  for (const s of fromCommunity) {
+    const key = norm(s.name)
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(s)
+    if (result.length >= MAX_RESULTS) break
+  }
+  for (const s of fromCatalog) {
+    if (result.length >= MAX_RESULTS) break
+    const key = norm(s.name)
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(s)
+  }
+
+  // 6) Último fallback: catálogo curado de marcas (categoría + proveedor)
+  //    si seguimos sin nada útil. Esto es para queries muy raros que no
+  //    matchean ni comunidad ni el catálogo argentino seed.
+  if (result.length === 0) {
     const known = lookupKnownBrand(rawQ)
     if (known) {
-      // Evitamos duplicar si ya tenemos algo del mismo proveedor/marca
-      // dentro de los resultados de la comunidad.
-      const dup = result.some(r => r.supplier === known.supplier)
-      if (!dup) {
-        result.push({
-          name: rawQ.charAt(0).toUpperCase() + rawQ.slice(1),
-          barcode: null,
-          category: known.category ?? null,
-          supplier: known.supplier,
-          suggestedSalePrice: null,
-          suggestedCostPrice: null,
-          tenantCount: 0,
-          source: "catalogo-curado",
-        })
-      }
+      result.push({
+        name: rawQ.charAt(0).toUpperCase() + rawQ.slice(1),
+        barcode: null,
+        category: known.category ?? null,
+        supplier: known.supplier,
+        suggestedSalePrice: null,
+        suggestedCostPrice: null,
+        tenantCount: 0,
+        source: "catalogo-curado",
+      })
     }
   }
 
