@@ -11,6 +11,7 @@ import TourOverlay from "@/components/shared/TourOverlay"
 import { UpgradeWelcomeModal } from "@/components/shared/UpgradeWelcomeModal"
 import SupportWidget from "@/components/shared/SupportWidget"
 import { InstallPrompt } from "@/components/shared/InstallPrompt"
+import { InstallPromoBanner } from "@/components/shared/InstallPromoBanner"
 import { OfflineGlobalBanner } from "@/components/shared/OfflineGlobalBanner"
 import { SubscriptionGateClient } from "@/components/shared/SubscriptionGateClient"
 import { isBlockingState } from "@/lib/subscription-banner"
@@ -175,6 +176,7 @@ export default async function DashboardLayout({
               <main className="flex-1 overflow-auto">
                 <OfflineGlobalBanner />
                 <SubscriptionStatusBanner {...bannerData} />
+                <InstallPromoBanner />
                 <div className="p-4 lg:p-6">{children}</div>
               </main>
             </div>
