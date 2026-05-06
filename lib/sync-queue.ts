@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react"
+import toast from "react-hot-toast"
 import {
   getPendingSales,
   markSynced,
@@ -133,8 +134,31 @@ export function useOfflineSync(): OfflineSyncState {
     setLastError(null)
     try {
       const res = await flushQueue()
+      // Solo notificamos cuando hubo cambio real — los polleos vacíos
+      // (ok=0, failed=0) no disparan toasts para no molestar al cajero.
+      if (res.ok > 0) {
+        toast.success(
+          res.ok === 1
+            ? "Venta offline sincronizada ✓"
+            : `${res.ok} ventas offline sincronizadas ✓`,
+          { duration: 4000, icon: "🔄" }
+        )
+      }
       if (res.failed > 0 && res.ok === 0) {
         setLastError(`No se pudieron sincronizar ${res.failed} ventas`)
+        toast.error(
+          res.failed === 1
+            ? "1 venta offline no se pudo sincronizar — abrí Sync para ver el detalle"
+            : `${res.failed} ventas offline no se pudieron sincronizar — abrí Sync para ver el detalle`,
+          { duration: 6000 }
+        )
+      } else if (res.failed > 0) {
+        // Mix: algunas pasaron, otras no. El toast de éxito ya salió arriba;
+        // sumamos uno suave para que sepa que hay que mirar la cola.
+        toast(`${res.failed} ventas quedaron pendientes — revisalas en Sync`, {
+          duration: 5000,
+          icon: "⚠️",
+        })
       }
     } catch (e: any) {
       setLastError(e?.message ?? "Error al sincronizar")

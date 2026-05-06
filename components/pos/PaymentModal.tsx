@@ -256,9 +256,17 @@ export function PaymentModal({ onClose }: Props) {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("orvex:offline-sale-enqueued"))
       }
+      const offlineNumber = "OFFLINE-" + localId.slice(0, 4).toUpperCase()
+      // Toast explícito para que el cajero sepa qué pasó. La pantalla
+      // de éxito muestra "OFFLINE" pero algunos cajeros entran en pánico
+      // pensando que no se cobró. Decimos lo que pasa, sin jerga.
+      toast.success(
+        `Venta ${offlineNumber} guardada offline · vamos a sincronizarla cuando vuelva la conexión`,
+        { duration: 5000, icon: "📥" }
+      )
       setSuccess({
         saleId: localId,
-        number: "OFFLINE-" + localId.slice(0, 4).toUpperCase(),
+        number: offlineNumber,
         total: totalAmount,
         change: method === "CASH" && cashReceived ? change : 0,
         method,
