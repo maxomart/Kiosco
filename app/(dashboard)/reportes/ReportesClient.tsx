@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { AIInsightsPanel } from "@/components/reportes/AIInsightsPanel"
 import { SalesHeatmap } from "@/components/reportes/SalesHeatmap"
 import { TopCategoriesPanel } from "@/components/reportes/TopCategoriesPanel"
+import { InsightsBanner } from "@/components/reportes/InsightsBanner"
 import { PageTip } from "@/components/shared/PageTip"
 
 interface ReportData {
@@ -136,9 +137,67 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
 
   const exportCSV = () => {
     if (!data) return
-    const rows = [["Fecha", "Ventas", "Ingresos"], ...data.dailySales.map(d => [d.date, d.count, d.total])]
-    const csv = rows.map(r => r.join(",")).join("\n")
-    const a = document.createElement("a"); a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`; a.download = "reporte.csv"; a.click()
+    // CSV completo con costo + margen por día — para que el dueño pueda
+    // mandárselo al contador o tirarlo en una hoja de cálculo y hacerle
+    // pivot. Antes solo bajábamos fecha + cantidad + ingreso (inútil).
+    const totalRevenue = data.totalRevenue || 0
+    const totalCost = data.totalCost || 0
+    const dayShare = (n: number) => totalRevenue > 0 ? n / totalRevenue : 0
+    const rows: (string | number)[][] = [
+      ["Fecha", "Cantidad ventas", "Ingresos ARS", "Costo estimado ARS", "Ganancia ARS", "Margen %"],
+    ]
+    for (const d of data.dailySales) {
+      // Distribuimos el costo total proporcional al ingreso del día —
+      // approximación, pero ya es mil veces más útil que solo ingresos.
+      const cost = Math.round(totalCost * dayShare(d.total))
+      const profit = d.total - cost
+      const margin = d.total > 0 ? ((profit / d.total) * 100) : 0
+      rows.push([d.date, d.count, Math.round(d.total), cost, profit, margin.toFixed(1).replace(".", ",")])
+    }
+    rows.push([]) // separador
+    rows.push(["Resumen del período", `${from} a ${to}`])
+    rows.push(["Total ventas", data.totalSales])
+    rows.push(["Ingresos ARS", Math.round(totalRevenue)])
+    rows.push(["Costo ARS", Math.round(totalCost)])
+    rows.push(["Ganancia ARS", Math.round(data.totalProfit || 0)])
+    rows.push(["Margen %", (data.profitMargin || 0).toFixed(1).replace(".", ",")])
+    rows.push(["Ticket promedio ARS", Math.round(data.avgTicket || 0)])
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n")
+    // BOM para que Excel argentino abra los acentos bien
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `orvex-reporte-${from}-a-${to}.csv`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  /**
+   * Export "IVA del mes" — CSV con cada venta del rango listada con su
+   * IVA discriminado (21% por defecto sobre el total). Es lo que un
+   * contador argentino te pide para cargar el monotributo o el IVA de
+   * RI. No es un libro IVA legal pero ahorra horas de Excel.
+   */
+  const exportIVA = async () => {
+    try {
+      const res = await fetch(`/api/reportes/iva?from=${from}T00:00:00&to=${to}T23:59:59`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error ?? "No se pudo generar el reporte de IVA")
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `orvex-iva-${from}-a-${to}.csv`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (e) {
+      console.error("[exportIVA] failed", e)
+      alert("Error al generar el CSV de IVA")
+    }
   }
 
   return (
@@ -147,6 +206,10 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
         <strong>✨ Nuevo:</strong> click en <strong>"Generar análisis con IA"</strong> abajo para que la IA te
         cuente en lenguaje natural cómo viene tu negocio, qué destacar y qué mejorar.
       </PageTip>
+
+      {/* Insights accionables — solo se renderiza si hay alguno y el plan
+          tiene IA. Antes vivía solo en el chatbot del home y nadie lo veía. */}
+      <InsightsBanner />
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -169,8 +232,11 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
             <input type="date" value={to} onChange={e => { setTo(e.target.value); setPreset("custom") }}
               className="bg-transparent text-sm text-white focus:outline-none" />
           </div>
-          <button onClick={exportCSV} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors">
-            <Download size={14} /> CSV
+          <button onClick={exportCSV} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="Exportá fecha, cantidad, ingresos, costo, ganancia y margen del período">
+            <Download size={14} /> Exportar CSV
+          </button>
+          <button onClick={exportIVA} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm transition-colors" title="CSV listo para tu contador con cada venta y su IVA 21% discriminado">
+            <Download size={14} /> IVA del período
           </button>
           <a
             href="/tv"
