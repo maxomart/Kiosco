@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import { OrvexLogo } from "@/components/shared/OrvexLogo"
 import {
@@ -76,6 +77,24 @@ export default function LandingClient({
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 80])
   const [period, setPeriod] = useState<BillingPeriod>("monthly")
+  const router = useRouter()
+
+  // Si el user abre Orvex como PWA standalone (instalada en escritorio o
+  // mobile como app), no queremos mostrar el landing — eso es para
+  // visitas web. Redirigimos directo a /login (o /inicio si la sesión
+  // está activa, lo cual ya maneja el dashboard layout). Ahorra dos
+  // taps innecesarios al usuario que ya conoce la app.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: window-controls-overlay)").matches ||
+      // iOS Safari
+      (window.navigator as any).standalone === true
+    if (isStandalone) {
+      router.replace("/login")
+    }
+  }, [router])
 
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden relative landing-root selection:bg-violet-500/30 selection:text-white">

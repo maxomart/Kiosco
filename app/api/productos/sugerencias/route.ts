@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { getSessionTenant } from "@/lib/tenant"
-import { can } from "@/lib/permissions"
+import { auth } from "@/lib/auth"
 import { lookupKnownBrand } from "@/lib/known-brands-ar"
 
 export const dynamic = "force-dynamic"
@@ -64,11 +63,14 @@ function median(numbers: number[]): number {
 }
 
 export async function GET(req: NextRequest) {
-  const { error, tenantId, session } = await getSessionTenant()
-  if (error) return error
-  if (!can(session?.user?.role, "products:read")) {
-    return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
-  }
+  // El autocomplete de inventario lo queremos disponible para TODOS los
+  // planes y todos los roles (incluso CASHIER) — sino el cajero tipea un
+  // producto nuevo y no recibe ayuda del catálogo. Con sesión cualquiera
+  // ve sugerencias agregadas (no expone data específica de un kiosco).
+  const session = await auth()
+  if (!session) return NextResponse.json({ suggestions: [] })
+
+  const tenantId = session.user.tenantId ?? null
 
   const { searchParams } = new URL(req.url)
   const rawQ = (searchParams.get("q") ?? "").trim()
@@ -81,9 +83,11 @@ export async function GET(req: NextRequest) {
   //    Para ser eficientes traemos ~300 candidatos y agregamos en JS.
   //    Si la app crece a 100K productos esto va a doler — ahí migramos
   //    a una vista materializada actualizada por job nocturno.
+  //    Si el user es SUPER_ADMIN sin tenant, "tenantId not in nada" =
+  //    todos los productos (no auto-filtrado, está OK para admin).
   const candidates = await db.product.findMany({
     where: {
-      tenantId: { not: tenantId! },
+      ...(tenantId ? { tenantId: { not: tenantId } } : {}),
       active: true,
       ...(isBarcode
         ? { barcode: rawQ }

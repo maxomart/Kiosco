@@ -218,7 +218,18 @@ export default function InventarioPage() {
             <Sparkles size={16} /> <span className="hidden sm:inline">Auto-organizar IA</span>
           </button>
 
-          {/* Más acciones: dropdown con Importar / Exportar / Stock masivo / Categorías / Duplicados */}
+          {/* Importar — botón propio, fuera del menú Más, porque es la
+              forma más rápida de cargar productos en bloque (Excel o foto). */}
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-200 border border-emerald-600/40 text-sm font-medium transition-colors whitespace-nowrap"
+            title="Importar productos desde Excel/CSV o sacando foto a un ticket o lista"
+            aria-label="Importar productos"
+          >
+            <Upload size={16} /> <span className="hidden sm:inline">Importar</span>
+          </button>
+
+          {/* Más acciones: dropdown con Categorías / Exportar / Stock masivo / Duplicados */}
           <div className="relative">
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
@@ -236,12 +247,6 @@ export default function InventarioPage() {
                   className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 text-left text-sm text-gray-200 transition-colors"
                 >
                   <Tag size={14} className="text-sky-400" /> Gestionar categorías
-                </button>
-                <button
-                  onMouseDown={() => { setShowMoreMenu(false); setShowImport(true) }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-800 text-left text-sm text-gray-200 transition-colors"
-                >
-                  <Upload size={14} className="text-emerald-400" /> Importar CSV / Excel
                 </button>
                 <button
                   onMouseDown={() => { setShowMoreMenu(false); handleExport() }}

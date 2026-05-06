@@ -61,6 +61,10 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autocompleteRef = useRef<HTMLDivElement>(null)
+  // Usamos un ref para el suggestion activo durante el mousedown para
+  // que el handler del click no compita con el blur del input.
+  const justSelectedRef = useRef(false)
 
   useEffect(() => {
     // No buscamos cuando estamos editando un producto existente — sería
@@ -69,6 +73,12 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
     if (form.name.trim().length < 3) {
       setSuggestions([])
       setShowSuggestions(false)
+      return
+    }
+    // Si acabamos de aplicar una sugerencia, evitamos el re-fetch que
+    // dispararía el setForm de applySuggestion (sino reabre el dropdown).
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false
       return
     }
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -87,7 +97,21 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [form.name, product, duplicate])
 
+  // Click fuera del componente cierra el dropdown. Más confiable que
+  // onBlur porque no compite con el click del propio dropdown.
+  useEffect(() => {
+    if (!showSuggestions) return
+    const onDocClick = (e: MouseEvent) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener("mousedown", onDocClick)
+    return () => document.removeEventListener("mousedown", onDocClick)
+  }, [showSuggestions])
+
   const applySuggestion = (s: Suggestion) => {
+    justSelectedRef.current = true
     setForm(f => ({
       ...f,
       name: s.name,
@@ -103,6 +127,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
         ? (suppliers.find(sp => sp.name.toLowerCase() === s.supplier!.toLowerCase())?.id ?? f.supplierId)
         : f.supplierId,
     }))
+    setSuggestions([])
     setShowSuggestions(false)
   }
 
@@ -192,7 +217,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
           )}
 
           {/* Name + autocomplete por catálogo de la comunidad */}
-          <div className="relative">
+          <div className="relative" ref={autocompleteRef}>
             <label className="block text-sm text-gray-400 mb-1.5">
               Nombre *
               {loadingSuggestions && <Loader2 size={11} className="inline ml-2 text-gray-500 animate-spin" />}
@@ -201,7 +226,6 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
               value={form.name}
               onChange={e => set("name", e.target.value)}
               onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               autoComplete="off"
               className={`w-full px-3 py-2.5 bg-gray-800 border rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 ${errors.name ? "border-red-500" : "border-gray-700"}`}
             />
@@ -218,7 +242,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
                   <button
                     key={`${s.barcode ?? s.name}-${i}`}
                     type="button"
-                    onMouseDown={(e) => { e.preventDefault(); applySuggestion(s) }}
+                    onClick={() => applySuggestion(s)}
                     className="w-full px-3 py-2.5 hover:bg-gray-800 transition-colors text-left flex items-start gap-2 border-b border-gray-800 last:border-0"
                   >
                     <div className={`shrink-0 mt-0.5 ${s.source === "comunidad" ? "text-emerald-400" : "text-blue-400"}`}>
