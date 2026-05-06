@@ -12,6 +12,7 @@ import { UpgradeWelcomeModal } from "@/components/shared/UpgradeWelcomeModal"
 import SupportWidget from "@/components/shared/SupportWidget"
 import { InstallPrompt } from "@/components/shared/InstallPrompt"
 import { InstallPromoBanner } from "@/components/shared/InstallPromoBanner"
+import { OfflineSeeder } from "@/components/shared/OfflineSeeder"
 import { OfflineGlobalBanner } from "@/components/shared/OfflineGlobalBanner"
 import { SubscriptionGateClient } from "@/components/shared/SubscriptionGateClient"
 import { isBlockingState } from "@/lib/subscription-banner"
@@ -183,6 +184,7 @@ export default async function DashboardLayout({
             {aiEnabled && <AssistantWidget plan={plan as any} />}
             <SupportWidget />
             <InstallPrompt />
+            <OfflineSeeder />
             {showTour && <TourOverlay plan={plan as any} upgradedFrom={upgradedFrom} />}
             {showUpgradeWelcome && upgradedFrom && (
               <UpgradeWelcomeModal from={upgradedFrom} to={plan as any} />

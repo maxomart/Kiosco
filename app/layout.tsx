@@ -62,9 +62,13 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#6366f1",
+  themeColor: "#050510",
   width: "device-width",
   initialScale: 1,
+  // viewport-fit=cover deja que la app dibuje detrás de los notches en
+  // iPhone (Dynamic Island) — necesario para que la PWA standalone se
+  // vea como app nativa y no como web con barrita blanca arriba.
+  viewportFit: "cover",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -72,7 +76,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es-AR" suppressHydrationWarning className="dark">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#6366f1" />
+        {/* iOS tags — sin estos, en iPhone la PWA arranca con barrita
+            de Safari y status bar blanco. Con estos arranca como app full. */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Orvex" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        {/* theme-color match el background del manifest para que no haya
+            flash blanco en standalone al cargar. */}
+        <meta name="theme-color" content="#050510" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+        <meta name="color-scheme" content="dark light" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className={`${inter.variable} antialiased min-h-screen bg-gray-950`} suppressHydrationWarning>

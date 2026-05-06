@@ -665,7 +665,42 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8 !
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     font-family: var(--font-inter, system-ui, sans-serif);
+    /* Cuando la PWA arranca en standalone con viewport-fit=cover, el
+       layout dibuja detrás del notch / Dynamic Island. Estos paddings
+       respetan las safe-areas del device para que el contenido no
+       quede tapado por el reloj o el indicador de Face ID. */
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
   }
+
+  /* Reglas que solo aplican cuando la app corre instalada como PWA.
+     Sirven para esconder ornamentos pensados para la web (ej: un footer
+     de marketing) o ajustar componentes que en standalone deben verse
+     más app-like (sin barras, full bleed). */
+  @media all and (display-mode: standalone),
+         all and (display-mode: window-controls-overlay) {
+    /* En standalone evitamos el rebote elástico de iOS/Safari que hace
+       sentir la app como web. body con position fixed no escala bien
+       con scroll, usamos overscroll-behavior. */
+    html, body {
+      overscroll-behavior-y: none;
+    }
+    /* Texto no se selecciona accidentalmente al hacer long-press —
+       comportamiento de app, no de página web. Inputs y áreas
+       editables siguen seleccionables (override en ::selection). */
+    body {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input, textarea, [contenteditable], [data-allow-select] {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+  }
+
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: #111827; }
   ::-webkit-scrollbar-thumb { background: #374151; border-radius: 9999px; }
