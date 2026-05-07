@@ -3,6 +3,13 @@ import { auth } from "@/lib/auth"
 import { PLAN_PRICES_ARS, PLAN_LABELS_AR } from "@/lib/utils"
 import { db } from "@/lib/db"
 import LandingClient from "./_landing/LandingClient"
+import { JsonLd } from "@/components/seo/JsonLd"
+import {
+  organizationSchema,
+  softwareApplicationSchema,
+  websiteSchema,
+  faqPageSchema,
+} from "@/lib/seo-schema"
 
 interface ActivePromo {
   code: string
@@ -134,13 +141,59 @@ export default async function LandingPage({
       }
     : null
 
+  // FAQ resumida que matchea las que ya muestra LandingClient. Si las
+  // cambiamos en LandingClient, hay que sincronizar acá. (Vale la pena
+  // tenerlas duplicadas porque Google escanea el JSON-LD aparte.)
+  const landingFaqs = [
+    {
+      question: "¿Para qué tipo de negocio sirve Orvex?",
+      answer:
+        "Orvex está hecho específicamente para kioscos, almacenes, farmacias, minisúper y verdulerías argentinas. Funciona bien tanto para un negocio chico de un solo dueño como para varios cajeros con turnos.",
+    },
+    {
+      question: "¿Funciona sin internet?",
+      answer:
+        "Sí. El POS funciona offline-first: si se cae el wifi en medio de una venta, podés seguir vendiendo y las ventas se sincronizan solas cuando vuelve la conexión.",
+    },
+    {
+      question: "¿Emite facturas AFIP?",
+      answer:
+        "Sí, en el plan Profesional ($24.900 ARS/mes). Integra con ARCA (ex AFIP) y emite Factura A, B y C con CAE directo desde el POS.",
+    },
+    {
+      question: "¿Cuánto cuesta?",
+      answer:
+        "Hay un plan Gratis permanente sin tarjeta para arrancar (100 productos, 50 ventas/mes). El plan Básico es $9.999 ARS/mes y el Profesional $24.900 ARS/mes. Todos los planes pagos tienen 7 días de prueba sin cargar tarjeta.",
+    },
+    {
+      question: "¿En qué dispositivos corre?",
+      answer:
+        "Cualquier navegador moderno (Chrome, Edge, Safari, Firefox) en celular, tablet o computadora. Se puede instalar como app PWA en iPhone, Android, Windows, Mac y Linux.",
+    },
+    {
+      question: "¿Cómo importo mis productos actuales?",
+      answer:
+        "Tenés tres formas: subiendo un Excel/CSV (la IA detecta las columnas sola), sacándole foto a un ticket de mayorista o lista escrita (la IA extrae los productos), o cargándolos uno a uno con el autocomplete del catálogo argentino pre-cargado.",
+    },
+  ]
+
   return (
-    <LandingClient
-      plans={plans}
-      activePromo={promoForClient}
-      freeHref={freeHref}
-      professionalHref={professionalHref}
-      promoCode={promoCode}
-    />
+    <>
+      <JsonLd
+        data={[
+          organizationSchema(),
+          websiteSchema(),
+          softwareApplicationSchema(),
+          faqPageSchema(landingFaqs),
+        ]}
+      />
+      <LandingClient
+        plans={plans}
+        activePromo={promoForClient}
+        freeHref={freeHref}
+        professionalHref={professionalHref}
+        promoCode={promoCode}
+      />
+    </>
   )
 }

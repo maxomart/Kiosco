@@ -6,6 +6,12 @@ import { OrvexLogo } from "@/components/shared/OrvexLogo"
 // Native ARS pricing — primary source of truth. USD shown as secondary reference.
 // Edit lib/utils.ts → PLAN_PRICES_ARS for the canonical numbers.
 import { PLAN_PRICES_ARS, PLAN_PRICES_USD } from "@/lib/utils"
+import { JsonLd } from "@/components/seo/JsonLd"
+import {
+  softwareApplicationSchema,
+  faqPageSchema,
+  breadcrumbSchema,
+} from "@/lib/seo-schema"
 
 // Solo 3 ofertas vigentes: Gratis, Básico, Profesional. Los planes BUSINESS /
 // ENTERPRISE quedaron como legacy y no se muestran en el funnel público.
@@ -161,8 +167,44 @@ function XIcon() {
   return <X className="w-4 h-4 text-gray-700" />
 }
 
+// FAQ que ya está hardcoded más abajo en este file. Lo duplicamos acá
+// como objeto serializable para el schema JSON-LD que come Google.
+const PRICING_FAQ_FOR_SCHEMA = [
+  {
+    question: "¿Puedo cambiar de plan en cualquier momento?",
+    answer: "Sí. Subís o bajás de plan cuando quieras desde Configuración → Suscripción. Si subís se aplica al toque; si bajás mantenés tus features hasta el fin del ciclo actual.",
+  },
+  {
+    question: "¿Cómo es la prueba?",
+    answer: "Cuando elegís Básico o Profesional tenés 7 días sin cargar tarjeta. Si no pagás, tu cuenta vuelve sola al plan Gratis con los límites menores y tus datos quedan ahí para cuando estés listo.",
+  },
+  {
+    question: "¿Qué pasa con mis datos si dejo de pagar?",
+    answer: "Tu cuenta vuelve al plan Gratis automáticamente. Conservás todos tus productos, ventas y clientes — solo se aplican los límites del plan Gratis. No borramos nada.",
+  },
+  {
+    question: "¿Aceptan facturas A?",
+    answer: "Sí, emitimos factura A o B según corresponda con AFIP integrado. Cada plan tiene su cupo mensual: 50 en Gratis, 200 en Básico, 500 en Profesional.",
+  },
+  {
+    question: "¿El precio es en pesos?",
+    answer: "Sí, todos los precios son en pesos argentinos. Cobramos por MercadoPago (cualquier tarjeta + dinero en cuenta) o tarjeta internacional vía Stripe. Sin cargos ocultos.",
+  },
+]
+
 export default function PricingPage() {
   return (
+    <>
+      <JsonLd
+        data={[
+          softwareApplicationSchema(),
+          faqPageSchema(PRICING_FAQ_FOR_SCHEMA),
+          breadcrumbSchema([
+            { name: "Inicio", url: "https://cobraorvex.com/" },
+            { name: "Precios", url: "https://cobraorvex.com/pricing" },
+          ]),
+        ]}
+      />
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Navbar */}
       <nav className="sticky top-0 z-50 bg-gray-950/85 backdrop-blur-xl border-b border-gray-800/60">
@@ -371,5 +413,6 @@ export default function PricingPage() {
         &copy; {new Date().getFullYear()} Orvex — Todos los derechos reservados
       </footer>
     </div>
+    </>
   )
 }

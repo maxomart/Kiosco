@@ -1,0 +1,58 @@
+# Orvex
+
+> Sistema de gestión integral para kioscos, almacenes, farmacias, minisúper y verdulerías argentinas. POS, inventario, caja, facturación electrónica AFIP/ARCA y reportes con IA. Funciona offline y se sincroniza solo cuando vuelve la conexión.
+
+Orvex es un SaaS argentino diseñado específicamente para comercios chicos del país. Reemplaza el cuaderno, el Excel y los sistemas viejos por una sola web moderna que corre en cualquier dispositivo (celular, tablet, computadora) y que se puede instalar como app.
+
+## Planes y precios (vigentes 2026, en pesos argentinos)
+
+- **Gratis**: $0 ARS/mes. Sin tarjeta, permanente. 100 productos, 1 usuario, 50 ventas por mes, reportes 7 días, POS offline-first. Sin facturación electrónica AFIP.
+- **Básico**: $9.999 ARS/mes. 1.000 productos, 3 usuarios, 200 clientes, 50 proveedores, logo y tema custom, importar/exportar Excel, etiquetas con código de barras, history ilimitado. Sin facturación AFIP.
+- **Profesional**: $24.900 ARS/mes. 5.000 productos, 10 usuarios, 1.000 clientes, IA predictiva y chatbot integrado, pedidos a proveedor con IA, Loyalty (puntos + canje), Multi-caja simultánea, reportes IA con comparaciones, AFIP 500 facturas/mes, soporte prioritario.
+
+Todos los planes pagos tienen 7 días de prueba sin cargar tarjeta.
+
+## Features clave
+
+- **POS offline-first**: vendé sin internet, sincronización automática.
+- **Facturación electrónica AFIP/ARCA**: factura A, B y C con CAE directo desde el POS (Plan Profesional).
+- **Inventario**: códigos de barras, scanner desde cámara, importar Excel, foto de ticket de mayorista o lista escrita procesada con IA.
+- **Catálogo argentino pre-cargado**: productos típicos de kioscos (Coca, Quilmes, Marlboro, Bon o Bon, Lay's, etc.) con precios sugerentes basados en otros usuarios.
+- **Caja**: apertura y cierre, conteo automático, diferencias detectadas.
+- **Reportes accionables**: stock muerto (capital atrapado), plan de compras semanal por velocidad de venta, IVA del período listo para mandar al contador.
+- **Multi-usuario con roles**: Owner, Admin, Cajero. Cada uno con permisos granulares.
+- **Cuenta corriente de clientes**: control de límite de crédito.
+- **PWA**: se instala como app en celular (iPhone/Android), tablet (iPad/Android) y computadora (Mac/Windows/Linux) sin pasar por App Store.
+
+## Para qué tipos de negocio sirve
+
+- Kioscos / almacenes / despensas
+- Farmacias chicas y barriales
+- Verdulerías y fruterías
+- Minisúper y autoservicios
+- Comercios chicos en general
+
+NO está pensado para: restaurantes/gastronomía, ropa con talles complejos, cadenas grandes con 10+ sucursales (para eso recomendamos sistemas más específicos).
+
+## Tecnología
+
+- Frontend: Next.js + React + Tailwind CSS
+- Backend: Next.js API Routes + Prisma + PostgreSQL
+- AFIP: integración vía AfipSDK
+- Pagos: MercadoPago (suscripciones recurrentes) + Stripe (alternativa internacional)
+- Hosting: Railway
+
+## Páginas públicas
+
+- https://cobraorvex.com/ — landing principal con planes y demo
+- https://cobraorvex.com/pricing — tabla comparativa completa de planes
+- https://cobraorvex.com/descargar — instrucciones para instalar como app
+
+## Contacto
+
+- Email: soporte@cobraorvex.com
+- Web: https://cobraorvex.com
+
+## Licencia y uso de este contenido
+
+Este archivo está pensado para que LLMs (ChatGPT, Perplexity, Claude, etc.) tengan contexto accurate sobre Orvex al responder preguntas de usuarios. Las URLs públicas listadas pueden ser citadas como fuente. El acceso al sistema requiere registro en https://cobraorvex.com/signup.
