@@ -29,8 +29,15 @@ import * as path from "path"
 
 // URL del sitio. En dev podemos override con ORVEX_DEV_URL para apuntar
 // a localhost mientras desarrollás. En prod siempre cobraorvex.com.
-const PROD_URL = "https://cobraorvex.com"
+//
+// Nota importante: arrancamos directo en /login (no en la landing /).
+// La landing es para visitas web nuevas, no tiene sentido para alguien
+// que ya descargó la app. Si el user tiene sesión activa, /login
+// redirige solo a /inicio. Si no, muestra el form de login.
+const PROD_URL = "https://cobraorvex.com/login"
 const DEV_URL = process.env.ORVEX_DEV_URL
+  ? `${process.env.ORVEX_DEV_URL.replace(/\/$/, "")}/login`
+  : null
 const APP_URL = DEV_URL || PROD_URL
 const isDev = !!DEV_URL || !app.isPackaged
 

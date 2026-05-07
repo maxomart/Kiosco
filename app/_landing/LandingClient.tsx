@@ -79,11 +79,11 @@ export default function LandingClient({
   const [period, setPeriod] = useState<BillingPeriod>("monthly")
   const router = useRouter()
 
-  // Si el user abre Orvex como PWA standalone (instalada en escritorio o
-  // mobile como app), no queremos mostrar el landing — eso es para
-  // visitas web. Redirigimos directo a /login (o /inicio si la sesión
-  // está activa, lo cual ya maneja el dashboard layout). Ahorra dos
-  // taps innecesarios al usuario que ya conoce la app.
+  // Si el user abre Orvex como app (PWA standalone instalada en escritorio
+  // o mobile, OR el wrapper Electron desktop), no queremos mostrar el
+  // landing — eso es para visitas web. Redirigimos directo a /login
+  // (o /inicio si la sesión está activa, lo cual ya maneja el dashboard
+  // layout). Ahorra dos taps innecesarios al usuario que ya conoce la app.
   useEffect(() => {
     if (typeof window === "undefined") return
     const isStandalone =
@@ -91,7 +91,14 @@ export default function LandingClient({
       window.matchMedia("(display-mode: window-controls-overlay)").matches ||
       // iOS Safari
       (window.navigator as any).standalone === true
-    if (isStandalone) {
+    // Wrapper Electron de Orvex expone window.orvexNative via preload.ts.
+    // Esto es 100% confiable y solo se setea desde nuestro wrapper —
+    // no nos confunde con otros browsers basados en Electron como
+    // VS Code Webview o Slack que también incluyen "Electron" en UA.
+    const isOrvexDesktop =
+      typeof (window as any).orvexNative !== "undefined" &&
+      (window as any).orvexNative?.isDesktopApp === true
+    if (isStandalone || isOrvexDesktop) {
       router.replace("/login")
     }
   }, [router])
