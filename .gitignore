@@ -6,3 +6,7 @@ node_modules/
 out/
 build/
 *.tsbuildinfo
+
+# Orvex desktop (Electron wrapper)
+apps/desktop/dist/
+apps/desktop/build/

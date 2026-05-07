@@ -1,0 +1,87 @@
+name: Desktop Release
+
+# Cuando se pushea un tag tipo `v0.1.0`, builda Orvex Desktop en
+# macOS / Windows / Linux en paralelo y publica un GitHub Release con
+# los artefactos. electron-updater de la app instalada lo detecta solo
+# y se actualiza al próximo arranque.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Crear release (true) o solo build (false)"
+        required: true
+        default: "false"
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: mac
+          - os: windows-latest
+            target: win
+          - os: ubuntu-latest
+            target: linux
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: electron-builder (publish)
+        env:
+          # Publish a GitHub Releases (electron-updater consume esto).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Code signing — opcional. Si no hay secrets, builder produce
+          # binarios sin firmar (igual usables, con warning).
+          CSC_LINK: ${{ secrets.MAC_CERT_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CERT_BASE64 }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event.inputs.release }}" = "true" ]; then
+            npx electron-builder --${{ matrix.target }} --publish always
+          else
+            npx electron-builder --${{ matrix.target }}
+          fi
+        shell: bash
+
+      - name: Upload artifacts (build-only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: orvex-desktop-${{ matrix.target }}
+          path: |
+            apps/desktop/build/*.dmg
+            apps/desktop/build/*.zip
+            apps/desktop/build/*.exe
+            apps/desktop/build/*.AppImage
+            apps/desktop/build/*.deb
+            apps/desktop/build/latest*.yml
+          retention-days: 14
+          if-no-files-found: ignore

@@ -1,0 +1,91 @@
+# electron-builder config — produce los artefactos finales (.dmg, .exe,
+# .AppImage) y publica releases a GitHub. La CI de GitHub Actions corre
+# este config en Mac, Windows y Linux para crear el release multiplatform.
+
+appId: com.orvex.desktop
+productName: Orvex
+copyright: Copyright © 2026 Orvex
+artifactName: ${productName}-${version}-${platform}-${arch}.${ext}
+
+directories:
+  output: build
+  buildResources: src/assets
+
+files:
+  - "dist/**/*"
+  - "package.json"
+  - "src/assets/**/*"
+
+# ─── macOS ───────────────────────────────────────────────────────────
+mac:
+  category: public.app-category.business
+  icon: src/assets/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  # entitlements se necesitan para hardenedRuntime + notarization
+  # (requiere cuenta Apple Developer). Sin firma, el user va a tener
+  # que hacer click derecho > Abrir y aceptar el warning una vez.
+  entitlements: src/assets/entitlements.mac.plist
+  entitlementsInherit: src/assets/entitlements.mac.plist
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+
+dmg:
+  title: "${productName} ${version}"
+  icon: src/assets/icon.icns
+  background: src/assets/dmg-background.png
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# ─── Windows ─────────────────────────────────────────────────────────
+win:
+  icon: src/assets/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Orvex
+  installerIcon: src/assets/icon.ico
+  uninstallerIcon: src/assets/icon.ico
+
+# ─── Linux ───────────────────────────────────────────────────────────
+linux:
+  icon: src/assets/icon.png
+  category: Office
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+
+# ─── Auto-update via GitHub Releases ────────────────────────────────
+publish:
+  provider: github
+  owner: maxomart
+  repo: Kiosco
+  releaseType: release
+  vPrefixedTagName: true

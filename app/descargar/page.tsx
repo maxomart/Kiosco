@@ -15,7 +15,77 @@ import {
   Check,
   ArrowDown,
   Share,
+  Laptop,
+  ExternalLink,
 } from "lucide-react"
+
+// URL pública donde GitHub Releases sirve los binarios. Apunta al "latest"
+// que electron-updater sigue, así nunca tenemos que cambiar versiones a mano.
+const RELEASES_BASE = "https://github.com/maxomart/Kiosco/releases/latest/download"
+
+interface DesktopDownload {
+  /** Nombre que ve el user en el botón */
+  label: string
+  /** Subtítulo con detalle del archivo */
+  hint: string
+  /** URL al binario en el release */
+  href: string
+  /** Hint de tamaño aproximado */
+  size: string
+}
+
+/**
+ * Resuelve el download recomendado según OS detectado. Para Mac
+ * separamos Apple Silicon (M1/M2/M3) de Intel — la diferencia importa
+ * porque Intel corre via Rosetta y es notoriamente más lento.
+ */
+function getDesktopDownload(device: Device, browser: string): DesktopDownload | null {
+  // Detección Apple Silicon: navigator.userAgent en Mac no lo dice,
+  // pero podemos chequear navigator.userAgentData.platform / arch en
+  // browsers modernos. Sino default a ARM (M1+) que es lo más común
+  // en Mac comprado en los últimos 4 años.
+  const isAppleSilicon = (() => {
+    if (typeof navigator === "undefined") return true
+    const uad = (navigator as any).userAgentData
+    if (uad?.platform && uad.platform.toLowerCase().includes("mac")) {
+      return true // por default en duda asumimos ARM
+    }
+    return true
+  })()
+
+  switch (device) {
+    case "macos":
+      return isAppleSilicon
+        ? {
+            label: "Descargar para Mac (Apple Silicon)",
+            hint: "M1, M2, M3, M4 — recomendado",
+            href: `${RELEASES_BASE}/Orvex-mac-arm64.dmg`,
+            size: "~95 MB",
+          }
+        : {
+            label: "Descargar para Mac (Intel)",
+            hint: "Macs anteriores a 2020",
+            href: `${RELEASES_BASE}/Orvex-mac-x64.dmg`,
+            size: "~95 MB",
+          }
+    case "windows":
+      return {
+        label: "Descargar para Windows",
+        hint: "Windows 10 y 11 · 64 bits",
+        href: `${RELEASES_BASE}/Orvex-Setup.exe`,
+        size: "~85 MB",
+      }
+    case "linux":
+      return {
+        label: "Descargar para Linux",
+        hint: "AppImage · cualquier distro",
+        href: `${RELEASES_BASE}/Orvex.AppImage`,
+        size: "~90 MB",
+      }
+    default:
+      return null
+  }
+}
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -88,6 +158,8 @@ export default function DescargarPage() {
   }
 
   const canInstallNative = !!installEvent && !installed
+  const desktopDownload = getDesktopDownload(device, browser)
+  const isDesktopDevice = device === "macos" || device === "windows" || device === "linux"
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-950 to-black text-white">
@@ -141,21 +213,81 @@ export default function DescargarPage() {
           </motion.div>
         )}
 
-        {/* Botón nativo (Chrome / Edge / Samsung Browser) */}
+        {/* App de escritorio (DMG / EXE / AppImage) — destacado para Mac/Win/Linux.
+            Lo mostramos arriba del flow PWA porque es la opción más "app real":
+            instalador nativo, ícono propio, sin browser. */}
+        {!installed && isDesktopDevice && desktopDownload && (
+          <div className="max-w-2xl mx-auto bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-3xl p-6 sm:p-8 mb-10 relative overflow-hidden shadow-2xl shadow-purple-900/40">
+            <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 blur-3xl rounded-full pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-fuchsia-300/15 blur-3xl rounded-full pointer-events-none" />
+            <div className="relative">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+                  <Laptop className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-white/70">App de escritorio</p>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    Orvex como app real
+                  </h2>
+                </div>
+              </div>
+              <p className="text-sm text-purple-100 leading-relaxed mb-5 max-w-md">
+                Sin barra de Chrome. Ícono propio en el dock. Funciona offline. Se actualiza sola. Es lo más cerca de una app nativa que tenemos.
+              </p>
+              <a
+                href={desktopDownload.href}
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-purple-700 font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg"
+              >
+                <Download size={16} />
+                {desktopDownload.label}
+                <span className="text-xs font-normal text-purple-500/80 ml-1">· {desktopDownload.size}</span>
+              </a>
+              <p className="text-xs text-purple-200/80 mt-3">{desktopDownload.hint}</p>
+              {/* Links a otros OS por si descarga para alguien más */}
+              <div className="mt-4 pt-4 border-t border-white/15 flex flex-wrap gap-3 text-xs">
+                <span className="text-purple-200/70">¿Otro sistema?</span>
+                {device !== "macos" && (
+                  <a href={`${RELEASES_BASE}/Orvex-mac-arm64.dmg`} className="text-white hover:underline">Mac (Apple Silicon)</a>
+                )}
+                {device !== "windows" && (
+                  <a href={`${RELEASES_BASE}/Orvex-Setup.exe`} className="text-white hover:underline">Windows</a>
+                )}
+                {device !== "linux" && (
+                  <a href={`${RELEASES_BASE}/Orvex.AppImage`} className="text-white hover:underline">Linux</a>
+                )}
+                <a
+                  href="https://github.com/maxomart/Kiosco/releases/latest"
+                  target="_blank" rel="noopener noreferrer"
+                  className="text-purple-200 hover:underline inline-flex items-center gap-1"
+                >
+                  Todas las versiones <ExternalLink size={10} />
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Botón nativo PWA (Chrome / Edge / Samsung Browser) — alternativa
+            cuando no hay binario, o para mobile. */}
         {canInstallNative && (
-          <div className="max-w-md mx-auto bg-gradient-to-br from-purple-600 to-violet-600 rounded-3xl p-6 sm:p-8 text-center mb-10 relative overflow-hidden shadow-2xl shadow-purple-900/40">
+          <div className="max-w-md mx-auto bg-gradient-to-br from-blue-600 to-cyan-600 rounded-3xl p-6 sm:p-8 text-center mb-10 relative overflow-hidden shadow-2xl shadow-blue-900/40">
             <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 blur-3xl rounded-full" />
             <Download className="w-10 h-10 text-white mx-auto mb-3" />
-            <h2 className="text-2xl font-bold text-white mb-2">Tu navegador soporta instalación nativa</h2>
-            <p className="text-sm text-purple-100 mb-5">
-              Tocá el botón y listo. Te queda con ícono propio, sin barra de Chrome.
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {isDesktopDevice ? "¿Preferís sin instalar?" : "Tu navegador soporta instalación nativa"}
+            </h2>
+            <p className="text-sm text-blue-100 mb-5">
+              {isDesktopDevice
+                ? "Instalala como PWA desde tu navegador — más liviano, sin instalador."
+                : "Tocá el botón y listo. Te queda con ícono propio, sin barra de Chrome."}
             </p>
             <button
               onClick={install}
               disabled={installing}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white text-purple-700 font-bold text-base hover:scale-[1.02] active:scale-[0.99] transition-all shadow-lg disabled:opacity-50"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white text-blue-700 font-bold text-base hover:scale-[1.02] active:scale-[0.99] transition-all shadow-lg disabled:opacity-50"
             >
-              {installing ? "Instalando…" : "Instalar Orvex"}
+              {installing ? "Instalando…" : "Instalar como PWA"}
             </button>
           </div>
         )}
