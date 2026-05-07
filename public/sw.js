@@ -19,7 +19,7 @@
  * la lista de assets pre-cacheados o las rutas críticas.
  */
 
-const VERSION = "v11"
+const VERSION = "v12"
 const CACHE = `orvex-${VERSION}`
 const API_CACHE = `orvex-api-${VERSION}`
 const API_TTL_MS = 60 * 60 * 1000 // 1h fallback for /api/productos GETs
@@ -32,9 +32,9 @@ const STATIC_ASSETS = [
   "/offline.html",
 ]
 
-// Páginas críticas que pre-cacheamos en install. /pos-app es la app que
-// funciona 100% offline. Las demás cargan en modo "limitado / read-only"
-// (datos de la última visita online).
+// Páginas críticas que pre-cacheamos en install. Incluimos /login y la
+// landing por si el user llega cold sin sesión activa pero con cache —
+// antes ahí se rompía con ERR_FAILED del browser.
 const CRITICAL_PAGES = [
   "/pos-app",
   "/pos",
@@ -44,19 +44,108 @@ const CRITICAL_PAGES = [
   "/ventas",
   "/clientes",
   "/reportes",
+  "/login",
+  "/",
 ]
 
 // Endpoints clave que cacheamos para que el POS-app pueda arrancar offline.
 const CRITICAL_API = ["/api/auth/session", "/api/productos?activo=true"]
 
+/**
+ * HTML inline de último recurso — cuando ni siquiera /offline.html está
+ * en cache (instalación recién hecha sin haber abierto la app online),
+ * devolvemos esta página self-contained para que el user nunca vea el
+ * ERR_FAILED del browser.
+ *
+ * Tiene auto-reload cada 5s vía meta refresh para volver a la app sola
+ * cuando el internet vuelve.
+ */
+const FALLBACK_HTML = `<!doctype html>
+<html lang="es-AR"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050510">
+<title>Sin conexión · Orvex</title>
+<style>
+  :root { color-scheme: dark; }
+  *, *::before, *::after { box-sizing: border-box }
+  html, body { margin: 0; padding: 0; height: 100%; height: 100dvh }
+  body { font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #050510, #0a0a18 50%, #07071a);
+    color: #f3f4f6; display: flex; align-items: center; justify-content: center; padding: 24px }
+  .card { max-width: 380px; text-align: center;
+    background: rgba(17,24,39,0.6); border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 24px; padding: 32px 28px; backdrop-filter: blur(20px) }
+  .icon { width: 64px; height: 64px; margin: 0 auto 16px;
+    border-radius: 20px; background: rgba(124,58,237,0.18);
+    border: 1px solid rgba(124,58,237,0.4);
+    display: flex; align-items: center; justify-content: center; color: #a78bfa }
+  h1 { margin: 0 0 8px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em }
+  p { margin: 0 0 18px; color: #9ca3af; font-size: 14px; line-height: 1.55 }
+  .pill { display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px; font-size: 12px;
+    background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
+    color: #fcd34d; margin-bottom: 14px }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;
+    animation: pulse 1.6s ease-in-out infinite }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .btn { display: inline-flex; align-items: center; justify-content: center;
+    width: 100%; padding: 12px 16px; border-radius: 12px; font-weight: 600;
+    font-size: 14px; text-decoration: none; cursor: pointer; border: 0;
+    background: #7c3aed; color: white; margin-top: 10px }
+  .btn:hover { background: #8b5cf6 }
+  .hint { margin-top: 16px; font-size: 12px; color: #6b7280; line-height: 1.5 }
+</style>
+</head><body>
+  <div class="card">
+    <span class="pill"><span class="dot"></span>Sin conexión</span>
+    <div class="icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
+        <line x1="2" y1="2" x2="22" y2="22"/>
+      </svg>
+    </div>
+    <h1>Estás sin internet</h1>
+    <p>Apenas vuelva la conexión, Orvex va a recargar la página solo. Si estás vendiendo, andá al POS — sigue funcionando offline y las ventas se sincronizan después.</p>
+    <button class="btn" onclick="location.reload()">Reintentar</button>
+    <p class="hint">Las ventas pendientes están guardadas en este dispositivo. Aparecen como "ventas pendientes" cuando vuelva la conexión.</p>
+  </div>
+<script>
+  // Cuando el browser detecta que volvió internet, recargamos automático.
+  window.addEventListener("online", () => location.reload());
+  // Backup: probamos cada 8s si volvió la red haciendo HEAD a la raíz.
+  setInterval(async () => {
+    try {
+      const r = await fetch("/", { method: "HEAD", cache: "no-store" });
+      if (r.ok) location.reload();
+    } catch {}
+  }, 8000);
+</script>
+</body></html>`
+
+function fallbackResponse() {
+  return new Response(FALLBACK_HTML, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  })
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE)
-      // Cache assets primero (rápidos y siempre disponibles)
+      // 1) Static assets críticos (offline.html, icons, manifest) — son
+      //    fast-fail si alguno no carga, pero al menos intentamos cachear
+      //    la offline.html FIRST para asegurarnos de que esté disponible.
+      await cache.add("/offline.html").catch(() => {})
       await cache.addAll(STATIC_ASSETS).catch(() => {})
-      // Después intentamos cachear las páginas críticas — pueden fallar
-      // si el user no está autenticado, está bien, las cacheamos en uso.
+      // 2) Páginas críticas — cacheo best-effort. Las que requieren
+      //    sesión van a fallar si el user no está logueado todavía;
+      //    está bien, las cacheamos en runtime al primer hit.
       await Promise.all(
         CRITICAL_PAGES.map((path) =>
           fetch(path, { credentials: "include" })
@@ -64,7 +153,7 @@ self.addEventListener("install", (event) => {
             .catch(() => {})
         )
       )
-      // Pre-cachear API críticas para que el POS app arranque offline
+      // 3) Endpoints API críticos para que el POS arranque offline cold.
       const apiCache = await caches.open(API_CACHE)
       await Promise.all(
         CRITICAL_API.map((path) =>
@@ -189,9 +278,13 @@ self.addEventListener("fetch", (event) => {
         const pathOnly = new Request(url.origin + url.pathname, { method: "GET" })
         const byPath = await caches.match(pathOnly)
         if (byPath) return byPath
-        // 3) Fallback a la página offline
+        // 3) Fallback a la página offline cacheada
         const off = await caches.match("/offline.html")
-        return off || Response.error()
+        if (off) return off
+        // 4) Último recurso: HTML inline self-contained con auto-reload.
+        //    NUNCA devolvemos Response.error() porque eso muestra el
+        //    ERR_FAILED del browser y la PWA se siente rota.
+        return fallbackResponse()
       })
   )
 })
