@@ -19,7 +19,7 @@
  * la lista de assets pre-cacheados o las rutas críticas.
  */
 
-const VERSION = "v12"
+const VERSION = "v13"
 const CACHE = `orvex-${VERSION}`
 const API_CACHE = `orvex-api-${VERSION}`
 const API_TTL_MS = 60 * 60 * 1000 // 1h fallback for /api/productos GETs
@@ -255,14 +255,42 @@ self.addEventListener("fetch", (event) => {
     return
   }
 
-  // Pages: network-first, fall back to cache, then to /offline.html
-  // Cacheamos por pathname (sin query) — Next.js manda tokens RSC en query
-  // que cambian en cada nav, así con ignoreSearch metemos hits del cache
-  // aún cuando los query params son distintos.
+  // ¿Es un request de React Server Components (RSC)? Next.js manda estos
+  // requests cuando navegás client-side entre páginas. Tienen el header
+  // `RSC: 1` o el query `?_rsc=` y la respuesta NO es HTML — es un payload
+  // binario/streaming que el cliente convierte en componentes React.
+  // Si los cacheamos como "páginas" y después los servimos, el browser
+  // los renderiza como texto plano (lo que el user vio: "1:$Sreact.fragment...").
+  // Solución: dejarlos pasar directo sin tocar.
+  const isRscRequest =
+    req.headers.get("RSC") === "1" ||
+    req.headers.get("Next-Router-State-Tree") !== null ||
+    url.searchParams.has("_rsc")
+
+  if (isRscRequest) {
+    event.respondWith(
+      fetch(req).catch(async () => {
+        // Si el RSC falla offline, devolvemos un 503 — el cliente Next
+        // detecta esto y hace una navegación full-page como fallback,
+        // lo cual cae en el handler normal de páginas de abajo.
+        return new Response("offline", {
+          status: 503,
+          headers: { "Content-Type": "text/plain" },
+        })
+      })
+    )
+    return
+  }
+
+  // Pages: network-first, fall back to cache, then to /offline.html.
+  // Solo cacheamos respuestas con Content-Type text/html para evitar
+  // cachear payloads de Next que después romperían la pantalla.
   event.respondWith(
     fetch(req)
       .then((res) => {
-        if (res.ok) {
+        const ct = res.headers.get("Content-Type") || ""
+        const isHtml = ct.includes("text/html")
+        if (res.ok && isHtml) {
           const copy = res.clone()
           // Guardamos bajo la URL pathname-only para que pegue al buscar offline
           const cacheKey = new Request(url.origin + url.pathname, { method: "GET" })
