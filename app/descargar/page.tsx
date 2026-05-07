@@ -19,69 +19,69 @@ import {
   ExternalLink,
 } from "lucide-react"
 
-// URL pública donde GitHub Releases sirve los binarios. Apunta al "latest"
-// que electron-updater sigue, así nunca tenemos que cambiar versiones a mano.
-const RELEASES_BASE = "https://github.com/maxomart/Kiosco/releases/latest/download"
+/**
+ * Estado del último release de Orvex Desktop publicado en GitHub.
+ * Lo consultamos via /api/desktop/release que cachea la respuesta de
+ * GitHub 5min y maneja el caso "todavía no hay release publicado"
+ * (al inicio del proyecto) sin tirar 404 al user.
+ */
+interface ReleaseInfo {
+  available: boolean
+  version?: string
+  publishedAt?: string
+  htmlUrl?: string
+  assets?: {
+    macArm64?: string
+    macIntel?: string
+    winInstaller?: string
+    winPortable?: string
+    linuxAppImage?: string
+    linuxDeb?: string
+  }
+}
 
 interface DesktopDownload {
-  /** Nombre que ve el user en el botón */
   label: string
-  /** Subtítulo con detalle del archivo */
   hint: string
-  /** URL al binario en el release */
   href: string
-  /** Hint de tamaño aproximado */
   size: string
 }
 
 /**
- * Resuelve el download recomendado según OS detectado. Para Mac
- * separamos Apple Silicon (M1/M2/M3) de Intel — la diferencia importa
- * porque Intel corre via Rosetta y es notoriamente más lento.
+ * Resuelve el download recomendado según OS detectado y los assets
+ * del release actual. Si el OS no tiene asset todavía, devuelve null
+ * (el page muestra "próximamente" para esa plataforma).
  */
-function getDesktopDownload(device: Device, browser: string): DesktopDownload | null {
-  // Detección Apple Silicon: navigator.userAgent en Mac no lo dice,
-  // pero podemos chequear navigator.userAgentData.platform / arch en
-  // browsers modernos. Sino default a ARM (M1+) que es lo más común
-  // en Mac comprado en los últimos 4 años.
-  const isAppleSilicon = (() => {
-    if (typeof navigator === "undefined") return true
-    const uad = (navigator as any).userAgentData
-    if (uad?.platform && uad.platform.toLowerCase().includes("mac")) {
-      return true // por default en duda asumimos ARM
-    }
-    return true
-  })()
+function pickDownload(device: Device, release: ReleaseInfo | null): DesktopDownload | null {
+  if (!release?.available || !release.assets) return null
+  const a = release.assets
 
   switch (device) {
-    case "macos":
-      return isAppleSilicon
-        ? {
-            label: "Descargar para Mac (Apple Silicon)",
-            hint: "M1, M2, M3, M4 — recomendado",
-            href: `${RELEASES_BASE}/Orvex-mac-arm64.dmg`,
-            size: "~95 MB",
-          }
-        : {
-            label: "Descargar para Mac (Intel)",
-            hint: "Macs anteriores a 2020",
-            href: `${RELEASES_BASE}/Orvex-mac-x64.dmg`,
-            size: "~95 MB",
-          }
+    case "macos": {
+      // Detección Apple Silicon: por default asumimos ARM (más común
+      // en Macs de los últimos 4 años). Si el user tiene Intel y
+      // sabemos detectarlo via userAgentData, tomamos esa info.
+      const uad = typeof navigator !== "undefined" ? (navigator as any).userAgentData : null
+      const isIntel = uad?.architecture === "x86"
+      if (isIntel && a.macIntel) {
+        return { label: "Descargar para Mac (Intel)", hint: "Macs anteriores a 2020", href: a.macIntel, size: "~95 MB" }
+      }
+      if (a.macArm64) {
+        return { label: "Descargar para Mac (Apple Silicon)", hint: "M1 · M2 · M3 · M4 — recomendado", href: a.macArm64, size: "~95 MB" }
+      }
+      if (a.macIntel) {
+        return { label: "Descargar para Mac (Intel)", hint: "Macs anteriores a 2020", href: a.macIntel, size: "~95 MB" }
+      }
+      return null
+    }
     case "windows":
-      return {
-        label: "Descargar para Windows",
-        hint: "Windows 10 y 11 · 64 bits",
-        href: `${RELEASES_BASE}/Orvex-Setup.exe`,
-        size: "~85 MB",
-      }
+      if (a.winInstaller) return { label: "Descargar para Windows", hint: "Windows 10 y 11 · 64 bits", href: a.winInstaller, size: "~85 MB" }
+      if (a.winPortable) return { label: "Descargar para Windows (portable)", hint: "Sin instalador", href: a.winPortable, size: "~85 MB" }
+      return null
     case "linux":
-      return {
-        label: "Descargar para Linux",
-        hint: "AppImage · cualquier distro",
-        href: `${RELEASES_BASE}/Orvex.AppImage`,
-        size: "~90 MB",
-      }
+      if (a.linuxAppImage) return { label: "Descargar para Linux", hint: "AppImage · cualquier distro", href: a.linuxAppImage, size: "~90 MB" }
+      if (a.linuxDeb) return { label: "Descargar para Linux (Debian/Ubuntu)", hint: ".deb", href: a.linuxDeb, size: "~90 MB" }
+      return null
     default:
       return null
   }
@@ -158,8 +158,26 @@ export default function DescargarPage() {
   }
 
   const canInstallNative = !!installEvent && !installed
-  const desktopDownload = getDesktopDownload(device, browser)
   const isDesktopDevice = device === "macos" || device === "windows" || device === "linux"
+
+  // Estado del release de la app desktop. null mientras carga la
+  // primera vez. Si la query falla, queda null y mostramos UI neutra.
+  const [release, setRelease] = useState<ReleaseInfo | null>(null)
+  const [releaseLoading, setReleaseLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/desktop/release", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: ReleaseInfo | null) => {
+        if (!cancelled) setRelease(data)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setReleaseLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const desktopDownload = pickDownload(device, release)
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-950 to-black text-white">
@@ -213,10 +231,15 @@ export default function DescargarPage() {
           </motion.div>
         )}
 
-        {/* App de escritorio (DMG / EXE / AppImage) — destacado para Mac/Win/Linux.
-            Lo mostramos arriba del flow PWA porque es la opción más "app real":
-            instalador nativo, ícono propio, sin browser. */}
-        {!installed && isDesktopDevice && desktopDownload && (
+        {/* App de escritorio — tres estados:
+              1. Loading: el endpoint /api/desktop/release todavía está
+                 contestando. Mostramos skeleton para no flash.
+              2. release.available + desktopDownload: hay binarios y el
+                 OS del user tiene asset → botón con link directo.
+              3. release.available pero no hay asset para este OS, o
+                 release.available === false: mostramos "próximamente"
+                 con CTA a la PWA. */}
+        {!installed && isDesktopDevice && (
           <div className="max-w-2xl mx-auto bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-3xl p-6 sm:p-8 mb-10 relative overflow-hidden shadow-2xl shadow-purple-900/40">
             <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 blur-3xl rounded-full pointer-events-none" />
             <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-fuchsia-300/15 blur-3xl rounded-full pointer-events-none" />
@@ -235,35 +258,70 @@ export default function DescargarPage() {
               <p className="text-sm text-purple-100 leading-relaxed mb-5 max-w-md">
                 Sin barra de Chrome. Ícono propio en el dock. Funciona offline. Se actualiza sola. Es lo más cerca de una app nativa que tenemos.
               </p>
-              <a
-                href={desktopDownload.href}
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-purple-700 font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg"
-              >
-                <Download size={16} />
-                {desktopDownload.label}
-                <span className="text-xs font-normal text-purple-500/80 ml-1">· {desktopDownload.size}</span>
-              </a>
-              <p className="text-xs text-purple-200/80 mt-3">{desktopDownload.hint}</p>
-              {/* Links a otros OS por si descarga para alguien más */}
-              <div className="mt-4 pt-4 border-t border-white/15 flex flex-wrap gap-3 text-xs">
-                <span className="text-purple-200/70">¿Otro sistema?</span>
-                {device !== "macos" && (
-                  <a href={`${RELEASES_BASE}/Orvex-mac-arm64.dmg`} className="text-white hover:underline">Mac (Apple Silicon)</a>
-                )}
-                {device !== "windows" && (
-                  <a href={`${RELEASES_BASE}/Orvex-Setup.exe`} className="text-white hover:underline">Windows</a>
-                )}
-                {device !== "linux" && (
-                  <a href={`${RELEASES_BASE}/Orvex.AppImage`} className="text-white hover:underline">Linux</a>
-                )}
-                <a
-                  href="https://github.com/maxomart/Kiosco/releases/latest"
-                  target="_blank" rel="noopener noreferrer"
-                  className="text-purple-200 hover:underline inline-flex items-center gap-1"
-                >
-                  Todas las versiones <ExternalLink size={10} />
-                </a>
-              </div>
+
+              {releaseLoading && (
+                <div className="h-12 w-72 bg-white/15 rounded-xl animate-pulse" />
+              )}
+
+              {!releaseLoading && desktopDownload && (
+                <>
+                  <a
+                    href={desktopDownload.href}
+                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-purple-700 font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg"
+                  >
+                    <Download size={16} />
+                    {desktopDownload.label}
+                    <span className="text-xs font-normal text-purple-500/80 ml-1">· {desktopDownload.size}</span>
+                  </a>
+                  <p className="text-xs text-purple-200/80 mt-3">
+                    {desktopDownload.hint}
+                    {release?.version && <span className="ml-2 text-white/60">· v{release.version}</span>}
+                  </p>
+                </>
+              )}
+
+              {!releaseLoading && !desktopDownload && (
+                <div className="bg-white/10 border border-white/20 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-white mb-1">
+                    Próximamente para descargar
+                  </p>
+                  <p className="text-xs text-purple-100/90 leading-relaxed mb-3">
+                    Estamos terminando los builds firmados para macOS, Windows y Linux. Mientras tanto podés instalar Orvex como PWA — el comportamiento es prácticamente igual.
+                  </p>
+                  <a
+                    href="#pwa"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-purple-700 font-semibold text-xs hover:scale-[1.02] transition-transform"
+                  >
+                    Instalar como PWA
+                    <ArrowDown size={12} />
+                  </a>
+                </div>
+              )}
+
+              {/* Links a otros OS — solo si tenemos release con assets */}
+              {!releaseLoading && release?.available && release.assets && (
+                <div className="mt-4 pt-4 border-t border-white/15 flex flex-wrap gap-3 text-xs">
+                  <span className="text-purple-200/70">¿Otro sistema?</span>
+                  {device !== "macos" && release.assets.macArm64 && (
+                    <a href={release.assets.macArm64} className="text-white hover:underline">Mac (Apple Silicon)</a>
+                  )}
+                  {device !== "windows" && release.assets.winInstaller && (
+                    <a href={release.assets.winInstaller} className="text-white hover:underline">Windows</a>
+                  )}
+                  {device !== "linux" && release.assets.linuxAppImage && (
+                    <a href={release.assets.linuxAppImage} className="text-white hover:underline">Linux</a>
+                  )}
+                  {release.htmlUrl && (
+                    <a
+                      href={release.htmlUrl}
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-purple-200 hover:underline inline-flex items-center gap-1"
+                    >
+                      Todas las versiones <ExternalLink size={10} />
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
