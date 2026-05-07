@@ -97,7 +97,7 @@ export function LandingShell({ pillLabel, title, subtitle, highlights, children 
       </section>
 
       {/* Contenido SEO específico de la landing */}
-      <article className="max-w-4xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24 prose prose-invert prose-lg prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-2xl prose-h2:sm:text-3xl prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-lg prose-h3:sm:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-gray-300 prose-p:leading-relaxed prose-li:text-gray-300 prose-strong:text-white prose-a:text-violet-300 prose-a:no-underline hover:prose-a:text-violet-200 max-w-none">
+      <article className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24 article-prose">
         {children}
       </article>
 

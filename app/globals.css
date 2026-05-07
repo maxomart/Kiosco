@@ -1207,3 +1207,74 @@ html[data-theme="light"] .surface-card {
   background-color: #ffffff !important;
   border-color: #e5e7eb !important;
 }
+
+/* ========================================================================
+   .article-prose — estilos para artículos largos (blog y landings por
+   keyword). Reemplaza al plugin @tailwindcss/typography que no tenemos
+   instalado, con los estilos mínimos que necesitamos. Hecho para
+   contenido SEO largo: H2/H3 con buen espaciado, parrafo cómodo de leer,
+   listas claras, links accent, strong destacado.
+   ======================================================================== */
+.article-prose {
+  color: rgb(209, 213, 219); /* gray-300 */
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+.article-prose h2 {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+}
+@media (min-width: 640px) {
+  .article-prose h2 { font-size: 1.875rem; }
+}
+.article-prose h3 {
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+@media (min-width: 640px) {
+  .article-prose h3 { font-size: 1.25rem; }
+}
+.article-prose p {
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.article-prose ul, .article-prose ol {
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+}
+.article-prose ul { list-style: disc; }
+.article-prose ol { list-style: decimal; }
+.article-prose li {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.article-prose li::marker { color: rgb(139, 92, 246); }
+.article-prose strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+.article-prose a {
+  color: rgb(196, 181, 253); /* violet-300 */
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.article-prose a:hover {
+  color: rgb(221, 214, 254); /* violet-200 */
+  text-decoration: underline;
+}
+.article-prose code {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  color: rgb(196, 181, 253);
+}
