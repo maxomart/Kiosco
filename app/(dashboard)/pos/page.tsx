@@ -15,6 +15,7 @@ import { WeightInputModal } from "@/components/pos/WeightInputModal"
 import { useDebounce } from "@/lib/hooks/useDebounce"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
+import { categoryColor } from "@/lib/category-color"
 import { cacheProducts, searchProducts as searchOffline } from "@/lib/offline-store"
 
 interface Product {
@@ -545,14 +546,16 @@ export default function POSPage() {
           ) : visibleProducts.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
               {/* Modo de las cards: si AL MENOS un producto visible tiene foto,
-                  todas las cards usan layout "menú" (foto grande + texto debajo,
-                  con fallback a inicial para los que no tengan). Si NINGÚN
-                  producto tiene foto, volvemos al layout compacto (texto puro)
-                  — más denso y rápido de escanear, ideal mientras el negocio no
-                  haya cargado fotos al catálogo. La altura es uniforme en cada
-                  modo, así no se rompe el grid. */}
+                  todas las cards usan layout "menú" (header visual + texto
+                  debajo). Los que tienen foto muestran la foto en aspect 4:3
+                  (más bajo que cuadrado para no comer pantalla). Los que NO
+                  tienen foto usan un bloque con el color de su categoría +
+                  el nombre grande, así no rompen la coherencia del grid. Si
+                  NINGÚN producto tiene foto volvemos al layout compacto. */}
               {visibleProducts.some((p) => p.image) ? (
-                visibleProducts.map((p, i) => (
+                visibleProducts.map((p, i) => {
+                  const color = categoryColor(p.category?.name)
+                  return (
                   <button
                     key={p.id}
                     ref={(el) => { productRefs.current[i] = el }}
@@ -568,7 +571,10 @@ export default function POSPage() {
                     )}
                     disabled={p.stock <= 0 && !p.soldByWeight}
                   >
-                    <div className="relative aspect-square bg-gray-900 flex items-center justify-center overflow-hidden">
+                    <div className={cn(
+                      "relative aspect-[4/3] flex items-center justify-center overflow-hidden border-b",
+                      p.image ? "bg-gray-900 border-gray-800" : `${color.bg}`
+                    )}>
                       {p.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -578,8 +584,11 @@ export default function POSPage() {
                           loading="lazy"
                         />
                       ) : (
-                        <span className="text-3xl font-bold text-gray-700 select-none">
-                          {p.name.charAt(0).toUpperCase()}
+                        <span className={cn(
+                          "text-sm font-bold text-center px-3 line-clamp-3 leading-tight",
+                          color.text
+                        )}>
+                          {p.name}
                         </span>
                       )}
                       <span className={cn("absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded-md backdrop-blur-sm",
@@ -590,13 +599,14 @@ export default function POSPage() {
                         {p.soldByWeight ? `${Number(p.stock).toFixed(2)} kg` : `x${Math.round(Number(p.stock))}`}
                       </span>
                     </div>
-                    <div className="p-2.5">
-                      <p className="text-xs font-medium text-gray-100 line-clamp-2 mb-1 leading-tight">{p.name}</p>
-                      {p.category && <p className="text-[10px] text-gray-500 mb-1.5 truncate">{p.category.name}</p>}
+                    <div className="p-2">
+                      <p className="text-xs font-medium text-gray-100 line-clamp-2 mb-0.5 leading-tight">{p.name}</p>
+                      {p.category && <p className="text-[10px] text-gray-500 mb-1 truncate">{p.category.name}</p>}
                       <span className="text-purple-400 font-bold text-sm">{formatCurrency(p.salePrice)}</span>
                     </div>
                   </button>
-                ))
+                  )
+                })
               ) : (
                 visibleProducts.map((p, i) => (
                   <button
