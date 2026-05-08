@@ -531,13 +531,13 @@ export default function POSPage() {
         {/* Products grid */}
         <div className="flex-1 overflow-y-auto min-h-0 pr-1">
           {(loading || (catalogLoading && !isSearching)) ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-2">
               {[...Array(12)].map((_, i) => (
                 <div key={i} className="h-20 bg-gray-800 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : visibleProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-2">
               {/* Modo de las cards: si AL MENOS un producto visible tiene foto,
                   todas las cards usan layout "menú" (header visual + texto
                   debajo). Los que tienen foto muestran la foto en aspect 4:3
@@ -565,7 +565,7 @@ export default function POSPage() {
                     disabled={p.stock <= 0 && !p.soldByWeight}
                   >
                     <div className={cn(
-                      "relative aspect-[4/3] flex items-center justify-center overflow-hidden border-b",
+                      "relative aspect-video flex items-center justify-center overflow-hidden border-b",
                       p.image ? "bg-gray-900 border-gray-800" : `${color.bg}`
                     )}>
                       {p.image ? (
@@ -592,10 +592,9 @@ export default function POSPage() {
                         {p.soldByWeight ? `${Number(p.stock).toFixed(2)} kg` : `x${Math.round(Number(p.stock))}`}
                       </span>
                     </div>
-                    <div className="p-2.5 flex flex-col gap-0.5">
-                      <p className="text-sm font-semibold text-gray-50 line-clamp-2 leading-snug">{p.name}</p>
-                      {p.category && <p className="text-[10px] text-gray-500 truncate uppercase tracking-wider">{p.category.name}</p>}
-                      <span className="text-purple-400 font-bold text-base mt-1 tabular-nums">{formatCurrency(p.salePrice)}</span>
+                    <div className="p-2 flex flex-col gap-0">
+                      <p className="text-xs font-semibold text-gray-50 line-clamp-2 leading-tight">{p.name}</p>
+                      <span className="text-purple-400 font-bold text-sm mt-0.5 tabular-nums">{formatCurrency(p.salePrice)}</span>
                     </div>
                   </button>
                   )
@@ -609,7 +608,7 @@ export default function POSPage() {
                     ref={(el) => { productRefs.current[i] = el }}
                     onClick={() => handleAddProduct(p)}
                     className={cn(
-                      "relative rounded-xl p-3 text-left transition-all active:scale-95 border flex flex-col gap-0.5 overflow-hidden",
+                      "relative rounded-lg p-2 text-left transition-all active:scale-95 border flex flex-col gap-0 overflow-hidden",
                       color.bg,
                       selectedIndex === i && "ring-2 ring-purple-500 ring-offset-2 ring-offset-gray-950 scale-[1.02]",
                       p.stock <= 0 && !p.soldByWeight
@@ -620,7 +619,7 @@ export default function POSPage() {
                   >
                     {/* Badge stock arriba a la derecha */}
                     <span className={cn(
-                      "absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded-md font-medium",
+                      "absolute top-1 right-1 text-[10px] px-1 py-0 rounded font-medium leading-tight",
                       p.stock <= 0 ? "bg-red-900/70 text-red-100" :
                       p.stock <= p.minStock ? "bg-yellow-900/70 text-yellow-100" :
                       "bg-black/30 text-white/80"
@@ -629,17 +628,11 @@ export default function POSPage() {
                     </span>
 
                     <p className={cn(
-                      "text-sm font-bold line-clamp-2 leading-snug pr-10",
+                      "text-xs font-bold line-clamp-2 leading-tight pr-9 mb-1",
                       color.text
                     )}>{p.name}</p>
-                    {p.category && (
-                      <p className={cn(
-                        "text-[10px] truncate uppercase tracking-wider opacity-70",
-                        color.text
-                      )}>{p.category.name}</p>
-                    )}
                     <span className={cn(
-                      "font-bold text-base mt-1 tabular-nums",
+                      "font-bold text-sm tabular-nums mt-auto",
                       color.text
                     )}>{formatCurrency(p.salePrice)}</span>
                   </button>
