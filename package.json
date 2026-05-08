@@ -27,7 +27,6 @@
     "@radix-ui/react-progress": "^1.1.8",
     "@sentry/nextjs": "^10.51.0",
     "@stripe/stripe-js": "^9.2.0",
-    "@tailwindcss/oxide-darwin-arm64": "^4.2.2",
     "@zxing/browser": "^0.2.0",
     "@zxing/library": "^0.22.0",
     "bcryptjs": "^3.0.3",
