@@ -269,19 +269,19 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile overlay — también activo en portrait lg+ (TVs verticales) */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:landscape:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden
         />
       )}
 
-      {/* Mobile sidebar (slide-in) */}
+      {/* Mobile sidebar (slide-in) — también activo en portrait lg+ */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 sidebar-surface border-r border-gray-800 transform transition-transform duration-200 ease-in-out lg:hidden",
+          "fixed inset-y-0 left-0 z-50 w-64 sidebar-surface border-r border-gray-800 transform transition-transform duration-200 ease-in-out lg:landscape:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
         aria-label="Navegación principal"
@@ -289,11 +289,12 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
         {NavContent}
       </aside>
 
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — sólo en landscape lg+. En portrait usamos el slide-in
+          mobile para no comer ancho horizontal. */}
       <aside
         data-tour="sidebar"
         className={cn(
-          "hidden lg:flex flex-col sidebar-surface border-r border-gray-800 transition-all duration-200 ease-in-out flex-shrink-0",
+          "hidden lg:landscape:flex flex-col sidebar-surface border-r border-gray-800 transition-all duration-200 ease-in-out flex-shrink-0",
           collapsed ? "w-16" : "w-56"
         )}
         aria-label="Navegación principal"

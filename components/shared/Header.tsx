@@ -127,7 +127,7 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
     >
       <button
         onClick={openMobileSidebar}
-        className="lg:hidden p-1.5 rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
+        className="lg:landscape:hidden p-1.5 rounded-md text-gray-400 hover:text-gray-100 hover:bg-gray-800 transition-colors"
         aria-label="Abrir menú lateral"
       >
         <Menu className="w-5 h-5" />

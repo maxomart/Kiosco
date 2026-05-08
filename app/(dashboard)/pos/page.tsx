@@ -386,7 +386,7 @@ export default function POSPage() {
 
       <div className="flex flex-1 gap-3 overflow-hidden px-3 pt-3 pb-3 min-h-0">
       {/* LEFT: Search + Products. Pad-bottom on mobile so the floating cart bar doesn't cover the last row. */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 lg:pb-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 lg:landscape:pb-0">
         {/* Header row: caja chip + search + scanner.
             Todo en una sola línea para no comer alto vertical. */}
         <div className="flex-shrink-0 mb-3 flex items-stretch gap-2">
@@ -668,8 +668,10 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* RIGHT: Cart — desktop sidebar (lg+). h-full so Cobrar button never scrolls off. */}
-      <div className="hidden lg:block w-72 xl:w-80 flex-shrink-0 h-full">
+      {/* RIGHT: Cart — desktop sidebar sólo en landscape lg+. En portrait
+          (TVs verticales, tablets paradas) aunque sea ancho, usamos el flujo
+          mobile (drawer abajo) para que el carrito y Cobrar no queden cortados. */}
+      <div className="hidden lg:landscape:block w-72 xl:w-80 flex-shrink-0 h-full">
         <CartPanel
           onPay={() => {
             if (!cashOpen) {
@@ -688,7 +690,7 @@ export default function POSPage() {
         type="button"
         onClick={() => setCartOpen(true)}
         className={cn(
-          "lg:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-2 bg-gradient-to-t from-gray-950 via-gray-950/95 to-gray-950/0",
+          "lg:landscape:hidden fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-2 bg-gradient-to-t from-gray-950 via-gray-950/95 to-gray-950/0",
           "transition-transform duration-200",
           cartOpen && "translate-y-full"
         )}
@@ -718,14 +720,14 @@ export default function POSPage() {
       {/* MOBILE: Cart drawer (slides up from bottom) */}
       {cartOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          className="lg:landscape:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
           onClick={() => setCartOpen(false)}
           aria-hidden
         />
       )}
       <div
         className={cn(
-          "lg:hidden fixed inset-x-0 bottom-0 z-50 max-h-[88vh] h-[88vh] transform transition-transform duration-300 ease-out",
+          "lg:landscape:hidden fixed inset-x-0 bottom-0 z-50 max-h-[88vh] h-[88vh] transform transition-transform duration-300 ease-out",
           cartOpen ? "translate-y-0" : "translate-y-full"
         )}
         role="dialog"

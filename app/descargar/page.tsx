@@ -263,33 +263,59 @@ export default function DescargarPage() {
               title="Google TV / Android TV"
               active={false}
             >
-              <p className="text-sm text-gray-400 mb-3">
-                Las TVs no soportan instalar PWAs — hay que descargar el APK y pasarlo al TV.
+              <p className="text-sm text-gray-300 mb-2">
+                Una vez instalado el APK, Orvex aparece como app nativa en tu TV
+                — <strong className="text-white">pantalla completa, sin barras del navegador</strong>.
+                Lo abrís desde el menú de apps como cualquier otra (Netflix, YouTube, etc).
+              </p>
+              <p className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-1.5 mb-3">
+                ⚠️ Si entraste a cobraorvex.com desde Downloader/Chrome del TV y se ve dentro del navegador,
+                <strong> todavía no instalaste el APK</strong>. Seguí los pasos de abajo.
+              </p>
+
+              <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-1.5 mt-3">
+                Forma fácil — desde el TV con Downloader
               </p>
               <Step n={1}>
-                Desde el celu, instalá la app gratis <strong className="text-white">"Send Files to TV"</strong> en el celu y en el TV (Play Store en ambos).
+                En el TV, instalá <strong className="text-white">Downloader</strong> (gratis, Play Store).
               </Step>
               <Step n={2}>
-                En el TV: <strong className="text-white">Ajustes → Aplicaciones → Permisos especiales → Apps de fuentes desconocidas</strong> → activá "Send Files to TV".
+                Abrí Downloader y entrá a esta URL:{" "}
+                <code className="bg-gray-800 px-1.5 py-0.5 rounded text-[11px] text-orange-300">
+                  cobraorvex.com/orvex-tv.apk
+                </code>
               </Step>
               <Step n={3}>
-                Descargá el APK acá:
+                Cuando termine la descarga, Downloader te pregunta si querés instalar → <strong className="text-white">Instalar</strong>.
+                Aparece "Orvex" en tu menú de apps.
+              </Step>
+
+              <p className="text-[11px] uppercase tracking-wider text-gray-500 font-bold mb-1.5 mt-4">
+                Forma alternativa — desde el celu
+              </p>
+              <Step n={1}>
+                Instalá <strong className="text-white">Send Files to TV</strong> (gratis) en celu Y en TV.
+              </Step>
+              <Step n={2}>
+                Bajá el APK acá desde el celu:
                 <a
                   href="/orvex-tv.apk"
                   className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/15 border border-orange-500/40 text-orange-200 hover:bg-orange-500/25 text-xs font-medium w-full sm:w-auto"
                 >
                   <Download size={14} />
-                  Descargar Orvex para TV (.apk)
+                  Descargar Orvex para TV (.apk · 1.2 MB)
                 </a>
-                <span className="block text-[10px] text-gray-500 mt-1.5">
-                  Versión actual · APK firmado. Pesa ~1.2 MB.
-                </span>
               </Step>
-              <Step n={4}>
-                Abrí <strong>Send Files to TV</strong> en el celu, mandá el APK al TV, abrilo desde el TV y tocá <strong className="text-white">"Instalar"</strong>.
+              <Step n={3}>
+                Mandalo al TV con Send Files to TV → abrilo en el TV → <strong className="text-white">Instalar</strong>.
               </Step>
-              <p className="text-[11px] text-gray-500 mt-2">
-                Tip: si tenés un control Bluetooth con touchpad o ratón inalámbrico para el TV, navegar Orvex es mucho más cómodo.
+
+              <p className="text-[11px] text-gray-500 mt-3 leading-relaxed">
+                <strong className="text-gray-400">¿Tu TV está en vertical (modo retrato)?</strong> El POS se adapta:
+                el carrito pasa abajo como cajón deslizable, productos arriba ocupando todo el ancho.
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1.5">
+                Tip: control Bluetooth con touchpad o un ratón inalámbrico hace navegar mucho más cómodo en el TV.
               </p>
             </DeviceCard>
           </div>
