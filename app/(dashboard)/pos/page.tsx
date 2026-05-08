@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
-import { Search, Barcode, ShoppingCart, DollarSign, AlertTriangle, ArrowRight, Package, Keyboard, X, Camera } from "lucide-react"
+import { Search, ShoppingCart, DollarSign, AlertTriangle, ArrowRight, Package, Keyboard, X, Camera } from "lucide-react"
 import { useShortcuts, useShortcutKey } from "@/hooks/useShortcuts"
 import { ShortcutsHelpModal } from "@/components/shared/ShortcutsHelpModal"
 import toast from "react-hot-toast"
@@ -366,7 +366,8 @@ export default function POSPage() {
     <div className="flex flex-col -m-4 lg:-m-6 h-[calc(100vh-4rem)] overflow-hidden">
       <OfflineBanner />
 
-      {/* Banner de caja — compacto para no empujar el carrito/cobrar fuera de la vista */}
+      {/* Banner de caja CERRADA — sólo cuando hay un problema bloqueante.
+          Más allá de eso, el estado "abierto" se ve dentro del search bar. */}
       {!cashLoading && !cashOpen && (
         <div className="mx-3 mt-3 rounded-lg border border-amber-500/40 bg-amber-900/20 px-3 py-2 flex items-center gap-3">
           <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
@@ -383,123 +384,115 @@ export default function POSPage() {
         </div>
       )}
 
-      {!cashLoading && cashOpen && (
-        <div className="mx-3 mt-2 flex items-center gap-2 text-[11px] text-emerald-300/80">
-          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-          Caja abierta hace {cashOpen.sinceMinutes < 60 ? `${cashOpen.sinceMinutes}min` : `${Math.floor(cashOpen.sinceMinutes / 60)}h`} ·
-          inicio {formatCurrency(cashOpen.openingBalance)}
-          {!cashOpen.openedByMe && <span className="text-amber-400">· abierta por otro cajero</span>}
-        </div>
-      )}
-
-      <div className="flex flex-1 gap-3 overflow-hidden px-3 pt-2 pb-3 min-h-0">
+      <div className="flex flex-1 gap-3 overflow-hidden px-3 pt-3 pb-3 min-h-0">
       {/* LEFT: Search + Products. Pad-bottom on mobile so the floating cart bar doesn't cover the last row. */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 lg:pb-0">
-        {/* Search bar */}
-        <div data-tour="pos-search" className="relative mb-2 flex-shrink-0">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            ref={searchRef}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault()
-                const now = Date.now()
-                if (now - lastEnterRef.current < 700) {
-                  lastEnterRef.current = 0
-                  if (cart.length === 0) { toast.error("El carrito está vacío"); return }
-                  if (!cashOpen) { toast.error("Abrí la caja primero"); return }
-                  setShowPayment(true)
-                  return
-                }
-                lastEnterRef.current = now
-
-                // Si parece un código de barras (sólo dígitos, ≥ 8) lo tratamos
-                // como escaneo y vamos directo al lookup por barcode. Esto cubre
-                // el caso del lector USB cuando el search está enfocado: sin
-                // este atajo, el barcode quedaba tipeado y la búsqueda
-                // debounceada no llegaba a tiempo para ofrecer el match.
-                const trimmed = query.trim()
-                if (/^\d{8,}$/.test(trimmed)) {
-                  handleBarcodeScan(trimmed)
-                  setQuery("")
-                  return
-                }
-
-                if (isSearching && visibleProducts.length > 0) {
-                  handleAddProduct(visibleProducts[0])
-                }
-              }
-              if (e.key === "Escape") {
-                setQuery("")
-                lastEnterRef.current = 0
-              }
-              // ↓ desde el search baja al grid de productos
-              if (e.key === "ArrowDown" && visibleProducts.length > 0) {
-                e.preventDefault()
-                setSelectedIndex(0)
-                searchRef.current?.blur()
-              }
-            }}
-            placeholder="Buscar por nombre, código o barcode..."
-            className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-28 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs text-gray-500">
-            <kbd className="hidden md:inline-flex bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 font-mono text-[10px]">
-              {searchShortcutKey}
-            </kbd>
-            <Barcode size={13} />
-            <button
-              onClick={() => setShowScanner(true)}
-              className="flex items-center gap-1 text-gray-400 hover:text-purple-400 transition-colors"
-              title="Escanear con la cámara"
-            >
-              <Camera size={14} />
-            </button>
+        {/* Header row: caja chip + search + scanner.
+            Todo en una sola línea para no comer alto vertical. */}
+        <div className="flex-shrink-0 mb-3 flex items-stretch gap-2">
+          {/* Caja chip — verde cuando está abierta, click va a /caja */}
+          {!cashLoading && cashOpen && (
             <Link
-              href="/pos-app"
-              className="hidden sm:flex items-center gap-1 text-gray-400 hover:text-emerald-300 transition-colors"
-              title="POS offline (funciona sin internet)"
+              href="/caja"
+              className="hidden sm:flex items-center gap-2 px-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/15 transition"
+              title={`Caja abierta hace ${cashOpen.sinceMinutes < 60 ? `${cashOpen.sinceMinutes} min` : `${Math.floor(cashOpen.sinceMinutes / 60)}h`} · inicio ${formatCurrency(cashOpen.openingBalance)}`}
             >
-              <span className="text-[10px] uppercase tracking-wider font-bold">Offline</span>
+              <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+              <div className="flex flex-col leading-tight">
+                <span className="text-[10px] uppercase tracking-wider text-emerald-300/70 font-bold">Caja</span>
+                <span className="text-xs text-emerald-100 font-semibold">
+                  {cashOpen.sinceMinutes < 60 ? `${cashOpen.sinceMinutes}m` : `${Math.floor(cashOpen.sinceMinutes / 60)}h`}
+                </span>
+              </div>
             </Link>
-            <button
-              onClick={() => setShowShortcutsHelp(true)}
-              className="hidden lg:flex items-center gap-1 text-gray-500 hover:text-accent transition-colors"
-              title={`Ayuda de atajos (${helpShortcutKey})`}
-            >
-              <Keyboard size={13} />
-              <kbd className="bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 font-mono text-[10px]">
-                {helpShortcutKey}
-              </kbd>
-            </button>
-          </div>
-        </div>
-
-        {/* Hints contextuales — qué tecla hace qué según el estado actual.
-            Compacto, fijo, sin distraer. Ayuda al kiosquero a usar todo
-            con teclado sin abrir el modal de ayuda. */}
-        <div className="flex-shrink-0 mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 px-1">
-          {selectedIndex !== null ? (
-            <>
-              <Hint kbd="←→↑↓" label="navegar" />
-              <Hint kbd="Enter" label="agregar" />
-              <Hint kbd="Esc" label="volver al buscador" />
-            </>
-          ) : isSearching ? (
-            <>
-              <Hint kbd="Enter" label="agregar primero" />
-              <Hint kbd="↓" label="navegar productos" />
-              {cart.length > 0 && <Hint kbd="Enter Enter" label="cobrar" highlight />}
-            </>
-          ) : (
-            <>
-              <Hint kbd="Tipeá" label="para buscar" />
-              <Hint kbd="↓" label="navegar productos" />
-              {cart.length > 0 && <Hint kbd="Enter Enter" label="cobrar" highlight />}
-            </>
           )}
+
+          {/* Search bar */}
+          <div data-tour="pos-search" className="relative flex-1 min-w-0">
+            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  const now = Date.now()
+                  if (now - lastEnterRef.current < 700) {
+                    lastEnterRef.current = 0
+                    if (cart.length === 0) { toast.error("El carrito está vacío"); return }
+                    if (!cashOpen) { toast.error("Abrí la caja primero"); return }
+                    setShowPayment(true)
+                    return
+                  }
+                  lastEnterRef.current = now
+
+                  // Si parece un código de barras (sólo dígitos, ≥ 8) lo tratamos
+                  // como escaneo y vamos directo al lookup por barcode. Esto cubre
+                  // el caso del lector USB cuando el search está enfocado: sin
+                  // este atajo, el barcode quedaba tipeado y la búsqueda
+                  // debounceada no llegaba a tiempo para ofrecer el match.
+                  const trimmed = query.trim()
+                  if (/^\d{8,}$/.test(trimmed)) {
+                    handleBarcodeScan(trimmed)
+                    setQuery("")
+                    return
+                  }
+
+                  if (isSearching && visibleProducts.length > 0) {
+                    handleAddProduct(visibleProducts[0])
+                  }
+                }
+                if (e.key === "Escape") {
+                  setQuery("")
+                  lastEnterRef.current = 0
+                }
+                // ↓ desde el search baja al grid de productos
+                if (e.key === "ArrowDown" && visibleProducts.length > 0) {
+                  e.preventDefault()
+                  setSelectedIndex(0)
+                  searchRef.current?.blur()
+                }
+              }}
+              placeholder="Buscar producto o escanear código…"
+              className="w-full bg-gray-800/80 border border-gray-700 rounded-xl pl-11 pr-20 py-3 text-base text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+            />
+            {/* Right side: kbd hint cuando está vacío, clear cuando hay query */}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              {query ? (
+                <button
+                  onClick={() => { setQuery(""); searchRef.current?.focus() }}
+                  className="text-gray-500 hover:text-gray-300 p-1"
+                  title="Limpiar (Esc)"
+                >
+                  <X size={14} />
+                </button>
+              ) : (
+                <kbd className="hidden md:inline-flex bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 font-mono text-[10px] text-gray-500">
+                  {searchShortcutKey}
+                </kbd>
+              )}
+            </div>
+          </div>
+
+          {/* Scanner button (cámara) */}
+          <button
+            onClick={() => setShowScanner(true)}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 rounded-xl border border-gray-700 bg-gray-800/80 hover:bg-gray-700 hover:border-purple-500 text-gray-300 hover:text-white transition"
+            title="Escanear con la cámara"
+          >
+            <Camera size={18} />
+            <span className="hidden md:inline text-xs font-medium">Cámara</span>
+          </button>
+
+          {/* Help / atajos */}
+          <button
+            onClick={() => setShowShortcutsHelp(true)}
+            className="hidden lg:flex flex-shrink-0 items-center justify-center w-11 rounded-xl border border-gray-700 bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-accent transition"
+            title={`Atajos (${helpShortcutKey})`}
+          >
+            <Keyboard size={18} />
+          </button>
         </div>
 
         {/* Category pills (hidden while searching, no point filtering twice) */}
@@ -599,45 +592,59 @@ export default function POSPage() {
                         {p.soldByWeight ? `${Number(p.stock).toFixed(2)} kg` : `x${Math.round(Number(p.stock))}`}
                       </span>
                     </div>
-                    <div className="p-2">
-                      <p className="text-xs font-medium text-gray-100 line-clamp-2 mb-0.5 leading-tight">{p.name}</p>
-                      {p.category && <p className="text-[10px] text-gray-500 mb-1 truncate">{p.category.name}</p>}
-                      <span className="text-purple-400 font-bold text-sm">{formatCurrency(p.salePrice)}</span>
+                    <div className="p-2.5 flex flex-col gap-0.5">
+                      <p className="text-sm font-semibold text-gray-50 line-clamp-2 leading-snug">{p.name}</p>
+                      {p.category && <p className="text-[10px] text-gray-500 truncate uppercase tracking-wider">{p.category.name}</p>}
+                      <span className="text-purple-400 font-bold text-base mt-1 tabular-nums">{formatCurrency(p.salePrice)}</span>
                     </div>
                   </button>
                   )
                 })
               ) : (
-                visibleProducts.map((p, i) => (
+                visibleProducts.map((p, i) => {
+                  const color = categoryColor(p.category?.name)
+                  return (
                   <button
                     key={p.id}
                     ref={(el) => { productRefs.current[i] = el }}
                     onClick={() => handleAddProduct(p)}
                     className={cn(
-                      "bg-gray-800 hover:bg-gray-700 border rounded-xl p-2.5 text-left transition-all active:scale-95",
-                      selectedIndex === i && "ring-2 ring-purple-500 ring-offset-2 ring-offset-gray-950 border-purple-500 bg-gray-700",
+                      "relative rounded-xl p-3 text-left transition-all active:scale-95 border flex flex-col gap-0.5 overflow-hidden",
+                      color.bg,
+                      selectedIndex === i && "ring-2 ring-purple-500 ring-offset-2 ring-offset-gray-950 scale-[1.02]",
                       p.stock <= 0 && !p.soldByWeight
-                        ? "border-red-900/50 opacity-60 cursor-not-allowed"
-                        : p.stock <= p.minStock
-                        ? "border-yellow-700/50 hover:border-yellow-600"
-                        : "border-gray-700 hover:border-purple-600"
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:brightness-125"
                     )}
                     disabled={p.stock <= 0 && !p.soldByWeight}
                   >
-                    <p className="text-xs font-medium text-gray-100 line-clamp-2 mb-1 leading-tight">{p.name}</p>
-                    {p.category && <p className="text-[10px] text-gray-500 mb-1.5 truncate">{p.category.name}</p>}
-                    <div className="flex items-center justify-between">
-                      <span className="text-purple-400 font-bold text-xs">{formatCurrency(p.salePrice)}</span>
-                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md",
-                        p.stock <= 0 ? "bg-red-900/40 text-red-400" :
-                        p.stock <= p.minStock ? "bg-yellow-900/40 text-yellow-400" :
-                        "bg-gray-700 text-gray-400"
-                      )}>
-                        {p.soldByWeight ? `${Number(p.stock).toFixed(2)} kg` : `x${Math.round(Number(p.stock))}`}
-                      </span>
-                    </div>
+                    {/* Badge stock arriba a la derecha */}
+                    <span className={cn(
+                      "absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded-md font-medium",
+                      p.stock <= 0 ? "bg-red-900/70 text-red-100" :
+                      p.stock <= p.minStock ? "bg-yellow-900/70 text-yellow-100" :
+                      "bg-black/30 text-white/80"
+                    )}>
+                      {p.soldByWeight ? `${Number(p.stock).toFixed(2)} kg` : `x${Math.round(Number(p.stock))}`}
+                    </span>
+
+                    <p className={cn(
+                      "text-sm font-bold line-clamp-2 leading-snug pr-10",
+                      color.text
+                    )}>{p.name}</p>
+                    {p.category && (
+                      <p className={cn(
+                        "text-[10px] truncate uppercase tracking-wider opacity-70",
+                        color.text
+                      )}>{p.category.name}</p>
+                    )}
+                    <span className={cn(
+                      "font-bold text-base mt-1 tabular-nums",
+                      color.text
+                    )}>{formatCurrency(p.salePrice)}</span>
                   </button>
-                ))
+                  )
+                })
               )}
             </div>
           ) : isSearching ? (
@@ -782,20 +789,3 @@ export default function POSPage() {
   )
 }
 
-function Hint({ kbd, label, highlight }: { kbd: string; label: string; highlight?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <kbd
-        className={cn(
-          "inline-flex items-center font-mono rounded border px-1.5 py-0.5 text-[10px] leading-none",
-          highlight
-            ? "bg-purple-600/20 border-purple-500/50 text-purple-200 font-bold"
-            : "bg-gray-900 border-gray-700 text-gray-400"
-        )}
-      >
-        {kbd}
-      </kbd>
-      <span className={highlight ? "text-purple-300 font-medium" : "text-gray-500"}>{label}</span>
-    </span>
-  )
-}
