@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.orvex.twa",
+      "package_name": "com.cobraorvex.twa",
       "sha256_cert_fingerprints": [
-        "REEMPLAZAR_CON_SHA256_DEL_KEYSTORE_TWA"
+        "01:62:BE:A1:AB:65:3C:C0:BD:1D:85:4D:E6:B5:93:F8:CF:37:6D:15:D8:13:32:BA:1B:20:F4:6A:4A:E8:CE:71"
       ]
     }
   }

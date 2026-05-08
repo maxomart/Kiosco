@@ -282,7 +282,7 @@ export default function DescargarPage() {
                   Descargar Orvex para TV (.apk)
                 </a>
                 <span className="block text-[10px] text-gray-500 mt-1.5">
-                  Si te dice 404, pedinos el APK por WhatsApp — todavía estamos firmándolo.
+                  Versión actual · APK firmado. Pesa ~1.2 MB.
                 </span>
               </Step>
               <Step n={4}>
