@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/Skeleton"
 import { ThemePicker } from "@/components/theme/ThemePicker"
 import { SurfacePicker } from "@/components/theme/SurfacePicker"
 import { useTheme } from "@/components/theme/ThemeProvider"
+import { resizeImage } from "@/lib/image"
 
 interface TenantConfig {
   name: string
@@ -618,40 +619,6 @@ function LogoSection({
   )
 }
 
-/**
- * Redimensiona una imagen al tamaño máximo dado (manteniendo aspect ratio)
- * y la devuelve como data URL JPEG. Usado para que el logo nunca pese más de
- * ~30KB en la DB.
- */
-async function resizeImage(file: File, maxSize: number, quality: number): Promise<string> {
-  const objectUrl = URL.createObjectURL(file)
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image()
-      i.onload = () => resolve(i)
-      i.onerror = () => reject(new Error("No se pudo leer la imagen"))
-      i.src = objectUrl
-    })
-    let { width, height } = img
-    const ratio = width / height
-    if (width > height && width > maxSize) {
-      width = maxSize
-      height = Math.round(maxSize / ratio)
-    } else if (height >= width && height > maxSize) {
-      height = maxSize
-      width = Math.round(maxSize * ratio)
-    }
-    const canvas = document.createElement("canvas")
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext("2d")
-    if (!ctx) throw new Error("Canvas no disponible")
-    ctx.drawImage(img, 0, 0, width, height)
-    return canvas.toDataURL("image/jpeg", quality)
-  } finally {
-    URL.revokeObjectURL(objectUrl)
-  }
-}
 
 // ============================================================================
 // EmailNotificationsSection

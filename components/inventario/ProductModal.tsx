@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Loader2, Sparkles, Users, BookOpen, Package } from "lucide-react"
+import { X, Loader2, Sparkles, Users, BookOpen, Package, Image as ImageIcon, Upload, Trash2 } from "lucide-react"
 import { HelpTip } from "@/components/ui/HelpTip"
+import { resizeImage } from "@/lib/image"
+import toast from "react-hot-toast"
 
 interface Suggestion {
   name: string
@@ -27,6 +29,7 @@ interface Product {
   minStock: number
   soldByWeight: boolean
   active: boolean
+  image?: string | null
   categoryId?: string | null
   supplierId?: string | null
   category: { id: string; name: string } | null
@@ -50,6 +53,9 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
     name: "", barcode: defaultBarcode ?? "", sku: "", description: "", salePrice: "", costPrice: "",
     stock: "", minStock: "5", soldByWeight: false, active: true, categoryId: "", supplierId: "",
   })
+  const [image, setImage] = useState<string | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -147,8 +153,32 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
         categoryId: product.category?.id || product.categoryId || "",
         supplierId: product.supplier?.id || product.supplierId || "",
       })
+      setImage(product.image ?? null)
     }
   }, [product, duplicate])
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("El archivo tiene que ser una imagen.")
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen es muy grande (máx 5 MB).")
+      return
+    }
+    setUploadingImage(true)
+    try {
+      // 400px ≈ 25-50 KB en JPEG calidad 0.75. El POS la muestra ~200x200,
+      // así que 400 es más que suficiente para que se vea bien.
+      const dataUrl = await resizeImage(file, 400, 0.75)
+      setImage(dataUrl)
+    } catch (err) {
+      console.error("[product-image]", err)
+      toast.error("No se pudo procesar la imagen. Probá con otra.")
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   const set = (key: string, val: string | boolean) =>
     setForm(f => ({ ...f, [key]: val }))
@@ -177,6 +207,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
       minStock: parseFloat(form.minStock || "5"),
       soldByWeight: form.soldByWeight,
       active: form.active,
+      image: image,
       categoryId: form.categoryId || null,
       supplierId: form.supplierId || null,
     }
@@ -284,6 +315,66 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Imagen del producto */}
+          <div>
+            <label className="flex items-center gap-1.5 text-sm text-gray-400 mb-1.5">
+              Imagen
+              <HelpTip
+                text="Foto del producto. En el POS se muestra grande tipo menú, ideal para fiambrería, comidas o cualquier kiosco con catálogo visual."
+                example="Sacale una foto desde el celu o subí la del fabricante. Se redimensiona automático a 400px."
+              />
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                if (f) handleFile(f)
+                e.currentTarget.value = ""
+              }}
+            />
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                {image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={image}
+                    alt="Preview"
+                    className="w-20 h-20 rounded-xl border border-gray-700 bg-gray-800 object-cover"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-700 bg-gray-800/40 flex items-center justify-center">
+                    <ImageIcon size={22} className="text-gray-600" />
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs text-gray-200 disabled:opacity-50"
+                >
+                  {uploadingImage ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                  {image ? "Cambiar" : "Subir foto"}
+                </button>
+                {image && (
+                  <button
+                    type="button"
+                    onClick={() => setImage(null)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-400 hover:bg-red-500/10"
+                  >
+                    <Trash2 size={12} />
+                    Quitar
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Barcode + SKU */}
