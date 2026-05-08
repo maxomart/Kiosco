@@ -19,6 +19,7 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
     discount, subtotal, discountAmount, total } = usePOSStore()
   const [editingDiscount, setEditingDiscount] = useState<string | null>(null)
   const [editingWeight, setEditingWeight] = useState<string | null>(null)
+  const [editingQty, setEditingQty] = useState<string | null>(null)
   const editingItem = editingWeight ? cart.find((i) => i.productId === editingWeight) : null
 
   return (
@@ -78,7 +79,36 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
                       aria-label="Disminuir cantidad">
                       <Minus className="w-4 h-4 lg:w-3 lg:h-3" />
                     </button>
-                    <span className="text-base lg:text-sm font-medium w-9 lg:w-7 text-center tabular-nums">{item.quantity}</span>
+                    {editingQty === item.productId ? (
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={item.stock || undefined}
+                        defaultValue={item.quantity}
+                        autoFocus
+                        onFocus={(e) => e.target.select()}
+                        onBlur={(e) => {
+                          const n = parseInt(e.target.value || "0", 10)
+                          if (n > 0) updateQuantity(item.productId, Math.min(n, item.stock || n))
+                          setEditingQty(null)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+                          if (e.key === "Escape") setEditingQty(null)
+                        }}
+                        className="w-12 lg:w-10 h-9 lg:h-6 text-base lg:text-sm font-medium text-center tabular-nums bg-gray-700 border border-purple-500 rounded-lg text-white focus:outline-none"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setEditingQty(item.productId)}
+                        className="text-base lg:text-sm font-medium w-9 lg:w-7 h-9 lg:h-6 text-center tabular-nums hover:bg-gray-700 rounded-lg transition"
+                        aria-label="Editar cantidad"
+                        title="Click para tipear cantidad"
+                      >
+                        {item.quantity}
+                      </button>
+                    )}
                     <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                       disabled={item.quantity >= item.stock}
                       className="w-9 h-9 lg:w-6 lg:h-6 rounded-lg bg-gray-700 hover:bg-gray-600 active:scale-95 disabled:opacity-40 flex items-center justify-center transition"

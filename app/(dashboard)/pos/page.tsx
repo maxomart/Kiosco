@@ -21,6 +21,7 @@ interface Product {
   id: string; name: string; barcode: string | null; sku: string | null
   salePrice: number; costPrice: number; stock: number; minStock: number
   soldByWeight: boolean; taxRate?: string
+  image?: string | null
   category?: { name: string } | null
   categoryId?: string | null
 }
@@ -412,6 +413,19 @@ export default function POSPage() {
                   return
                 }
                 lastEnterRef.current = now
+
+                // Si parece un código de barras (sólo dígitos, ≥ 8) lo tratamos
+                // como escaneo y vamos directo al lookup por barcode. Esto cubre
+                // el caso del lector USB cuando el search está enfocado: sin
+                // este atajo, el barcode quedaba tipeado y la búsqueda
+                // debounceada no llegaba a tiempo para ofrecer el match.
+                const trimmed = query.trim()
+                if (/^\d{8,}$/.test(trimmed)) {
+                  handleBarcodeScan(trimmed)
+                  setQuery("")
+                  return
+                }
+
                 if (isSearching && visibleProducts.length > 0) {
                   handleAddProduct(visibleProducts[0])
                 }
@@ -525,7 +539,7 @@ export default function POSPage() {
           {(loading || (catalogLoading && !isSearching)) ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
               {[...Array(12)].map((_, i) => (
-                <div key={i} className="h-20 bg-gray-800 rounded-xl animate-pulse" />
+                <div key={i} className="aspect-[4/5] bg-gray-800 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : visibleProducts.length > 0 ? (
@@ -536,7 +550,7 @@ export default function POSPage() {
                   ref={(el) => { productRefs.current[i] = el }}
                   onClick={() => handleAddProduct(p)}
                   className={cn(
-                    "bg-gray-800 hover:bg-gray-700 border rounded-xl p-2.5 text-left transition-all active:scale-95",
+                    "bg-gray-800 hover:bg-gray-700 border rounded-xl text-left transition-all active:scale-95 overflow-hidden flex flex-col",
                     selectedIndex === i && "ring-2 ring-purple-500 ring-offset-2 ring-offset-gray-950 border-purple-500 bg-gray-700",
                     p.stock <= 0 && !p.soldByWeight
                       ? "border-red-900/50 opacity-60 cursor-not-allowed"
@@ -546,17 +560,35 @@ export default function POSPage() {
                   )}
                   disabled={p.stock <= 0 && !p.soldByWeight}
                 >
-                  <p className="text-xs font-medium text-gray-100 line-clamp-2 mb-1 leading-tight">{p.name}</p>
-                  {p.category && <p className="text-[10px] text-gray-500 mb-1.5 truncate">{p.category.name}</p>}
-                  <div className="flex items-center justify-between">
-                    <span className="text-purple-400 font-bold text-xs">{formatCurrency(p.salePrice)}</span>
-                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-md",
-                      p.stock <= 0 ? "bg-red-900/40 text-red-400" :
-                      p.stock <= p.minStock ? "bg-yellow-900/40 text-yellow-400" :
-                      "bg-gray-700 text-gray-400"
+                  {/* Foto / fallback. Si hay imagen mostramos grande tipo menú; si
+                      no, un círculo con la inicial — sigue siendo más visual que
+                      sólo texto y mantiene la altura uniforme de las cards. */}
+                  <div className="relative aspect-square bg-gray-900 flex items-center justify-center overflow-hidden">
+                    {p.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.image}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="text-3xl font-bold text-gray-700 select-none">
+                        {p.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className={cn("absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded-md backdrop-blur-sm",
+                      p.stock <= 0 ? "bg-red-900/70 text-red-200" :
+                      p.stock <= p.minStock ? "bg-yellow-900/70 text-yellow-200" :
+                      "bg-black/50 text-gray-200"
                     )}>
                       {p.soldByWeight ? `${Number(p.stock).toFixed(2)} kg` : `x${Math.round(Number(p.stock))}`}
                     </span>
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-xs font-medium text-gray-100 line-clamp-2 mb-1 leading-tight">{p.name}</p>
+                    {p.category && <p className="text-[10px] text-gray-500 mb-1.5 truncate">{p.category.name}</p>}
+                    <span className="text-purple-400 font-bold text-sm">{formatCurrency(p.salePrice)}</span>
                   </div>
                 </button>
               ))}
