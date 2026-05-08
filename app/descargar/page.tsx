@@ -15,6 +15,8 @@ import {
   Check,
   ArrowDown,
   Share,
+  Tv,
+  ExternalLink,
 } from "lucide-react"
 
 interface BeforeInstallPromptEvent extends Event {
@@ -252,6 +254,42 @@ export default function DescargarPage() {
               </p>
               <p className="text-[11px] text-gray-500">
                 Tip: si pones la tablet en horizontal, el POS queda con el carrito al costado y los productos en grilla — perfecto para el mostrador.
+              </p>
+            </DeviceCard>
+
+            {/* Card Google TV / Android TV — TWA via APK */}
+            <DeviceCard
+              icon={<Tv className="w-8 h-8 text-orange-400" />}
+              title="Google TV / Android TV"
+              active={false}
+            >
+              <p className="text-sm text-gray-400 mb-3">
+                Las TVs no soportan instalar PWAs — hay que descargar el APK y pasarlo al TV.
+              </p>
+              <Step n={1}>
+                Desde el celu, instalá la app gratis <strong className="text-white">"Send Files to TV"</strong> en el celu y en el TV (Play Store en ambos).
+              </Step>
+              <Step n={2}>
+                En el TV: <strong className="text-white">Ajustes → Aplicaciones → Permisos especiales → Apps de fuentes desconocidas</strong> → activá "Send Files to TV".
+              </Step>
+              <Step n={3}>
+                Descargá el APK acá:
+                <a
+                  href="/orvex-tv.apk"
+                  className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/15 border border-orange-500/40 text-orange-200 hover:bg-orange-500/25 text-xs font-medium w-full sm:w-auto"
+                >
+                  <Download size={14} />
+                  Descargar Orvex para TV (.apk)
+                </a>
+                <span className="block text-[10px] text-gray-500 mt-1.5">
+                  Si te dice 404, pedinos el APK por WhatsApp — todavía estamos firmándolo.
+                </span>
+              </Step>
+              <Step n={4}>
+                Abrí <strong>Send Files to TV</strong> en el celu, mandá el APK al TV, abrilo desde el TV y tocá <strong className="text-white">"Instalar"</strong>.
+              </Step>
+              <p className="text-[11px] text-gray-500 mt-2">
+                Tip: si tenés un control Bluetooth con touchpad o ratón inalámbrico para el TV, navegar Orvex es mucho más cómodo.
               </p>
             </DeviceCard>
           </div>
