@@ -118,9 +118,9 @@ model Product {
   barcode      String?
   costPrice    Decimal  @default(0) @db.Decimal(10, 2)
   salePrice    Decimal  @default(0) @db.Decimal(10, 2)
-  stock        Int      @default(0)
-  minStock     Int      @default(5)
-  maxStock     Int?
+  stock        Decimal  @default(0) @db.Decimal(12, 3)
+  minStock     Decimal  @default(5) @db.Decimal(12, 3)
+  maxStock     Decimal? @db.Decimal(12, 3)
   active       Boolean  @default(true)
   image        String?
   soldByWeight Boolean  @default(false)
@@ -188,9 +188,9 @@ model Supplier {
 model StockMovement {
   id          String   @id @default(cuid())
   type        String   // SALE, PURCHASE, ADJUSTMENT, RETURN, LOSS
-  quantity    Int
-  stockBefore Int
-  stockAfter  Int
+  quantity    Decimal  @db.Decimal(12, 3)
+  stockBefore Decimal  @db.Decimal(12, 3)
+  stockAfter  Decimal  @db.Decimal(12, 3)
   unitCost    Decimal? @db.Decimal(10, 2)
   totalCost   Decimal? @db.Decimal(10, 2)
   reason      String?
@@ -260,7 +260,7 @@ model Sale {
 model SaleItem {
   id          String  @id @default(cuid())
   productName String
-  quantity    Int
+  quantity    Decimal @db.Decimal(12, 3)
   unitPrice   Decimal @db.Decimal(10, 2)
   costPrice   Decimal @db.Decimal(10, 2)
   discount    Decimal @default(0) @db.Decimal(5, 2)
@@ -782,7 +782,7 @@ model RechargeItem {
 model ProductLoss {
   id             String   @id @default(cuid())
   type           String   // "EXPIRED" | "DAMAGED" | "THEFT"
-  quantity       Int
+  quantity       Decimal  @db.Decimal(12, 3)
   estimatedValue Decimal  @db.Decimal(12, 2)
   reason         String?
   createdAt      DateTime @default(now())

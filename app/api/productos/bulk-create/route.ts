@@ -29,8 +29,8 @@ const inputSchema = z.object({
         barcode: z.string().nullable().optional(),
         salePrice: z.number().min(0).optional().default(0),
         costPrice: z.number().min(0).optional().default(0),
-        stock: z.number().int().min(0).optional().default(0),
-        minStock: z.number().int().min(0).optional().default(5),
+        stock: z.number().min(0).optional().default(0),
+        minStock: z.number().min(0).optional().default(5),
         categoryId: z.string().nullable().optional(),
         supplierId: z.string().nullable().optional(),
       })

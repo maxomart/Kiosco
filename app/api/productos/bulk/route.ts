@@ -16,7 +16,7 @@ const updatesSchema = z.object({
         id: z.string().min(1),
         salePrice: z.number().min(0).optional(),
         costPrice: z.number().min(0).optional(),
-        stock: z.number().int().optional(),       // signed in ADD mode (can be negative for adjustments)
+        stock: z.number().optional(),       // signed in ADD mode (can be negative for adjustments)
       }),
     )
     .min(1, "Sin cambios para guardar"),

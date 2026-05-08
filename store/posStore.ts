@@ -17,7 +17,13 @@ interface POSStore {
   cashSessionId: string | null
 
   // Actions
-  addToCart: (product: Omit<CartItem, "quantity" | "discount" | "subtotal">) => void
+  /**
+   * Adds a product to the cart. For unit-based products, leave `quantity`
+   * undefined (defaults to 1, increments on subsequent calls). For weight
+   * products, pass the kg value (e.g. 0.350) — replaces any prior weight
+   * for the same product instead of incrementing.
+   */
+  addToCart: (product: Omit<CartItem, "quantity" | "discount" | "subtotal">, quantity?: number) => void
   removeFromCart: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
   updateDiscount: (productId: string, discount: number) => void
@@ -41,14 +47,32 @@ export const usePOSStore = create<POSStore>()(
       selectedClientId: null,
       cashSessionId: null,
 
-      addToCart: (product) => {
+      addToCart: (product, quantity) => {
         const { cart } = get()
         const existing = cart.find((i) => i.productId === product.productId)
+
+        // Weight products always replace the existing line with the new weight
+        // (the user just re-weighed the bag). Unit products increment by 1 or
+        // by the explicit quantity passed in.
         if (existing) {
-          // Stock guard: never increment past available stock for unit-based
-          // products. Callers are expected to validate first and toast a
-          // friendly message; this is a backstop.
-          if (!existing.soldByWeight && existing.quantity + 1 > existing.stock) {
+          if (product.soldByWeight) {
+            const newQty = quantity ?? existing.quantity
+            set({
+              cart: cart.map((i) =>
+                i.productId === product.productId
+                  ? {
+                      ...i,
+                      quantity: newQty,
+                      subtotal: Math.round((newQty * i.unitPrice * (1 - i.discount / 100)) * 100) / 100,
+                    }
+                  : i
+              ),
+            })
+            return
+          }
+          // Unit product: increment by the requested amount (default 1)
+          const inc = quantity ?? 1
+          if (existing.quantity + inc > existing.stock) {
             return
           }
           set({
@@ -56,22 +80,23 @@ export const usePOSStore = create<POSStore>()(
               i.productId === product.productId
                 ? {
                     ...i,
-                    quantity: i.quantity + 1,
-                    subtotal: Math.round(((i.quantity + 1) * i.unitPrice * (1 - i.discount / 100)) * 100) / 100,
+                    quantity: i.quantity + inc,
+                    subtotal: Math.round(((i.quantity + inc) * i.unitPrice * (1 - i.discount / 100)) * 100) / 100,
                   }
                 : i
             ),
           })
         } else {
           if (!product.soldByWeight && product.stock <= 0) return
+          const initial = quantity ?? 1
           set({
             cart: [
               ...cart,
               {
                 ...product,
-                quantity: 1,
+                quantity: initial,
                 discount: 0,
-                subtotal: Math.round(product.unitPrice * 100) / 100,
+                subtotal: Math.round(initial * product.unitPrice * 100) / 100,
               },
             ],
           })

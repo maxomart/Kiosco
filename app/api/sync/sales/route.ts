@@ -35,7 +35,7 @@ const TAX_RATES: Record<string, number> = {
 const SaleItemSchema = z.object({
   productId: z.string().min(1),
   productName: z.string().min(1),
-  quantity: z.number().int().positive(),
+  quantity: z.number().positive(),
   unitPrice: z.number().nonnegative(),
   costPrice: z.number().nonnegative(),
   discount: z.number().min(0).max(100),

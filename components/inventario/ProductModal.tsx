@@ -158,7 +158,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
     if (!form.name.trim()) e.name = "Nombre requerido"
     if (!form.salePrice || isNaN(parseFloat(form.salePrice)) || parseFloat(form.salePrice) < 0) e.salePrice = "Precio inválido"
     if (form.costPrice && isNaN(parseFloat(form.costPrice))) e.costPrice = "Costo inválido"
-    if (form.stock && isNaN(parseInt(form.stock))) e.stock = "Stock inválido"
+    if (form.stock && isNaN(parseFloat(form.stock))) e.stock = "Stock inválido"
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -173,8 +173,8 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
       description: form.description.trim() || null,
       salePrice: parseFloat(form.salePrice),
       costPrice: parseFloat(form.costPrice || "0"),
-      stock: parseInt(form.stock || "0"),
-      minStock: parseInt(form.minStock || "5"),
+      stock: parseFloat(form.stock || "0"),
+      minStock: parseFloat(form.minStock || "5"),
       soldByWeight: form.soldByWeight,
       active: form.active,
       categoryId: form.categoryId || null,
@@ -340,21 +340,23 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
           {/* Stock + MinStock + soldByWeight */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Stock</label>
+              <label className="block text-sm text-gray-400 mb-1.5">
+                Stock {form.soldByWeight ? "(kg)" : ""}
+              </label>
               <input type="number" value={form.stock} onChange={e => set("stock", e.target.value)}
-                min="0" step="1"
+                min="0" step={form.soldByWeight ? "0.001" : "1"}
                 className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-sm text-gray-400 mb-1.5">
-                Stock mínimo
+                Stock mínimo {form.soldByWeight ? "(kg)" : ""}
                 <HelpTip
                   text="Cuando el stock llega a este número, aparece como 'stock bajo' en el dashboard para que repongas."
                   example="Para una Coca 500ml que vendés 5 por día, poné 10-15 de mínimo."
                 />
               </label>
               <input type="number" value={form.minStock} onChange={e => set("minStock", e.target.value)}
-                min="0" step="1"
+                min="0" step={form.soldByWeight ? "0.001" : "1"}
                 className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500" />
             </div>
             <div>

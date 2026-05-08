@@ -11,6 +11,7 @@ import { CartPanel } from "@/components/pos/CartPanel"
 import { PaymentModal } from "@/components/pos/PaymentModal"
 import { OfflineBanner } from "@/components/pos/OfflineBanner"
 import { CameraBarcodeScanner } from "@/components/pos/CameraBarcodeScanner"
+import { WeightInputModal } from "@/components/pos/WeightInputModal"
 import { useDebounce } from "@/lib/hooks/useDebounce"
 import { formatCurrency } from "@/lib/utils"
 import { cn } from "@/lib/utils"
@@ -50,6 +51,10 @@ export default function POSPage() {
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
+  // Producto pendiente de pesar — cuando el usuario clickea/escanea un producto
+  // sold-by-weight, en lugar de agregar quantity=1 abrimos un modal para que
+  // tipee el peso real (ej. 0.350 kg) antes de mandarlo al carrito.
+  const [weighing, setWeighing] = useState<Product | null>(null)
   // Auto-close cart drawer when payment modal opens (so user sees the modal cleanly)
   const searchShortcutKey = useShortcutKey("pos:search")
   const chargeShortcutKey = useShortcutKey("pos:charge")
@@ -194,10 +199,15 @@ export default function POSPage() {
     }
     if (!p) { toast.error(`Código no encontrado: ${barcode}`); return }
     if (p.stock <= 0 && !p.soldByWeight) { toast.error(`Sin stock: ${p.name}`); return }
+    // Producto por peso → abrir modal de peso en lugar de agregar directo.
+    if (p.soldByWeight) {
+      setWeighing(p)
+      return
+    }
     // Stock guard: if already at max in cart, don't increment past it.
     const inCart = cart.find((i) => i.productId === p!.id)
     const currentQty = inCart?.quantity ?? 0
-    if (!p.soldByWeight && currentQty + 1 > p.stock) {
+    if (currentQty + 1 > p.stock) {
       toast.error(`Stock máximo de ${p.name}: ${p.stock} unidades`)
       return
     }
@@ -235,10 +245,17 @@ export default function POSPage() {
 
   const handleAddProduct = (p: Product) => {
     if (p.stock <= 0 && !p.soldByWeight) { toast.error(`Sin stock: ${p.name}`); return }
+    // Por peso → abrir modal de peso. Limpiamos query/grid igual.
+    if (p.soldByWeight) {
+      setWeighing(p)
+      setQuery("")
+      setProducts([])
+      return
+    }
     // Stock guard: don't let the user click past available stock.
     const inCart = cart.find((i) => i.productId === p.id)
     const currentQty = inCart?.quantity ?? 0
-    if (!p.soldByWeight && currentQty + 1 > p.stock) {
+    if (currentQty + 1 > p.stock) {
       toast.error(`Stock máximo de ${p.name}: ${p.stock} unidades`)
       return
     }
@@ -246,6 +263,18 @@ export default function POSPage() {
     setQuery("")
     setProducts([])
     // Re-focus inmediato para que el siguiente producto se cargue sin tocar mouse
+    requestAnimationFrame(() => searchRef.current?.focus())
+  }
+
+  const handleConfirmWeight = (kg: number) => {
+    if (!weighing) return
+    const p = weighing
+    addToCart(
+      { productId: p.id, productName: p.name, barcode: p.barcode, unitPrice: p.salePrice, costPrice: p.costPrice, stock: p.stock, taxRate: "STANDARD", soldByWeight: true },
+      kg,
+    )
+    setWeighing(null)
+    toast.success(`${p.name}: ${kg.toFixed(3)} kg`, { duration: 1500, icon: "🛒" })
     requestAnimationFrame(() => searchRef.current?.focus())
   }
 
@@ -526,7 +555,7 @@ export default function POSPage() {
                       p.stock <= p.minStock ? "bg-yellow-900/40 text-yellow-400" :
                       "bg-gray-700 text-gray-400"
                     )}>
-                      {p.soldByWeight ? "x kg" : `x${p.stock}`}
+                      {p.soldByWeight ? `${Number(p.stock).toFixed(2)} kg` : `x${Math.round(Number(p.stock))}`}
                     </span>
                   </div>
                 </button>
@@ -651,6 +680,17 @@ export default function POSPage() {
             handleBarcodeScan(code)
           }}
           onClose={() => setShowScanner(false)}
+        />
+      )}
+
+      {weighing && (
+        <WeightInputModal
+          productName={weighing.name}
+          pricePerKg={weighing.salePrice}
+          stockKg={weighing.stock}
+          initialKg={cart.find((i) => i.productId === weighing.id)?.quantity}
+          onConfirm={handleConfirmWeight}
+          onClose={() => setWeighing(null)}
         />
       )}
 

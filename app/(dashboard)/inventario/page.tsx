@@ -551,7 +551,7 @@ export default function InventarioPage() {
                     </td>
                     <td className="p-4 text-right">
                       <span className={stockStatus === "out" ? "text-red-400 font-bold" : stockStatus === "low" ? "text-yellow-400 font-medium" : "text-green-400"}>
-                        {p.stock}{p.soldByWeight ? " kg" : ""}
+                        {p.soldByWeight ? `${Number(p.stock).toFixed(3)} kg` : Math.round(Number(p.stock))}
                       </span>
                     </td>
                     <td className="p-4 text-center">

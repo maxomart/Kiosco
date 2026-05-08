@@ -1,9 +1,10 @@
 "use client"
 
-import { Minus, Plus, Trash2, ShoppingCart, User, ChevronRight } from "lucide-react"
+import { Minus, Plus, Trash2, ShoppingCart, User, ChevronRight, Scale } from "lucide-react"
 import { usePOSStore } from "@/store/posStore"
 import { formatCurrency, cn } from "@/lib/utils"
 import { useState } from "react"
+import { WeightInputModal } from "@/components/pos/WeightInputModal"
 
 interface Props {
   onPay: () => void
@@ -17,6 +18,8 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
   const { cart, removeFromCart, updateQuantity, updateDiscount, setGlobalDiscount,
     discount, subtotal, discountAmount, total } = usePOSStore()
   const [editingDiscount, setEditingDiscount] = useState<string | null>(null)
+  const [editingWeight, setEditingWeight] = useState<string | null>(null)
+  const editingItem = editingWeight ? cart.find((i) => i.productId === editingWeight) : null
 
   return (
     <div className="flex flex-col h-full bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
@@ -57,21 +60,33 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
                 </button>
               </div>
               <div className="flex items-center justify-between gap-2">
-                {/* Qty — touch-friendly on mobile (36px), compact on desktop (24px) */}
-                <div className="flex items-center gap-1.5">
-                  <button onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                    className="w-9 h-9 lg:w-6 lg:h-6 rounded-lg bg-gray-700 hover:bg-gray-600 active:scale-95 flex items-center justify-center transition"
-                    aria-label="Disminuir cantidad">
-                    <Minus className="w-4 h-4 lg:w-3 lg:h-3" />
+                {/* Qty / weight — for weight items show a single editable kg pill;
+                    unit items get the +/- stepper. */}
+                {item.soldByWeight ? (
+                  <button
+                    onClick={() => setEditingWeight(item.productId)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-200 transition"
+                    aria-label="Editar peso"
+                  >
+                    <Scale className="w-3.5 h-3.5" />
+                    <span className="text-sm font-semibold tabular-nums">{item.quantity.toFixed(3)} kg</span>
                   </button>
-                  <span className="text-base lg:text-sm font-medium w-9 lg:w-7 text-center tabular-nums">{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                    disabled={!item.soldByWeight && item.quantity >= item.stock}
-                    className="w-9 h-9 lg:w-6 lg:h-6 rounded-lg bg-gray-700 hover:bg-gray-600 active:scale-95 disabled:opacity-40 flex items-center justify-center transition"
-                    aria-label="Aumentar cantidad">
-                    <Plus className="w-4 h-4 lg:w-3 lg:h-3" />
-                  </button>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                      className="w-9 h-9 lg:w-6 lg:h-6 rounded-lg bg-gray-700 hover:bg-gray-600 active:scale-95 flex items-center justify-center transition"
+                      aria-label="Disminuir cantidad">
+                      <Minus className="w-4 h-4 lg:w-3 lg:h-3" />
+                    </button>
+                    <span className="text-base lg:text-sm font-medium w-9 lg:w-7 text-center tabular-nums">{item.quantity}</span>
+                    <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                      disabled={item.quantity >= item.stock}
+                      className="w-9 h-9 lg:w-6 lg:h-6 rounded-lg bg-gray-700 hover:bg-gray-600 active:scale-95 disabled:opacity-40 flex items-center justify-center transition"
+                      aria-label="Aumentar cantidad">
+                      <Plus className="w-4 h-4 lg:w-3 lg:h-3" />
+                    </button>
+                  </div>
+                )}
                 {/* Price + discount */}
                 <div className="flex items-center gap-2 text-right">
                   {editingDiscount === item.productId ? (
@@ -140,6 +155,20 @@ export function CartPanel({ onPay, payDisabled = false, payDisabledReason }: Pro
           )}
         </button>
       </div>
+
+      {editingItem && (
+        <WeightInputModal
+          productName={editingItem.productName}
+          pricePerKg={editingItem.unitPrice}
+          stockKg={editingItem.stock}
+          initialKg={editingItem.quantity}
+          onConfirm={(kg) => {
+            updateQuantity(editingItem.productId, kg)
+            setEditingWeight(null)
+          }}
+          onClose={() => setEditingWeight(null)}
+        />
+      )}
     </div>
   )
 }

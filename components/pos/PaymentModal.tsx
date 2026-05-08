@@ -139,15 +139,28 @@ export function PaymentModal({ onClose }: Props) {
     setLoading(true)
     try {
       const ref = `pos-${Date.now()}`
+      // MP requires integer quantity. For weight items, pack the line into a
+      // single MP item with the full subtotal as unit_price so totals match.
+      const mpItems = cart.map((i) => {
+        const qty = Number(i.quantity) || 0
+        if (i.soldByWeight) {
+          return {
+            title: `${i.productName} (${qty.toFixed(3)} kg)`,
+            quantity: 1,
+            unit_price: Number(i.subtotal) || 0,
+          }
+        }
+        return {
+          title: i.productName,
+          quantity: Math.max(1, Math.floor(qty || 1)),
+          unit_price: Number(i.unitPrice) || 0,
+        }
+      })
       const res = await fetch("/api/mercadopago/preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: cart.map((i) => ({
-            title: i.productName,
-            quantity: Math.max(1, Math.floor(Number(i.quantity) || 1)),
-            unit_price: Number(i.unitPrice) || 0,
-          })),
+          items: mpItems,
           externalReference: ref,
         }),
       })
@@ -172,7 +185,10 @@ export function PaymentModal({ onClose }: Props) {
         items: cart.map(i => ({
           productId: i.productId,
           productName: i.productName,
-          quantity: Math.max(1, Math.floor(Number(i.quantity) || 1)),
+          // For weight items keep the decimal kg; for unit items force integer.
+          quantity: i.soldByWeight
+            ? Math.max(0.001, Number(i.quantity) || 0)
+            : Math.max(1, Math.floor(Number(i.quantity) || 1)),
           unitPrice: Number(i.unitPrice) || 0,
           costPrice: Number(i.costPrice) || 0,
           discount: Number(i.discount) || 0,
