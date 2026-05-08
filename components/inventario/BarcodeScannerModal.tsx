@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Camera, Scan, AlertCircle, Loader2, Plus, Edit2, Keyboard } from "lucide-react"
+import { X, Camera, Scan, AlertCircle, Loader2, Keyboard } from "lucide-react"
 import toast from "react-hot-toast"
+import { startBarcodeScanner, type StopFn } from "@/lib/barcode-scanner"
 
 interface ScannedProduct {
   id: string
@@ -17,11 +18,6 @@ interface ScannedProduct {
 
 type Mode = "idle" | "camera" | "keyboard"
 
-// Type for native BarcodeDetector (experimental browser API)
-type BarcodeDetectorCtor = new (opts?: { formats?: string[] }) => {
-  detect: (src: ImageBitmapSource) => Promise<Array<{ rawValue: string }>>
-}
-
 export function BarcodeScannerModal({
   open,
   onClose,
@@ -35,20 +31,17 @@ export function BarcodeScannerModal({
 }) {
   const [mode, setMode] = useState<Mode>("idle")
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [lastScan, setLastScan] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
   const [manualCode, setManualCode] = useState("")
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const detectorRef = useRef<InstanceType<BarcodeDetectorCtor> | null>(null)
-  const stopLoopRef = useRef(false)
+  const stopScannerRef = useRef<StopFn | null>(null)
+  const searchingRef = useRef(false)
   const keyboardInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (!open) {
       stopCamera()
       setMode("idle")
-      setLastScan(null)
       setCameraError(null)
       setManualCode("")
     }
@@ -66,63 +59,36 @@ export function BarcodeScannerModal({
 
   const startCamera = async () => {
     setCameraError(null)
-    // Check if BarcodeDetector is available
-    const BD = (window as any).BarcodeDetector as BarcodeDetectorCtor | undefined
-    if (!BD) {
-      setCameraError("Tu navegador no soporta el detector de códigos nativo. Usá un lector USB o ingresá el código manualmente.")
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Tu navegador no soporta acceso a la cámara. Usá un lector USB o ingresá el código manualmente.")
       return
     }
+    if (!videoRef.current) return
     try {
-      detectorRef.current = new BD({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"] })
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+      stopScannerRef.current = await startBarcodeScanner(videoRef.current, (code) => {
+        if (searchingRef.current) return
+        handleCodeFound(code)
       })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-      stopLoopRef.current = false
-      detectLoop()
-    } catch (err: any) {
-      setCameraError("No se pudo acceder a la cámara. Permitir acceso o usar modo manual.")
+    } catch (err: unknown) {
+      const name = (err as { name?: string })?.name
+      const msg = name === "NotAllowedError"
+        ? "Permitime usar la cámara para escanear (revisá los permisos del navegador)."
+        : name === "NotFoundError"
+          ? "No encontré ninguna cámara en este dispositivo."
+          : "No se pudo iniciar la cámara. Probá con un lector USB o ingresá el código manualmente."
+      setCameraError(msg)
     }
   }
 
   const stopCamera = () => {
-    stopLoopRef.current = true
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop())
-      streamRef.current = null
+    if (stopScannerRef.current) {
+      stopScannerRef.current()
+      stopScannerRef.current = null
     }
-    if (videoRef.current) videoRef.current.srcObject = null
-  }
-
-  const detectLoop = async () => {
-    if (stopLoopRef.current) return
-    const video = videoRef.current
-    const detector = detectorRef.current
-    if (!video || !detector || video.readyState < 2) {
-      requestAnimationFrame(detectLoop)
-      return
-    }
-    try {
-      const codes = await detector.detect(video)
-      if (codes.length > 0 && !searching) {
-        const code = codes[0].rawValue
-        if (code && code !== lastScan) {
-          setLastScan(code)
-          handleCodeFound(code)
-          return // stop loop once a code is found
-        }
-      }
-    } catch {
-      // ignore frame errors, keep scanning
-    }
-    if (!stopLoopRef.current) requestAnimationFrame(detectLoop)
   }
 
   const handleCodeFound = async (code: string) => {
+    searchingRef.current = true
     setSearching(true)
     try {
       const res = await fetch(`/api/productos?q=${encodeURIComponent(code)}&limit=1`)
@@ -151,6 +117,7 @@ export function BarcodeScannerModal({
       toast.error("Error al buscar el producto")
     } finally {
       setSearching(false)
+      searchingRef.current = false
     }
   }
 
