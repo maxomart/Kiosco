@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon, Gift, Download, Globe, Smartphone } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon, Gift, Download, Globe, Smartphone, RotateCw } from "lucide-react"
 import { PageTip } from "@/components/shared/PageTip"
 import { BUSINESS_TYPES, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
@@ -333,6 +333,9 @@ export default function ConfiguracionPage() {
             )
           )}
 
+          {/* Rotación de pantalla — toggle local del dispositivo */}
+          <RotateScreenSection />
+
           {/* Email notifications */}
           {config && (
             <EmailNotificationsSection
@@ -615,6 +618,81 @@ function LogoSection({
           {saving ? "Guardando..." : "Guardar logo"}
         </Button>
       </div>
+    </div>
+  )
+}
+
+
+// ============================================================================
+// RotateScreenSection — toggle de rotación 90° por CSS para TVs verticales
+// ============================================================================
+// Setting LOCAL del dispositivo (vive en localStorage, no en la DB del tenant)
+// porque rotar o no depende del hardware donde está instalada la app.
+function RotateScreenSection() {
+  const KEY = "orvex-rotate-screen"
+  const [enabled, setEnabled] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    setEnabled(localStorage.getItem(KEY) === "1")
+  }, [])
+
+  const toggle = () => {
+    const next = !enabled
+    setEnabled(next)
+    if (next) localStorage.setItem(KEY, "1")
+    else localStorage.removeItem(KEY)
+    document.documentElement.classList.toggle("rotate-screen-90", next)
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-4">
+      <div className="flex items-start gap-3 pb-2 border-b border-gray-800/60">
+        <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+          <RotateCw size={16} className="text-purple-400" />
+        </div>
+        <div>
+          <h2 className="text-white font-semibold">Rotar pantalla 90°</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Sólo para TVs/monitores que están físicamente colgados verticales
+            (modo retrato) pero cuyo OS no rota la salida. Activá esto para
+            que el sitio se vea derecho. La opción se guarda en este dispositivo.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-gray-200 font-medium">
+            {mounted ? (enabled ? "Rotación activada" : "Rotación desactivada") : "Cargando..."}
+          </p>
+          <p className="text-[11px] text-gray-500 mt-0.5">
+            {enabled
+              ? "El contenido se ve girado 90° para TVs verticales."
+              : "El contenido se ve normal (orientación según el dispositivo)."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={!mounted}
+          className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+            enabled
+              ? "bg-purple-600 hover:bg-purple-500 text-white"
+              : "bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700"
+          }`}
+        >
+          <RotateCw className={`w-4 h-4 ${enabled ? "rotate-90" : ""} transition-transform`} />
+          {enabled ? "Volver al normal" : "Rotar 90°"}
+        </button>
+      </div>
+
+      <p className="text-[10px] text-gray-600 pt-2 border-t border-gray-800/60">
+        Tip: también podés activar/desactivar desde la URL escribiendo{" "}
+        <code className="bg-gray-800 px-1 py-0.5 rounded text-gray-400">cobraorvex.com/?rotate=on</code>{" "}
+        o <code className="bg-gray-800 px-1 py-0.5 rounded text-gray-400">?rotate=off</code>.
+      </p>
     </div>
   )
 }
