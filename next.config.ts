@@ -62,7 +62,11 @@ const securityHeaders = [
     : [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" }]),
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+    // camera=(self) → permitimos que cobraorvex.com use la cámara (escáner
+    // de barcode + QR de pago). Sin esto el header bloqueaba TODO acceso
+    // a la cámara aún cuando el APK declarara el permiso.
+    // microphone y geolocation siguen bloqueados — no los usamos.
+    value: "camera=(self), microphone=(), geolocation=(), interest-cohort=()",
   },
   { key: "Content-Security-Policy", value: csp },
 ]
