@@ -14,18 +14,40 @@ interface Props {
   onClose: () => void
 }
 
+type ErrorKind = "denied" | "no-camera" | "no-api" | "other"
+
 export function CameraBarcodeScanner({ onScan, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const stopScannerRef = useRef<StopFn | null>(null)
   const scannedRef = useRef(false)
-  const [error, setError] = useState<string | null>(null)
+  const [errorKind, setErrorKind] = useState<ErrorKind | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [manualValue, setManualValue] = useState("")
+
+  // Detectar si la app corre como PWA standalone para mostrar instrucciones
+  // específicas (los permisos en standalone se piden distinto que en tab).
+  const isStandalone =
+    typeof window !== "undefined" &&
+    (window.matchMedia?.("(display-mode: standalone)").matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true)
+
+  // Detectar plataforma para instrucciones puntuales
+  const platform: "android" | "ios" | "desktop" | "other" =
+    typeof navigator === "undefined"
+      ? "other"
+      : /android/i.test(navigator.userAgent)
+        ? "android"
+        : /iphone|ipad|ipod/i.test(navigator.userAgent)
+          ? "ios"
+          : /macintosh|windows|linux/i.test(navigator.userAgent)
+            ? "desktop"
+            : "other"
 
   useEffect(() => {
     let cancelled = false
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Tu navegador no soporta acceso a la cámara. Entrá el código a mano abajo.")
+      setErrorKind("no-api")
       return
     }
 
@@ -43,14 +65,16 @@ export function CameraBarcodeScanner({ onScan, onClose }: Props) {
           return
         }
         stopScannerRef.current = stop
+        setErrorKind(null)
       } catch (e: unknown) {
         const name = (e as { name?: string })?.name
-        const msg = name === "NotAllowedError"
-          ? "Permitime usar la cámara para escanear (revisá los permisos del navegador)."
-          : name === "NotFoundError"
-            ? "No encontré ninguna cámara en este dispositivo."
-            : "No pude iniciar la cámara. Entrá el código a mano abajo."
-        if (!cancelled) setError(msg)
+        const kind: ErrorKind =
+          name === "NotAllowedError"
+            ? "denied"
+            : name === "NotFoundError"
+              ? "no-camera"
+              : "other"
+        if (!cancelled) setErrorKind(kind)
       }
     })()
 
@@ -60,7 +84,9 @@ export function CameraBarcodeScanner({ onScan, onClose }: Props) {
       stopScannerRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [retryCount])
+
+  const retry = () => setRetryCount((c) => c + 1)
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,10 +110,68 @@ export function CameraBarcodeScanner({ onScan, onClose }: Props) {
         </div>
 
         <div className="p-4 space-y-3">
-          {error ? (
-            <div className="bg-red-950/30 border border-red-700/40 rounded-lg p-3 flex gap-2 text-sm text-red-100">
-              <AlertCircle size={16} className="flex-shrink-0 mt-0.5 text-red-400" />
-              <p>{error}</p>
+          {errorKind ? (
+            <div className="bg-red-950/30 border border-red-700/40 rounded-lg p-3 space-y-2 text-sm text-red-100">
+              <div className="flex gap-2">
+                <AlertCircle size={16} className="flex-shrink-0 mt-0.5 text-red-400" />
+                <p className="font-medium">
+                  {errorKind === "denied"
+                    ? "El navegador no me dejó usar la cámara."
+                    : errorKind === "no-camera"
+                      ? "No encontré ninguna cámara en este dispositivo."
+                      : errorKind === "no-api"
+                        ? "Tu navegador no soporta acceso a la cámara."
+                        : "No pude iniciar la cámara."}
+                </p>
+              </div>
+
+              {errorKind === "denied" && (
+                <div className="text-[12px] text-red-200/90 space-y-1.5 pl-6">
+                  {isStandalone && platform === "android" ? (
+                    <>
+                      <p className="font-semibold text-white">
+                        Estás usando Orvex como app instalada (PWA). Para darle permiso de cámara:
+                      </p>
+                      <ol className="list-decimal list-inside space-y-0.5">
+                        <li>Mantené apretado el ícono de Orvex en tu pantalla.</li>
+                        <li>Tocá <strong>"Información de la app"</strong> (ícono de info ⓘ).</li>
+                        <li>Entrá a <strong>Permisos → Cámara → Permitir</strong>.</li>
+                        <li>Volvé a Orvex y tocá "Volver a pedir" abajo.</li>
+                      </ol>
+                    </>
+                  ) : platform === "android" ? (
+                    <>
+                      <p>En Chrome/Android: tocá el <strong>candado</strong> al lado del URL → <strong>Permisos del sitio</strong> → <strong>Cámara → Permitir</strong>. Después tocá "Volver a pedir".</p>
+                    </>
+                  ) : platform === "ios" ? (
+                    <>
+                      {isStandalone ? (
+                        <p>Andá a <strong>Ajustes del iPhone → Orvex → Cámara</strong> y activala. Volvé y tocá "Volver a pedir".</p>
+                      ) : (
+                        <p>Tocá el ícono <strong>aA</strong> en la barra de Safari → "Ajustes del sitio web" → <strong>Cámara → Permitir</strong>.</p>
+                      )}
+                    </>
+                  ) : (
+                    <p>En Chrome: candado al lado del URL → Permisos del sitio → Cámara → Permitir. Después recargá la página.</p>
+                  )}
+                </div>
+              )}
+
+              {(errorKind === "denied" || errorKind === "other") && (
+                <div className="pl-6 pt-1">
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold"
+                  >
+                    <Camera size={12} />
+                    Volver a pedir permiso
+                  </button>
+                </div>
+              )}
+              {errorKind !== "denied" && (
+                <p className="pl-6 text-[11px] text-red-200/70">Mientras tanto, tipeá el código a mano abajo.</p>
+              )}
             </div>
           ) : (
             <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
