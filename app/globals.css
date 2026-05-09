@@ -1278,3 +1278,28 @@ html[data-theme="light"] .surface-card {
   font-size: 0.875em;
   color: rgb(196, 181, 253);
 }
+
+/* ============================================================================
+   Rotación forzada para TVs montadas verticalmente sin rotación de OS.
+   El usuario activa este modo cuando su TV está físicamente girada 90° pero
+   el OS sigue mandando señal landscape — sin esto, el sitio se ve "horizontal"
+   en una TV vertical. Toggle vive en localStorage `orvex-rotate-screen`.
+   El layout responsive existente (portrait: queries) se activa solo porque al
+   rotar el viewport se vuelve más alto que ancho.
+   ============================================================================ */
+html.rotate-screen-90,
+html.rotate-screen-90 body {
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+html.rotate-screen-90 body {
+  transform: rotate(90deg);
+  transform-origin: 0 0;
+  width: 100vh;
+  height: 100vw;
+  position: absolute;
+  top: 0;
+  left: 100vw;
+  overflow: auto;
+}

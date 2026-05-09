@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "react-hot-toast"
 import ServiceWorkerRegistrar from "./sw"
+import RotateScreenManager from "@/components/shared/RotateScreenManager"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${inter.variable} antialiased min-h-screen bg-gray-950`} suppressHydrationWarning>
         <ServiceWorkerRegistrar />
+        <RotateScreenManager />
         {children}
         <Toaster
           position="top-right"
