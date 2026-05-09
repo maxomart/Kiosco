@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Loader2, Sparkles, Users, BookOpen, Package, Image as ImageIcon, Upload, Trash2 } from "lucide-react"
+import { X, Loader2, Sparkles, Users, BookOpen, Package, Image as ImageIcon, Upload, Trash2, Camera } from "lucide-react"
 import { HelpTip } from "@/components/ui/HelpTip"
 import { resizeImage } from "@/lib/image"
+import { CameraBarcodeScanner } from "@/components/pos/CameraBarcodeScanner"
 import toast from "react-hot-toast"
 
 interface Suggestion {
@@ -55,6 +56,7 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
   })
   const [image, setImage] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -387,9 +389,20 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
                   example="Mayoría de productos: 13 dígitos (EAN-13). Podés escanear con la cámara desde el botón Escanear."
                 />
               </label>
-              <input value={form.barcode} onChange={e => set("barcode", e.target.value)}
-                placeholder="7891234567890"
-                className="w-full px-3 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 font-mono" />
+              <div className="relative">
+                <input value={form.barcode} onChange={e => set("barcode", e.target.value)}
+                  placeholder="7891234567890"
+                  className="w-full px-3 py-2.5 pr-11 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 font-mono" />
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-400 hover:text-purple-300 hover:bg-purple-500/10 transition"
+                  title="Escanear con la cámara"
+                  aria-label="Escanear código de barras"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1.5">SKU</label>
@@ -517,6 +530,17 @@ export default function ProductModal({ product, categories, suppliers, onClose, 
           </button>
         </div>
       </div>
+
+      {showScanner && (
+        <CameraBarcodeScanner
+          onScan={(code) => {
+            set("barcode", code)
+            setShowScanner(false)
+            toast.success(`Código capturado: ${code}`, { duration: 1500 })
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   )
 }
