@@ -21,7 +21,7 @@ export function CameraBarcodeScanner({ onScan, onClose }: Props) {
   const stopScannerRef = useRef<StopFn | null>(null)
   const scannedRef = useRef(false)
   const [errorKind, setErrorKind] = useState<ErrorKind | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
+  const [started, setStarted] = useState(false)
   const [manualValue, setManualValue] = useState("")
 
   // Detectar si la app corre como PWA standalone para mostrar instrucciones
@@ -43,50 +43,51 @@ export function CameraBarcodeScanner({ onScan, onClose }: Props) {
             ? "desktop"
             : "other"
 
+  // Cleanup en unmount sin re-disparar la cámara: la cámara se inicia
+  // SÓLO en respuesta a un click del usuario (ver `start()` abajo). Sin
+  // user-gesture explícito, los browsers en modo PWA pueden rechazar
+  // getUserMedia en silencio — bug que pasaba antes cuando la cámara se
+  // arrancaba automático en useEffect.
   useEffect(() => {
-    let cancelled = false
+    return () => {
+      stopScannerRef.current?.()
+      stopScannerRef.current = null
+    }
+  }, [])
 
+  // Inicia la cámara — debe llamarse DIRECTO desde un onClick para que
+  // los browsers consideren la llamada como "user-initiated". Como el
+  // <video> está siempre montado en el DOM (sólo lo ocultamos con CSS
+  // antes de iniciar), videoRef.current está disponible al instante.
+  const start = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setErrorKind("no-api")
       return
     }
-
-    ;(async () => {
-      if (!videoRef.current) return
-      try {
-        const stop = await startBarcodeScanner(videoRef.current, (code) => {
-          if (scannedRef.current) return
-          scannedRef.current = true
-          if (typeof navigator.vibrate === "function") navigator.vibrate(60)
-          onScan(code)
-        })
-        if (cancelled) {
-          stop()
-          return
-        }
-        stopScannerRef.current = stop
-        setErrorKind(null)
-      } catch (e: unknown) {
-        const name = (e as { name?: string })?.name
-        const kind: ErrorKind =
-          name === "NotAllowedError"
-            ? "denied"
-            : name === "NotFoundError"
-              ? "no-camera"
-              : "other"
-        if (!cancelled) setErrorKind(kind)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-      stopScannerRef.current?.()
-      stopScannerRef.current = null
+    if (!videoRef.current) return
+    setStarted(true)
+    setErrorKind(null)
+    try {
+      const stop = await startBarcodeScanner(videoRef.current, (code) => {
+        if (scannedRef.current) return
+        scannedRef.current = true
+        if (typeof navigator.vibrate === "function") navigator.vibrate(60)
+        onScan(code)
+      })
+      stopScannerRef.current = stop
+    } catch (e: unknown) {
+      const name = (e as { name?: string })?.name
+      const kind: ErrorKind =
+        name === "NotAllowedError"
+          ? "denied"
+          : name === "NotFoundError"
+            ? "no-camera"
+            : "other"
+      setErrorKind(kind)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [retryCount])
+  }
 
-  const retry = () => setRetryCount((c) => c + 1)
+  const retry = () => start()
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -174,19 +175,39 @@ export function CameraBarcodeScanner({ onScan, onClose }: Props) {
               )}
             </div>
           ) : (
-            <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-3/4 h-1/3 border-2 border-purple-400/60 rounded-lg relative">
-                  <ScanLine className="absolute inset-x-0 mx-auto text-purple-400 animate-pulse top-1/2 -translate-y-1/2" size={28} />
-                </div>
+            <>
+              {/* Video container: siempre montado para que videoRef.current
+                  esté disponible cuando el usuario toca "Activar cámara".
+                  Antes de iniciar, mostramos un overlay con el botón. */}
+              <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                <video
+                  ref={videoRef}
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover ${started ? "" : "opacity-0"}`}
+                />
+                {started ? (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-3/4 h-1/3 border-2 border-purple-400/60 rounded-lg relative">
+                      <ScanLine className="absolute inset-x-0 mx-auto text-purple-400 animate-pulse top-1/2 -translate-y-1/2" size={28} />
+                    </div>
+                  </div>
+                ) : (
+                  // Estado inicial — botón explícito para activar cámara.
+                  // getUserMedia tiene que llamarse DIRECTO desde un click
+                  // del usuario; algunos browsers en PWA lo exigen.
+                  <button
+                    type="button"
+                    onClick={start}
+                    className="absolute inset-0 bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 active:scale-[0.99] text-white flex flex-col items-center justify-center gap-2 transition-all"
+                  >
+                    <Camera className="w-10 h-10" />
+                    <span className="font-semibold text-sm">Activar cámara</span>
+                    <span className="text-[11px] text-purple-200/80">Tocá acá para empezar a escanear</span>
+                  </button>
+                )}
               </div>
-            </div>
+            </>)}
           )}
 
           <form onSubmit={handleManualSubmit} className="space-y-2 pt-2 border-t border-gray-800">
