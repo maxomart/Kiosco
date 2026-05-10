@@ -8,7 +8,7 @@ import VentaDetalleClient from "./VentaDetalleClient"
 export default async function VentaDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await auth()
-  if (!session) {
+  if (!session?.user) {
     return (
       <div className="p-6 max-w-2xl mx-auto">
         <p className="text-gray-400">Iniciá sesión para ver esta venta.</p>

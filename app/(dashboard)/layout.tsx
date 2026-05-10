@@ -34,7 +34,11 @@ export default async function DashboardLayout({
 }) {
   const session = await auth()
 
-  if (!session) {
+  // Antes sólo chequeábamos !session. Pero `session.user` puede ser undefined
+  // en sesiones corruptas (cookie inválida, JWT secret rotado, etc.) y eso
+  // crasheaba el dashboard entero con "Cannot read properties of undefined".
+  // Tratamos ambos casos como "no autenticado".
+  if (!session?.user) {
     redirect("/login")
   }
 

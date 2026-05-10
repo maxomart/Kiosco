@@ -8,7 +8,7 @@ import AfipConfigClient from "./AfipConfigClient"
 
 export default async function AfipPage() {
   const session = await auth()
-  if (!session) return <NoAccess message="Iniciá sesión para gestionar AFIP." />
+  if (!session?.user) return <NoAccess message="Iniciá sesión para gestionar AFIP." />
 
   const role = session.user.role
   if (role !== "OWNER" && role !== "ADMIN" && role !== "SUPER_ADMIN") {

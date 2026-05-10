@@ -12,7 +12,7 @@ export default async function CuentaCorrientePage({
   params: Promise<{ id: string }>
 }) {
   const session = await auth()
-  if (!session) return <NoAccess message="Iniciá sesión." />
+  if (!session?.user) return <NoAccess message="Iniciá sesión." />
 
   const tenantId = session.user.tenantId
   const plan = tenantId ? await getTenantPlan(tenantId) : "FREE"

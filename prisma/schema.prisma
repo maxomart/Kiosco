@@ -205,6 +205,11 @@ model StockMovement {
   @@index([productId])
   @@index([type])
   @@index([createdAt])
+  // Reports típicos filtran "movimientos de producto X en rango de fechas" o
+  // "todas las ventas de un día" — los índices compuestos hacen esas queries
+  // mucho más rápidas a partir de ~50k rows.
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
 }
 
 // ============= SALES =============
@@ -255,6 +260,11 @@ model Sale {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  // El 95% de las queries de reportes son "ventas del tenant X en este
+  // rango de fechas". Index compuesto le da query plan limpio sin escanear
+  // todas las ventas globales primero.
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, status, createdAt(sort: Desc)])
 }
 
 model SaleItem {

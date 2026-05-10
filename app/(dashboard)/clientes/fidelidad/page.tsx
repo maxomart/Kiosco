@@ -9,7 +9,7 @@ import FidelidadClient from "./FidelidadClient"
 
 export default async function FidelidadPage() {
   const session = await auth()
-  if (!session) redirect("/login")
+  if (!session?.user) redirect("/login")
   if (session.user.role === "SUPER_ADMIN") redirect("/admin")
 
   if (!can(session.user.role, "settings:read") && !can(session.user.role, "clients:read")) {

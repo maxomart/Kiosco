@@ -7,7 +7,7 @@ import MercadoPagoClient from "./MercadoPagoClient"
 
 export default async function MercadoPagoConfigPage() {
   const session = await auth()
-  if (!session) return <NoAccess message="Iniciá sesión para configurar Mercado Pago." />
+  if (!session?.user) return <NoAccess message="Iniciá sesión para configurar Mercado Pago." />
 
   const tenantId = session.user.tenantId
   const plan = tenantId ? await getTenantPlan(tenantId) : "FREE"

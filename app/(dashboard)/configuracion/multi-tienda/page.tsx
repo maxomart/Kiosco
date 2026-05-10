@@ -7,7 +7,7 @@ import MultiTiendaClient from "./MultiTiendaClient"
 
 export default async function MultiTiendaPage() {
   const session = await auth()
-  if (!session) return <NoAccess message="Iniciá sesión para acceder a multi-tienda." />
+  if (!session?.user) return <NoAccess message="Iniciá sesión para acceder a multi-tienda." />
 
   if (!can(session.user.role, "settings:read")) {
     return <NoAccess message="No tenés permiso para ver esta sección." />

@@ -316,7 +316,10 @@ function AIResumenSection({ resumen }: { resumen: string | null }) {
 
 export default async function DashboardPage() {
   const session = await auth()
-  if (!session) redirect("/login")
+  // Chequeo defensivo de session.user — si la cookie está corrupta puede ser
+  // undefined aunque session exista. El crash anterior era "cannot read tenantId
+  // of undefined" en este punto.
+  if (!session?.user) redirect("/login")
 
   const tenantId = session.user.tenantId
   if (!tenantId) {
