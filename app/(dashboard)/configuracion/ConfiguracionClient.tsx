@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import toast from "react-hot-toast"
-import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon, Gift, Download, Globe, Smartphone, RotateCw } from "lucide-react"
+import { CreditCard, Users, Store, ChevronRight, MessageCircle, Send, Lock, Image as ImageIcon, Star, Building2, FileCheck2, Keyboard, Settings, Sparkles, Crown, Mail, AlertTriangle, CalendarDays, CalendarRange, Calendar as CalendarIcon, Gift, Download, Globe, Smartphone, RotateCw, Maximize, Minimize } from "lucide-react"
 import { PageTip } from "@/components/shared/PageTip"
 import { BUSINESS_TYPES, type Plan } from "@/lib/utils"
 import { hasFeature } from "@/lib/permissions"
@@ -335,6 +335,9 @@ export default function ConfiguracionPage() {
 
           {/* Rotación de pantalla — toggle local del dispositivo */}
           <RotateScreenSection />
+
+          {/* Pantalla completa — fullscreen API */}
+          <FullscreenSection />
 
           {/* Email notifications */}
           {config && (
@@ -693,6 +696,124 @@ function RotateScreenSection() {
         <code className="bg-gray-800 px-1 py-0.5 rounded text-gray-400">cobraorvex.com/?rotate=on</code>{" "}
         o <code className="bg-gray-800 px-1 py-0.5 rounded text-gray-400">?rotate=off</code>.
       </p>
+    </div>
+  )
+}
+
+
+// ============================================================================
+// FullscreenSection — botón para activar pantalla completa via Fullscreen API
+// ============================================================================
+// Útil cuando la app corre dentro de un browser/launcher que muestra su propia
+// chrome (Downloader del TV con su barra naranja, browsers viejos sin opción
+// de fullscreen). El botón pide al browser que muestre el sitio sin chrome.
+// Si el browser no soporta requestFullscreen, mostramos un mensaje claro.
+function FullscreenSection() {
+  const [isFs, setIsFs] = useState(false)
+  const [supported, setSupported] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const docAny = document as Document & {
+      webkitFullscreenElement?: Element
+      mozFullScreenElement?: Element
+      msFullscreenElement?: Element
+    }
+    const elAny = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>
+      mozRequestFullScreen?: () => Promise<void>
+      msRequestFullscreen?: () => Promise<void>
+    }
+    const ok = !!(elAny.requestFullscreen || elAny.webkitRequestFullscreen || elAny.mozRequestFullScreen || elAny.msRequestFullscreen)
+    setSupported(ok)
+
+    const update = () => {
+      setIsFs(!!(document.fullscreenElement || docAny.webkitFullscreenElement || docAny.mozFullScreenElement || docAny.msFullscreenElement))
+    }
+    update()
+    document.addEventListener("fullscreenchange", update)
+    document.addEventListener("webkitfullscreenchange", update)
+    return () => {
+      document.removeEventListener("fullscreenchange", update)
+      document.removeEventListener("webkitfullscreenchange", update)
+    }
+  }, [])
+
+  const enter = async () => {
+    const el = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>
+      mozRequestFullScreen?: () => Promise<void>
+      msRequestFullscreen?: () => Promise<void>
+    }
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen()
+      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
+      else if (el.mozRequestFullScreen) await el.mozRequestFullScreen()
+      else if (el.msRequestFullscreen) await el.msRequestFullscreen()
+    } catch (err) {
+      console.warn("[fullscreen] failed", err)
+    }
+  }
+
+  const exit = async () => {
+    const doc = document as Document & {
+      webkitExitFullscreen?: () => Promise<void>
+      mozCancelFullScreen?: () => Promise<void>
+      msExitFullscreen?: () => Promise<void>
+    }
+    try {
+      if (document.exitFullscreen) await document.exitFullscreen()
+      else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen()
+      else if (doc.mozCancelFullScreen) await doc.mozCancelFullScreen()
+      else if (doc.msExitFullscreen) await doc.msExitFullscreen()
+    } catch (err) {
+      console.warn("[fullscreen] exit failed", err)
+    }
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-4">
+      <div className="flex items-start gap-3 pb-2 border-b border-gray-800/60">
+        <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center flex-shrink-0">
+          <Maximize size={16} className="text-sky-400" />
+        </div>
+        <div>
+          <h2 className="text-white font-semibold">Pantalla completa</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Esconde la barra del navegador y usa toda la pantalla. Útil si abrís
+            Orvex desde un browser que muestra su chrome arriba (ej. Downloader
+            del TV). Tocá Esc o el botón para volver al normal.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          {supported === false ? (
+            <p className="text-sm text-amber-300">
+              Tu navegador no soporta pantalla completa. Probá con Chrome, Firefox
+              o Edge actualizados.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-200 font-medium">
+              {isFs ? "Estás en pantalla completa" : "Modo normal"}
+            </p>
+          )}
+        </div>
+        {supported !== false && (
+          <button
+            type="button"
+            onClick={isFs ? exit : enter}
+            className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              isFs
+                ? "bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700"
+                : "bg-sky-600 hover:bg-sky-500 text-white"
+            }`}
+          >
+            {isFs ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            {isFs ? "Salir" : "Activar pantalla completa"}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
