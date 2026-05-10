@@ -207,7 +207,7 @@ export function CameraBarcodeScanner({ onScan, onClose }: Props) {
                   </button>
                 )}
               </div>
-            </>)}
+            </>
           )}
 
           <form onSubmit={handleManualSubmit} className="space-y-2 pt-2 border-t border-gray-800">
