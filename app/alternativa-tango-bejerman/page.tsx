@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "Sistema POS web argentino, más simple y económico que Tango o Bejerman, sin instalación ni licencias por usuario.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=Alternativa+a+Tango+%2F+Bejerman&pill=Para+migrar+de+sistemas+viejos", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

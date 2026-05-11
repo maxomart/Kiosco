@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "Punto de venta para fiambrerías con venta por peso, tara automática y control de stock de jamón, queso, salame, lechón.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=POS+para+Fiambrer%C3%ADa&pill=Para+fiambrer%C3%ADas", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

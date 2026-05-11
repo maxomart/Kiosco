@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "POS pensado para verdulerías argentinas: venta por kilo/gramo, control de mermas y rotación rápida de productos perecederos.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=Punto+de+Venta+Verduler%C3%ADa&pill=Para+verduler%C3%ADas+y+fruter%C3%ADas", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

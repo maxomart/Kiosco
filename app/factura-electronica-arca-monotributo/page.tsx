@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "Sin pasar por la web de ARCA, sin copiar datos a mano. Factura A/B/C con CAE directo desde el POS de Orvex.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=Factura+Electr%C3%B3nica+AFIP+%2F+ARCA&pill=Monotributo+y+RI", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

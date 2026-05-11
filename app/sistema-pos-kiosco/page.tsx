@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "Reemplazá el cuaderno y el Excel. Vendé, controlá stock y emití facturas AFIP desde una app que funciona offline.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=Sistema+POS+para+Kiosco&pill=Para+kioscos+y+despensas", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

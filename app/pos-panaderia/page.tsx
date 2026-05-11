@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "Sistema de gestión para panaderías argentinas con venta por unidad/peso, cuenta corriente, AFIP integrado.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=POS+para+Panader%C3%ADa&pill=Para+panader%C3%ADas", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

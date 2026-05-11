@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "Punto de venta para carnicerías argentinas: venta por kilo, balanza integrada, control de stock por cortes, AFIP.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=POS+para+Carnicer%C3%ADa&pill=Para+carnicer%C3%ADas", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

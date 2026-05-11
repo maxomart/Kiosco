@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "Para farmacias chicas que necesitan control de stock, vencimientos y AFIP sin contratar un sistema corporativo.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=Software+para+Farmacia&pill=Para+farmacias+chicas", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

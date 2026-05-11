@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "Inventario digital con código de barras, alertas de stock bajo y plan de compras semanal automático según velocidad de venta.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=Control+de+Stock+Minis%C3%BAper&pill=Para+autoservicios", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

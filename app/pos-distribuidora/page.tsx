@@ -19,6 +19,7 @@ export const metadata: Metadata = {
       "POS B2B argentino: cuenta corriente, listas de precios, facturación AFIP A/B, ruteo de cobranza.",
     type: "website",
     locale: "es_AR",
+    images: [{ url: "https://cobraorvex.com/api/og?title=POS+para+Distribuidora&pill=Para+mayoristas+B2B", width: 1200, height: 630, alt: "Orvex" }],
   },
 }
 

@@ -20,7 +20,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        // /api/og es pública (genera OG images). El resto de /api/ es privado.
+        allow: ["/", "/api/og"],
         // IMPORTANTE: `$` al final hace match EXACTO. Sin él, `/pos` también
         // bloquearía `/pos-fiambreria`, `/pos-carniceria`, etc. — y esas son
         // landings públicas que sí queremos que Google indexe.
