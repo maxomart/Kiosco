@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "POS para Panadería en Argentina | Sistema de Caja | Orvex",
   description:
     "POS para panaderías: venta por unidad (medialunas, facturas, tortas) y por peso (galletitas, pan). Cuenta corriente, AFIP, reportes con IA. Gratis para arrancar.",
+  keywords: ["POS panadería, sistema panadería argentina, software panadería, AFIP panadería, control stock panadería, combos panadería, encargues confitería"],
   alternates: { canonical: "https://cobraorvex.com/pos-panaderia" },
   openGraph: {
     title: "POS para Panadería en Argentina",

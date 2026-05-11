@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Software para Farmacia en Argentina | POS, Stock y AFIP | Orvex",
   description:
     "Software de gestión para farmacias chicas y barriales en Argentina. POS, control de stock, vencimientos, cuenta corriente, AFIP integrado y reportes con IA. Plan gratis para arrancar.",
+  keywords: ["software farmacia, sistema farmacia argentina, POS farmacia, trazabilidad farmacia, gestión farmacia barrial"],
   alternates: { canonical: "https://cobraorvex.com/software-farmacia-argentina" },
   openGraph: {
     title: "Software para Farmacia en Argentina",

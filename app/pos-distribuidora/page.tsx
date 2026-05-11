@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "POS para Distribuidora Mayorista | Cuenta Corriente | Orvex",
   description:
     "Sistema de gestión para distribuidoras y mayoristas argentinos: cuenta corriente con límite de crédito, lista de precios por cliente, AFIP A/B, reportes con IA.",
+  keywords: ["POS distribuidora, sistema distribuidora argentina, software mayorista, cuenta corriente B2B, factura A mayorista, ruteo entregas, multi-vendedor"],
   alternates: { canonical: "https://cobraorvex.com/pos-distribuidora" },
   openGraph: {
     title: "POS para Distribuidora Mayorista",

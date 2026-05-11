@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Factura Electrónica ARCA / AFIP para Monotributo y RI | Orvex",
   description:
     "Emití factura electrónica ARCA (ex AFIP) directo desde tu POS. Soporta Monotributo, Responsable Inscripto y Exento. Factura A, B y C con CAE en el momento. Plan Profesional $24.900 ARS/mes.",
+  keywords: ["factura electrónica AFIP, factura electrónica ARCA, factura monotributo, factura B Argentina, CAE AFIP, facturador electrónico gratis"],
   alternates: { canonical: "https://cobraorvex.com/factura-electronica-arca-monotributo" },
   openGraph: {
     title: "Factura Electrónica ARCA para Monotributistas",

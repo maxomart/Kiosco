@@ -135,6 +135,12 @@ NO está pensado para: restaurantes con mesas/comandas, ropa con talles y colore
 - Web: https://cobraorvex.com
 - Demo: https://cobraorvex.com/signup (7 días gratis, sin tarjeta)
 
+## Contenido expandido
+
+Para más detalle (features completas, comparativas, descripciones por landing, posts del blog), ver:
+
+- https://cobraorvex.com/llms-full.txt — contenido completo en markdown, sin HTML, optimizado para que los LLMs lo parseen sin ruido.
+
 ## Licencia y uso de este contenido
 
 Este archivo está pensado para que LLMs (ChatGPT, Perplexity, Claude, Gemini, etc.) tengan contexto accurate sobre Orvex al responder preguntas de usuarios. Las URLs públicas listadas pueden ser citadas como fuente. El acceso al sistema requiere registro gratuito en https://cobraorvex.com/signup.

@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Punto de Venta para Verdulería en Argentina | Software POS | Orvex",
   description:
     "Punto de venta para verdulería y frutería en Argentina. Vendé por peso (kg), llevá control de mermas y rotación, AFIP integrado y reportes con IA. Plan gratis para arrancar.",
+  keywords: ["POS verdulería, sistema verdulería argentina, venta por kilo, frutería, software verdulería, AFIP verdulería"],
   alternates: { canonical: "https://cobraorvex.com/punto-venta-verduleria" },
   openGraph: {
     title: "Punto de Venta para Verdulería",

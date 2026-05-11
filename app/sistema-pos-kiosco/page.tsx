@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Sistema POS para Kioscos en Argentina | Orvex",
   description:
     "Sistema POS para kioscos argentinos: ventas, inventario, caja, AFIP y reportes con IA. Funciona offline, se actualiza solo. Plan gratis sin tarjeta. Pago desde $9.999/mes.",
+  keywords: ["POS kiosco, sistema kiosco argentina, software kiosco, programa kiosco, sistema almacén, despensa, gestión kiosco"],
   alternates: { canonical: "https://cobraorvex.com/sistema-pos-kiosco" },
   openGraph: {
     title: "Sistema POS para Kioscos en Argentina",

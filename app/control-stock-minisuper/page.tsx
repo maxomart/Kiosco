@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Control de Stock para Minisúper | Software de Inventario | Orvex",
   description:
     "Control de stock para minisúper, autoservicio y almacén grande en Argentina. Hasta 5.000 productos, código de barras, plan de compras automático, alertas de stock bajo. Plan gratis para arrancar.",
+  keywords: ["control stock minisúper, sistema minisúper argentina, inventario autoservicio, POS minisúper, software autoservicio"],
   alternates: { canonical: "https://cobraorvex.com/control-stock-minisuper" },
   openGraph: {
     title: "Control de Stock para Minisúper",

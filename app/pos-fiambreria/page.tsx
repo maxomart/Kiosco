@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "POS para Fiambrería en Argentina | Venta por Peso + Tara | Orvex",
   description:
     "Sistema POS para fiambrerías: venta por peso (kg), descuento de tara del envase, etiquetas con balanza, AFIP integrado y control de stock. Plan gratis para arrancar.",
+  keywords: ["POS fiambrería, sistema fiambrería argentina, venta por peso, tara, balanza fiambrería, software fiambrería, AFIP fiambrería, control stock fiambres"],
   alternates: { canonical: "https://cobraorvex.com/pos-fiambreria" },
   openGraph: {
     title: "POS para Fiambrería en Argentina",

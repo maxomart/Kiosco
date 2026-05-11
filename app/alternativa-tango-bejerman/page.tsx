@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Alternativa a Tango / Bejerman para Kiosco | POS Web | Orvex",
   description:
     "Alternativa moderna a Tango Gestión, Bejerman y sistemas viejos para comercios chicos en Argentina. Web, sin instalación, offline-first, AFIP integrado y plan gratis.",
+  keywords: ["alternativa Tango Gestión, alternativa Bejerman, reemplazo Tango, sistema POS web argentino, software gestión Argentina barato, migrar de Tango"],
   alternates: { canonical: "https://cobraorvex.com/alternativa-tango-bejerman" },
   openGraph: {
     title: "Alternativa a Tango Gestión / Bejerman",

@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "POS para Carnicería en Argentina | Venta por Kilo | Orvex",
   description:
     "Sistema POS para carnicerías: venta por kilo, control de cortes, integración con balanza electrónica, AFIP, reportes de rotación. Plan gratis sin tarjeta.",
+  keywords: ["POS carnicería, sistema carnicería argentina, venta por kilo, balanza carnicería, software carnicería, AFIP carnicería, stock cortes carne, frigorífico"],
   alternates: { canonical: "https://cobraorvex.com/pos-carniceria" },
   openGraph: {
     title: "POS para Carnicería en Argentina",
