@@ -19,6 +19,7 @@
 
 import { XMLParser } from "fast-xml-parser"
 import { signCMS } from "./cms"
+import { db } from "@/lib/db"
 
 export type AfipMode = "HOMOLOGACION" | "PRODUCCION"
 
@@ -46,33 +47,116 @@ const WSAA_URLS: Record<AfipMode, string> = {
 }
 
 // =============================================================================
-// In-memory TA cache
+// DB-backed TA cache
 // =============================================================================
-// 12 horas de validez por TA — pegarle al WSAA cada vez es lento e innecesario.
-// Cache es por proceso. Para deploy multi-instancia, ver `TODO_MULTI_INSTANCE`
-// abajo: migrar a tabla AfipTicket en DB.
-
-const taCache = new Map<string, TicketAccess>()
-
-function cacheKey(opts: { mode: AfipMode; service: string; cacheKey: string }) {
-  return `${opts.mode}::${opts.service}::${opts.cacheKey}`
-}
+// El TA dura 12 hs. Lo persistimos en la tabla AfipTicket (ver schema.prisma)
+// indexada por (tenantId, service, mode) para que sobreviva a redeploys.
+// Multi-instancia compatible.
+//
+// Si guardáramos solo in-memory, cada redeploy de Railway perdería el cache
+// y AFIP nos rechazaría con "El CEE ya posee un TA valido" durante 12 hs
+// (porque del lado AFIP el TA sigue vigente).
+//
+// Las opciones reciben `cacheKey` que en la práctica es el tenantId — lo
+// mantenemos como nombre genérico por si en el futuro queremos cachear TAs
+// por otro criterio (ej. CUIT distinto para el mismo tenant).
 
 /** Devuelve el TA cacheado si está vigente (con un margen de 5 min). */
-function getCachedTA(key: string): TicketAccess | null {
-  const ta = taCache.get(key)
-  if (!ta) return null
+async function getStoredTA(opts: {
+  mode: AfipMode
+  service: string
+  cacheKey: string
+}): Promise<TicketAccess | null> {
+  const row = await db.afipTicket
+    .findUnique({
+      where: {
+        tenantId_service_mode: {
+          tenantId: opts.cacheKey,
+          service: opts.service,
+          mode: opts.mode,
+        },
+      },
+    })
+    .catch(() => null)
+  if (!row) return null
   const skewMs = 5 * 60 * 1000
-  if (Date.now() + skewMs >= ta.expirationTime) {
-    taCache.delete(key)
+  if (Date.now() + skewMs >= row.expirationTime.getTime()) {
+    // Vencido — limpiamos así no estorba.
+    await db.afipTicket
+      .delete({
+        where: {
+          tenantId_service_mode: {
+            tenantId: opts.cacheKey,
+            service: opts.service,
+            mode: opts.mode,
+          },
+        },
+      })
+      .catch(() => {})
     return null
   }
-  return ta
+  return {
+    token: row.token,
+    sign: row.sign,
+    generationTime: row.generationTime.getTime(),
+    expirationTime: row.expirationTime.getTime(),
+  }
 }
 
-/** Borra el TA del cache (útil si AFIP nos devuelve "token expirado"). */
-export function invalidateTA(opts: { mode: AfipMode; service: string; cacheKey: string }) {
-  taCache.delete(cacheKey(opts))
+async function storeTA(
+  opts: { mode: AfipMode; service: string; cacheKey: string },
+  ta: TicketAccess,
+): Promise<void> {
+  await db.afipTicket
+    .upsert({
+      where: {
+        tenantId_service_mode: {
+          tenantId: opts.cacheKey,
+          service: opts.service,
+          mode: opts.mode,
+        },
+      },
+      create: {
+        tenantId: opts.cacheKey,
+        service: opts.service,
+        mode: opts.mode,
+        token: ta.token,
+        sign: ta.sign,
+        generationTime: new Date(ta.generationTime),
+        expirationTime: new Date(ta.expirationTime),
+      },
+      update: {
+        token: ta.token,
+        sign: ta.sign,
+        generationTime: new Date(ta.generationTime),
+        expirationTime: new Date(ta.expirationTime),
+      },
+    })
+    .catch(() => {
+      // Si DB falla, seguimos sin cachear (mejor que romper la emisión).
+    })
+}
+
+/**
+ * Borra el TA cacheado (útil si AFIP nos devuelve "token expirado" —
+ * caso raro, ocurre si AFIP invalida el TA antes de su expirationTime).
+ */
+export async function invalidateTA(opts: {
+  mode: AfipMode
+  service: string
+  cacheKey: string
+}): Promise<void> {
+  await db.afipTicket
+    .delete({
+      where: {
+        tenantId_service_mode: {
+          tenantId: opts.cacheKey,
+          service: opts.service,
+          mode: opts.mode,
+        },
+      },
+    })
+    .catch(() => {})
 }
 
 // =============================================================================
@@ -164,12 +248,11 @@ const xmlParser = new XMLParser({
 })
 
 /**
- * Devuelve un TA válido para `service` (ej "wsfe"). Cachea por 12 hs.
+ * Devuelve un TA válido para `service` (ej "wsfe"). Cachea en DB por 12 hs.
  * Si no hay cache válido, pega contra WSAA, firma el TRA y guarda el TA.
  */
 export async function getTA(opts: WSAAOptions): Promise<TicketAccess> {
-  const key = cacheKey(opts)
-  const cached = getCachedTA(key)
+  const cached = await getStoredTA(opts)
   if (cached) return cached
 
   const tra = buildTRA(opts.service)
@@ -197,7 +280,7 @@ export async function getTA(opts: WSAAOptions): Promise<TicketAccess> {
   }
 
   const ta = parseLoginCmsResponse(text)
-  taCache.set(key, ta)
+  await storeTA(opts, ta)
   return ta
 }
 
@@ -259,18 +342,3 @@ export function parseLoginCmsResponse(soapXml: string): TicketAccess {
   return { token, sign, generationTime, expirationTime }
 }
 
-// TODO_MULTI_INSTANCE:
-// El cache es in-memory por proceso. Cuando Orvex tenga >1 instancia en
-// Railway, agregar tabla AfipTicket:
-//   model AfipTicket {
-//     tenantId       String
-//     service        String
-//     mode           String
-//     token          String  @db.Text
-//     sign           String  @db.Text
-//     generationTime DateTime
-//     expirationTime DateTime
-//     @@id([tenantId, service, mode])
-//   }
-// y reemplazar el Map<> por queries. Mientras Orvex sea 1 instancia el
-// in-memory está bien — 12 hs de TTL hacen que el costo sea marginal.

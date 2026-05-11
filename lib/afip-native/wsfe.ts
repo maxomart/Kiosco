@@ -450,7 +450,7 @@ export class WSFEClient {
     let r = await soapPost(this.url, action, envelope)
     if (r.ok) return r
     if (r.fault && /token/i.test(r.fault) && /(expir|inv[aá]lid)/i.test(r.fault)) {
-      invalidateTA({ service: "wsfe", mode: this.opts.mode, cacheKey: this.opts.cacheKey })
+      await invalidateTA({ service: "wsfe", mode: this.opts.mode, cacheKey: this.opts.cacheKey })
       r = await soapPost(this.url, action, envelope)
     }
     if (!r.ok) throw new Error(`WSFE ${action.split("/").pop()}: ${r.fault ?? "error"}`)

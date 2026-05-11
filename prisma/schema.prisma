@@ -847,6 +847,26 @@ model PushSubscription {
   @@index([userId])
 }
 
+// ============= AFIP WSAA TICKET CACHE =============
+// El TA (Ticket de Acceso) del WSAA dura 12 hs y AFIP rechaza pedirle otro
+// mientras hay uno vigente. Lo persistimos por tenant + service + mode para
+// sobrevivir a redeploys (sino cada deploy pierde el cache y AFIP nos
+// rechaza con "El CEE ya posee un TA valido"). Multi-instancia compatible.
+model AfipTicket {
+  tenantId       String
+  service        String   // "wsfe", "wsmtxca", etc.
+  mode           String   // "HOMOLOGACION" | "PRODUCCION"
+  token          String   @db.Text
+  sign           String   @db.Text
+  generationTime DateTime
+  expirationTime DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@id([tenantId, service, mode])
+  @@index([expirationTime])
+}
+
 // ============= INTERNAL CRON DEDUPE =============
 // Tabla para que el cron interno (lib/internal-cron.ts) no dispare el
 // mismo job dos veces por día. El @@unique([name, runDate]) hace que un
