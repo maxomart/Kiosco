@@ -203,6 +203,14 @@ export function articleSchema(a: ArticleSchemaInput) {
       "@type": "WebPage",
       "@id": `${BASE_URL}/blog/${a.slug}`,
     },
+    // Speakable — le dice a Google Assistant qué partes del artículo
+    // leer en voz alta cuando un usuario hace una búsqueda por voz.
+    // Marcamos el primer h1 (título) y el primer párrafo (intro) que
+    // son los que mejor responden la query del usuario.
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector: ["h1", "article > p:first-of-type"],
+    },
   }
 }
 
@@ -220,5 +228,55 @@ export function websiteSchema() {
     inLanguage: "es-AR",
     publisher: { "@id": `${BASE_URL}/#organization` },
     description: ORG_DESCRIPTION,
+    // SearchAction → Google muestra una caja de búsqueda debajo de
+    // cobraorvex.com en los resultados ("sitelinks searchbox"). El user
+    // tipea en Google y pasa directo a /blog?q=... — más tráfico desde
+    // SERP. Apuntamos al blog porque es el contenido buscable público.
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${BASE_URL}/blog?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  }
+}
+
+/**
+ * HowTo schema — para artículos que enseñan un proceso paso a paso.
+ * Google muestra estos como rich snippets con los pasos numerados en
+ * el resultado de búsqueda, lo que aumenta el CTR contra un resultado
+ * de texto plano. Sólo usar en posts genuinamente "cómo hacer X".
+ */
+interface HowToStep {
+  name: string
+  text: string
+  url?: string
+}
+export function howToSchema(input: {
+  slug: string
+  name: string
+  description: string
+  totalTime?: string // ISO 8601 (ej. "PT15M")
+  steps: HowToStep[]
+  image?: string
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "@id": `${BASE_URL}/blog/${input.slug}#howto`,
+    name: input.name,
+    description: input.description,
+    image: input.image ?? `${BASE_URL}/orvex-og.png`,
+    inLanguage: "es-AR",
+    ...(input.totalTime ? { totalTime: input.totalTime } : {}),
+    step: input.steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: s.name,
+      text: s.text,
+      ...(s.url ? { url: s.url } : {}),
+    })),
   }
 }

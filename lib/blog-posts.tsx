@@ -25,6 +25,14 @@ export interface BlogPost {
   tags: string[]
   /** Render del cuerpo del post — JSX completo con headings, listas, etc. */
   body: ReactNode
+  /**
+   * Pasos estructurados para Schema.org/HowTo. Sólo aplica a posts
+   * tipo "cómo hacer X paso a paso". Google muestra estos pasos como
+   * rich snippet expandible en los resultados, aumentando CTR.
+   * Si está presente, también `howToTotalTime` (ISO 8601, ej "PT15M").
+   */
+  howToSteps?: Array<{ name: string; text: string }>
+  howToTotalTime?: string
 }
 
 export const BLOG_POSTS: BlogPost[] = [
@@ -609,6 +617,15 @@ export const BLOG_POSTS: BlogPost[] = [
     publishedAt: "2026-05-10",
     readTime: 6,
     tags: ["AFIP", "facturación", "monotributo"],
+    howToTotalTime: "PT20M",
+    howToSteps: [
+      { name: "Confirmá si necesitás facturar", text: "Si vendés sólo a consumidor final y no te piden factura, podés emitir ticket no fiscal. La factura B es obligatoria cuando el cliente la pide expresamente." },
+      { name: "Pedí permiso en AFIP", text: "Inscribite en Monotributo o RI. Sacá certificado digital con clave fiscal nivel 3. Definí punto de venta (típicamente 0001)." },
+      { name: "Configurá tu sistema de facturación", text: "Mis Comprobantes (gratis, lento), app de factura electrónica, o un POS integrado con AFIP que genera el CAE automático al cobrar." },
+      { name: "Cargá los datos obligatorios", text: "Razón social, CUIT, domicilio, condición IVA, punto de venta, número correlativo, fecha, datos del cliente, productos, total, CAE y QR de AFIP (RG 4892/2020)." },
+      { name: "Evitá los errores comunes", text: "Cuidado con CAE vencido, categorización incorrecta del cliente (RI necesita A, no B), y punto de venta no habilitado en AFIP." },
+      { name: "Conservá copias y declará mensualmente", text: "AFIP guarda las facturas, pero conservá copia local por 10 años. Las facturas se reflejan automático en la declaración mensual." },
+    ],
     body: (
       <>
         <p>
@@ -846,6 +863,17 @@ export const BLOG_POSTS: BlogPost[] = [
     publishedAt: "2026-05-10",
     readTime: 5,
     tags: ["caja", "operaciones", "kiosco"],
+    howToTotalTime: "PT10M",
+    howToSteps: [
+      { name: "Contar el fondo fijo", text: "Empezás el turno con un monto base ($30.000-50.000 ARS típicos) para dar cambio. Billetes y monedas chicas. Ese fondo NO se toca para depósitos." },
+      { name: "Registrar la apertura en el sistema", text: "Anotás el monto exacto del fondo fijo en el POS. Si no usás sistema, anotás fecha + hora + monto + nombre del cajero en un cuaderno." },
+      { name: "Quien abre se hace responsable", text: "El cajero que abre se hace cargo de su turno. Si entra un segundo, hacés un cierre intermedio (cierra el primero, abre el segundo)." },
+      { name: "Pasar todas las ventas por el sistema", text: "Sin excepciones, hasta el caramelo de $200. Esto es lo único que permite cuadrar el turno al final del día." },
+      { name: "Registrar movimientos manuales con motivo", text: "Cualquier egreso (compra de pan, propina) o ingreso (dueño pone $20.000 más) se registra con motivo. Sin esto, las diferencias son inevitables." },
+      { name: "Conteo intermedio (opcional)", text: "A media tarde contás y verificás que coincida con el sistema. Si hay diferencia, la podés investigar antes que se te complique." },
+      { name: "Contar todo al cierre", text: "Efectivo, vouchers de tarjeta, transferencias. Sumás todo y comparás contra lo que el sistema dice que debería haber." },
+      { name: "Depositar el sobrante", text: "Lo que excede el fondo fijo va al sobre del día. El fondo se queda para el siguiente turno. Si hubo diferencia, queda registrada." },
+    ],
     body: (
       <>
         <p>

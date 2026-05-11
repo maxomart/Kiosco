@@ -8,6 +8,7 @@ import {
   organizationSchema,
   articleSchema,
   breadcrumbSchema,
+  howToSchema,
 } from "@/lib/seo-schema"
 import { BLOG_POSTS, getPostBySlug } from "@/lib/blog-posts"
 
@@ -72,6 +73,19 @@ export default async function BlogPostPage({
             { name: "Blog", url: "https://cobraorvex.com/blog" },
             { name: post.title, url: `https://cobraorvex.com/blog/${post.slug}` },
           ]),
+          // HowTo schema sólo si el post tiene pasos estructurados —
+          // Google muestra los pasos como rich snippet expandible.
+          ...(post.howToSteps && post.howToSteps.length > 0
+            ? [
+                howToSchema({
+                  slug: post.slug,
+                  name: post.title,
+                  description: post.description,
+                  totalTime: post.howToTotalTime,
+                  steps: post.howToSteps,
+                }),
+              ]
+            : []),
         ]}
       />
       <main className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-950 to-black text-white">

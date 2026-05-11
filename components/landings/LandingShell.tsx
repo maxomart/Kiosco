@@ -2,6 +2,25 @@ import Link from "next/link"
 import { OrvexLogo } from "@/components/shared/OrvexLogo"
 import { Check, ArrowRight, Sparkles } from "lucide-react"
 
+/** Links internos curados — Google premia el hub-and-spoke de páginas que
+ *  se referencian entre sí. Cada landing va a mostrar TODAS estas como
+ *  "También te puede servir". Mezclamos landings de rubros + blog posts
+ *  que cubren búsquedas adyacentes. */
+const RELATED_LINKS = [
+  { kind: "Para tu rubro", href: "/sistema-pos-kiosco", title: "POS para Kiosco", desc: "Sistema completo para kiosco, almacén, despensa." },
+  { kind: "Para tu rubro", href: "/pos-fiambreria", title: "POS para Fiambrería", desc: "Venta por peso con tara, comida casera." },
+  { kind: "Para tu rubro", href: "/pos-carniceria", title: "POS para Carnicería", desc: "Venta por kg, balanza USB, stock por corte." },
+  { kind: "Para tu rubro", href: "/pos-panaderia", title: "POS para Panadería", desc: "Unidad + peso, combos, pedidos por encargue." },
+  { kind: "Para tu rubro", href: "/punto-venta-verduleria", title: "POS para Verdulería", desc: "Venta por kilo, mermas, rotación rápida." },
+  { kind: "Para tu rubro", href: "/software-farmacia-argentina", title: "Software para Farmacia", desc: "Trazabilidad, recetas, stock crítico." },
+  { kind: "Para tu rubro", href: "/control-stock-minisuper", title: "Control de Stock Minisúper", desc: "Inventario para mini autoservicio." },
+  { kind: "Para tu rubro", href: "/pos-distribuidora", title: "POS para Distribuidora", desc: "Cuenta corriente B2B, listas de precio." },
+  { kind: "AFIP / Facturación", href: "/factura-electronica-arca-monotributo", title: "Factura Electrónica ARCA / Monotributo", desc: "Emisión de CAE directo desde el POS." },
+  { kind: "Comparativa", href: "/alternativa-tango-bejerman", title: "Alternativa a Tango / Bejerman", desc: "Sistema moderno, más económico, sin instalar." },
+  { kind: "Guía", href: "/blog/como-emitir-factura-b-afip-paso-a-paso", title: "Cómo emitir factura B paso a paso", desc: "Tutorial completo de facturación AFIP." },
+  { kind: "Guía", href: "/blog/que-es-un-pos-y-para-que-sirve", title: "¿Qué es un POS y para qué sirve?", desc: "Explicación clara, sin tecnicismos." },
+]
+
 /**
  * Layout reusado por las landings por keyword. Cada landing tiene su
  * propio H1, copy, imágenes — pero el header / footer / CTA box son
@@ -97,9 +116,35 @@ export function LandingShell({ pillLabel, title, subtitle, highlights, children 
       </section>
 
       {/* Contenido SEO específico de la landing */}
-      <article className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24 article-prose">
+      <article className="max-w-3xl mx-auto px-4 sm:px-6 pb-12 article-prose">
         {children}
       </article>
+
+      {/* Internal linking — listado de otras landings + blog posts top.
+          Google premia sitios con hub-and-spoke (cada página linkea a las
+          demás). Distribuye pagerank y le dice al crawler qué páginas son
+          importantes. También sirve al usuario para descubrir contenido
+          relacionado a su rubro. */}
+      <section className="px-4 sm:px-6 pb-12 sm:pb-16">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-xl sm:text-2xl font-bold mb-6 text-center text-gray-100">
+            También te puede servir
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {RELATED_LINKS.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="group p-4 rounded-xl bg-gray-900/50 border border-gray-800 hover:border-violet-700/50 hover:bg-gray-900/80 transition-all"
+              >
+                <p className="text-[10px] uppercase tracking-wider text-violet-400/80 font-bold mb-1.5">{l.kind}</p>
+                <p className="text-sm font-semibold text-gray-100 group-hover:text-white mb-1 leading-tight">{l.title}</p>
+                <p className="text-xs text-gray-500 leading-snug">{l.desc}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* CTA final + footer */}
       <section className="px-4 sm:px-6 pb-16 sm:pb-20">
