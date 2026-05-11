@@ -15,6 +15,7 @@ export async function GET() {
 
   return NextResponse.json({
     enabled: cfg.afipEnabled,
+    ready: cfg.afipReady,
     mode: cfg.afipMode,
     condicionIVA: cfg.afipCondicionIVA,
     pointOfSale: cfg.afipPointOfSale,

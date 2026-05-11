@@ -23,6 +23,11 @@ interface ReportData {
   topProducts: { productName: string; quantity: number; revenue: number }[]
   salesByMethod: { method: string; count: number; total: number }[]
   dailySales: { date: string; total: number; count: number }[]
+  afipNotes?: {
+    credit: { count: number; total: number }
+    debit: { count: number; total: number }
+  }
+  netInvoiced?: number
 }
 
 function LockedChart({ title, description }: { title: string; description: string }) {
@@ -59,7 +64,7 @@ const METHOD_LABELS: Record<string, string> = {
 const COLORS = ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#84cc16"]
 
 function StatBox({ label, value, fullValue, sub, color = "purple" }: { label: string; value: string; fullValue?: string; sub?: string; color?: string }) {
-  const colorMap: Record<string, string> = { purple: "text-purple-400", green: "text-green-400", blue: "text-blue-400", yellow: "text-yellow-400" }
+  const colorMap: Record<string, string> = { purple: "text-purple-400", green: "text-green-400", blue: "text-blue-400", yellow: "text-yellow-400", red: "text-red-400" }
   return (
     <div className="bg-gray-900 rounded-xl p-4 sm:p-5 border border-gray-800 min-w-0">
       <p className="text-gray-500 text-xs sm:text-sm mb-1 truncate">{label}</p>
@@ -332,6 +337,53 @@ export default function ReportesPage({ plan = "STARTER" }: { plan?: Plan }) {
             <StatBox label="Margen" value={`${data.profitMargin.toFixed(1)}%`} color={data.profitMargin >= 20 ? "green" : "yellow"} />
             <StatBox label="Ticket promedio" value={formatCurrencyCompact(data.avgTicket)} fullValue={formatCurrency(data.avgTicket)} color="purple" />
           </div>
+
+          {/* Facturación neta — visible si hay NC o ND emitidas en el período */}
+          {data.afipNotes &&
+            (data.afipNotes.credit.count > 0 || data.afipNotes.debit.count > 0) && (
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-white font-semibold">Facturación neta AFIP</h3>
+                    <p className="text-xs text-gray-500">
+                      Ingresos brutos ajustados por NC (restan) y ND (suman) del período.
+                    </p>
+                  </div>
+                  <Link
+                    href="/notas"
+                    className="text-xs text-purple-300 hover:text-purple-200 underline-offset-2 hover:underline"
+                  >
+                    Ver detalle →
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatBox
+                    label="Ingresos brutos"
+                    value={formatCurrencyCompact(data.totalRevenue)}
+                    fullValue={formatCurrency(data.totalRevenue)}
+                    color="purple"
+                  />
+                  <StatBox
+                    label={`NC (${data.afipNotes.credit.count})`}
+                    value={`−${formatCurrencyCompact(data.afipNotes.credit.total)}`}
+                    fullValue={formatCurrency(data.afipNotes.credit.total)}
+                    color="red"
+                  />
+                  <StatBox
+                    label={`ND (${data.afipNotes.debit.count})`}
+                    value={`+${formatCurrencyCompact(data.afipNotes.debit.total)}`}
+                    fullValue={formatCurrency(data.afipNotes.debit.total)}
+                    color="blue"
+                  />
+                  <StatBox
+                    label="Neto"
+                    value={formatCurrencyCompact(data.netInvoiced ?? data.totalRevenue)}
+                    fullValue={formatCurrency(data.netInvoiced ?? data.totalRevenue)}
+                    color="green"
+                  />
+                </div>
+              </div>
+            )}
 
           {/* AI Insights + comparison vs previous period (only for paid plans) */}
           {!isLimited && (

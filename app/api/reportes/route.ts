@@ -33,17 +33,36 @@ export async function GET(req: NextRequest) {
   const tenantFilter = tenantId ? { tenantId } : {}
   const where = { ...tenantFilter, status: "COMPLETED", createdAt: { gte: from, lte: to } }
 
-  let salesAgg, itemsRaw, paymentMethods, sales
+  let salesAgg, itemsRaw, paymentMethods, sales, notesAgg
   try {
-    ;[salesAgg, itemsRaw, paymentMethods, sales] = await Promise.all([
+    ;[salesAgg, itemsRaw, paymentMethods, sales, notesAgg] = await Promise.all([
       db.sale.aggregate({ where, _sum: { total: true, discountAmount: true, taxAmount: true }, _count: true, _avg: { total: true } }),
       db.saleItem.findMany({ where: { sale: { ...where } }, select: { productName: true, quantity: true, subtotal: true, costPrice: true } }),
       db.sale.groupBy({ by: ["paymentMethod"], where, _sum: { total: true }, _count: true }),
       db.sale.findMany({ where, select: { createdAt: true, total: true }, orderBy: { createdAt: "asc" } }),
+      // NC/ND emitidas en el mismo período (tenant filter + ventana de fechas).
+      // Las NC restan facturación neta, las ND la suman.
+      db.afipNote.groupBy({
+        by: ["kind"],
+        where: { ...tenantFilter, createdAt: { gte: from, lte: to } },
+        _sum: { amount: true },
+        _count: { _all: true },
+      }),
     ])
   } catch (err) {
     console.error("[GET /api/reportes]", err)
     return NextResponse.json({ error: "Error al generar reporte" }, { status: 500 })
+  }
+
+  // Resumen NC/ND
+  const notesSummary = { credit: { count: 0, total: 0 }, debit: { count: 0, total: 0 } }
+  for (const n of notesAgg) {
+    if (n.kind === "credit" || n.kind === "debit") {
+      notesSummary[n.kind] = {
+        count: n._count._all,
+        total: Number(n._sum.amount ?? 0),
+      }
+    }
   }
 
   // Total cost from items
@@ -76,6 +95,10 @@ export async function GET(req: NextRequest) {
   }
   const dailySales = Object.entries(dailyMap).map(([date, v]) => ({ date, ...v }))
 
+  // Facturación neta = ingresos brutos + débitos − créditos
+  // (NC y ND con valor fiscal AFIP modifican lo facturado del período.)
+  const netInvoiced = totalRevenue + notesSummary.debit.total - notesSummary.credit.total
+
   // FREE plan: only KPIs (no charts/breakdowns/topproducts) — encourages upgrade.
   return NextResponse.json({
     plan,
@@ -90,5 +113,7 @@ export async function GET(req: NextRequest) {
     topProducts: hasFull ? topProducts : [],
     salesByMethod: hasFull ? salesByMethod : [],
     dailySales: hasFull ? dailySales : [],
+    afipNotes: notesSummary,
+    netInvoiced,
   })
 }

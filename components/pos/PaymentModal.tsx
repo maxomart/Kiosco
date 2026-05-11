@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { X, Loader2, Check, Banknote, CreditCard, Smartphone, Wallet, QrCode, Printer, FileCheck2, Star, Gift } from "lucide-react"
+// QrCode is already imported above for the MP flow.
 import toast from "react-hot-toast"
 import { usePOSStore } from "@/store/posStore"
 import { formatCurrency, PAYMENT_METHODS, cn } from "@/lib/utils"
@@ -51,8 +52,20 @@ export function PaymentModal({ onClose }: Props) {
   const [method, setMethod] = useState("CASH")
   const [cashReceived, setCashReceived] = useState("")
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<{ saleId: string; number: number | string; total: number; change: number; method: string; offline?: boolean } | null>(null)
+  const [success, setSuccess] = useState<{
+    saleId: string
+    number: number | string
+    total: number
+    change: number
+    method: string
+    offline?: boolean
+    invoice?: { cae: string; invoiceNumber: number; invoiceLetter: string; qrUrl: string | null }
+    invoiceError?: string
+    invoicePending?: boolean
+  } | null>(null)
   const [showInvoice, setShowInvoice] = useState(false)
+  const [afipStatus, setAfipStatus] = useState<{ enabled: boolean; ready: boolean } | null>(null)
+  const [autoInvoice, setAutoInvoice] = useState(false)
 
   // MP state
   const [mpQrUrl, setMpQrUrl] = useState<string | null>(null)
@@ -89,6 +102,17 @@ export function PaymentModal({ onClose }: Props) {
       })
       .catch(() => {})
   }, [selectedClientId])
+
+  // Carga status AFIP 1 vez — para mostrar el checkbox "facturar automático"
+  // sólo si el tenant tiene facturación habilitada y probada OK.
+  useEffect(() => {
+    fetch("/api/afip/status", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setAfipStatus({ enabled: !!d.enabled, ready: !!d.ready })
+      })
+      .catch(() => {})
+  }, [])
 
   // Carga config de loyalty 1 vez
   useEffect(() => {
@@ -243,14 +267,67 @@ export function PaymentModal({ onClose }: Props) {
           toast.error(detail)
           return
         }
+        const wantsAuto = autoInvoice && afipStatus?.enabled && afipStatus.ready
         setSuccess({
           saleId: data.sale.id,
           number: data.sale.number,
           total: totalAmount,
           change: method === "CASH" && cashReceived ? change : 0,
           method,
+          invoicePending: wantsAuto,
         })
         clearCart()
+
+        if (wantsAuto) {
+          // Disparamos la emisión en background. La venta YA fue creada OK;
+          // si AFIP rechaza, el cajero puede reintentar manual con "Facturar".
+          fetch(`/api/sales/${data.sale.id}/invoice`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          })
+            .then(async (r) => {
+              const inv = await r.json().catch(() => ({}))
+              if (r.ok && inv?.ok) {
+                setSuccess((s) =>
+                  s
+                    ? {
+                        ...s,
+                        invoicePending: false,
+                        invoice: {
+                          cae: inv.cae,
+                          invoiceNumber: inv.invoiceNumber,
+                          invoiceLetter: inv.invoiceLetter,
+                          qrUrl: inv.qrUrl ?? null,
+                        },
+                      }
+                    : s,
+                )
+                toast.success(`Factura ${inv.invoiceLetter} emitida — N° ${inv.invoiceNumber}`)
+              } else {
+                setSuccess((s) =>
+                  s
+                    ? {
+                        ...s,
+                        invoicePending: false,
+                        invoiceError: inv?.error ?? "No se pudo emitir la factura",
+                      }
+                    : s,
+                )
+              }
+            })
+            .catch((e) => {
+              setSuccess((s) =>
+                s
+                  ? {
+                      ...s,
+                      invoicePending: false,
+                      invoiceError: e instanceof Error ? e.message : "Error de red al facturar",
+                    }
+                  : s,
+              )
+            })
+        }
       } catch (e) {
         // Network error → queue offline.
         console.warn("[PaymentModal] network error, queuing offline", e)
@@ -342,20 +419,66 @@ export function PaymentModal({ onClose }: Props) {
               <p className="text-2xl font-bold text-green-400">{formatCurrency(success.change)}</p>
             </div>
           )}
+
+          {success.invoicePending && (
+            <div className="bg-amber-950/30 border border-amber-900/40 rounded-xl p-3 mb-4 flex items-center gap-2 text-sm text-amber-200">
+              <Loader2 size={16} className="animate-spin flex-shrink-0" />
+              <span>Emitiendo factura electrónica…</span>
+            </div>
+          )}
+
+          {success.invoice && (
+            <div className="bg-emerald-950/30 border border-emerald-900/40 rounded-xl p-3 mb-4 text-left">
+              <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">
+                Factura {success.invoice.invoiceLetter} emitida
+              </p>
+              <p className="text-base font-bold text-white tabular-nums">N° {success.invoice.invoiceNumber}</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">CAE: {success.invoice.cae}</p>
+              {success.invoice.qrUrl && (
+                <a
+                  href={success.invoice.qrUrl}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 text-[11px] text-emerald-300 underline mt-1"
+                >
+                  <QrCode size={11} /> Validar en AFIP
+                </a>
+              )}
+            </div>
+          )}
+
+          {success.invoiceError && (
+            <div className="bg-red-950/30 border border-red-900/40 rounded-xl p-3 mb-4 text-left text-xs text-red-200">
+              <p className="font-semibold mb-1">No se pudo emitir la factura</p>
+              <p className="text-red-300">{success.invoiceError}</p>
+              <p className="text-[10px] text-red-400/70 mt-1">La venta quedó OK. Podés reintentar con &ldquo;Facturar&rdquo;.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <button onClick={printTicket} disabled={!!success.offline}
               title={success.offline ? "El ticket se podrá imprimir luego de sincronizar" : "Imprimir ticket"}
               className="bg-gray-800 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-gray-100 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
               <Printer size={16} /> Ticket
             </button>
-            <button
-              onClick={() => setShowInvoice(true)}
-              disabled={!!success.offline}
-              title={success.offline ? "Sincronizá la venta antes de facturar" : "Emitir factura electrónica ARCA"}
-              className="bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-40 disabled:cursor-not-allowed text-amber-200 border border-amber-500/30 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
-            >
-              <FileCheck2 size={16} /> Facturar
-            </button>
+            {!success.invoice ? (
+              <button
+                onClick={() => setShowInvoice(true)}
+                disabled={!!success.offline || !!success.invoicePending}
+                title={success.offline ? "Sincronizá la venta antes de facturar" : "Emitir factura electrónica ARCA"}
+                className="bg-amber-600/20 hover:bg-amber-600/30 disabled:opacity-40 disabled:cursor-not-allowed text-amber-200 border border-amber-500/30 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
+              >
+                <FileCheck2 size={16} />
+                {success.invoicePending ? "Emitiendo…" : success.invoiceError ? "Reintentar" : "Facturar"}
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowInvoice(true)}
+                className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-200 border border-emerald-500/30 font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
+              >
+                <FileCheck2 size={16} /> Ver factura
+              </button>
+            )}
             <button onClick={onClose} className="col-span-2 bg-accent hover:bg-accent-hover text-accent-foreground font-semibold py-3 rounded-xl transition">
               Nueva venta
             </button>
@@ -591,6 +714,21 @@ export function PaymentModal({ onClose }: Props) {
               <span>Total</span><span className="text-purple-400">{formatCurrency(totalAmount)}</span>
             </div>
           </div>
+
+          {afipStatus?.enabled && afipStatus.ready && (
+            <label className="flex items-center gap-2 px-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={autoInvoice}
+                onChange={(e) => setAutoInvoice(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500"
+              />
+              <span className="text-sm text-gray-300 flex items-center gap-1.5">
+                <FileCheck2 size={14} className="text-amber-400" />
+                Facturar automáticamente al cobrar
+              </span>
+            </label>
+          )}
         </div>
 
         <div className="p-5 pt-0 flex gap-3">

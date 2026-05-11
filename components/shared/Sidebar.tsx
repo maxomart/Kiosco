@@ -61,6 +61,7 @@ const NAV_TOP: NavItem[] = [
   { href: "/pos", label: "POS", icon: ShoppingCart, permissions: ["sales:create"] },
   { href: "/inventario", label: "Inventario", icon: Package, permissions: ["products:read"] },
   { href: "/ventas", label: "Ventas", icon: Receipt, permissions: ["sales:read"] },
+  { href: "/notas", label: "Notas NC/ND", icon: Receipt, permissions: ["sales:read"] },
   { href: "/caja", label: "Caja", icon: DollarSign, permissions: ["cash:read"] },
   { href: "/clientes", label: "Clientes", icon: Users, permissions: ["clients:read"] },
   { href: "/cargas", label: "Pedidos a proveedores", icon: Truck, permissions: ["recharges:read"], feature: "feature:recharges" },
