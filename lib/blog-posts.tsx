@@ -597,6 +597,642 @@ export const BLOG_POSTS: BlogPost[] = [
       </>
     ),
   },
+
+  // ============================================================================
+  // Batch mayo 2026 — 5 posts adicionales para crecer SEO orgánico
+  // ============================================================================
+  {
+    slug: "como-emitir-factura-b-afip-paso-a-paso",
+    title: "Cómo emitir factura B de AFIP paso a paso (2026)",
+    description:
+      "Guía práctica para emitir factura B con CAE de AFIP/ARCA desde un comercio chico. Requisitos, cómo configurar el sistema y los errores comunes.",
+    publishedAt: "2026-05-10",
+    readTime: 6,
+    tags: ["AFIP", "facturación", "monotributo"],
+    body: (
+      <>
+        <p>
+          Si vendés a consumidor final (la mayoría de los kioscos, almacenes y
+          comercios chicos) y sos Monotributista, la factura que tenés que
+          emitir es la <strong>factura B</strong>. Es la versión "para el
+          público general" que no discrimina IVA. Acá te tiro el paso a paso
+          de cómo se hace en 2026.
+        </p>
+
+        <h2>1. Confirmá que necesitás facturar</h2>
+        <p>
+          No todo comercio chico necesita emitir factura. Si vendés sólo a
+          consumidor final y tu cliente no te la pide, podés emitir un{" "}
+          <strong>ticket no fiscal</strong> sin pasar por AFIP. AFIP no te
+          obliga a emitir factura B en ese caso — pero sí te obliga a llevar
+          el registro de ventas y declararlas al final del mes.
+        </p>
+        <p>
+          La factura B es obligatoria cuando el cliente la pide expresamente
+          (ej: una empresa que la necesita para su contabilidad como
+          consumidor final).
+        </p>
+
+        <h2>2. Pedí permiso para facturar en AFIP</h2>
+        <p>
+          Antes de emitir cualquier factura electrónica necesitás:
+        </p>
+        <ol>
+          <li>Estar inscripto en Monotributo (o RI).</li>
+          <li>
+            Tener un <strong>certificado digital</strong> de AFIP. Se saca con
+            tu CUIT y clave fiscal nivel 3 desde el sitio de AFIP, en{" "}
+            <em>Administrador de Relaciones → Adherir servicio →
+            Facturación electrónica</em>.
+          </li>
+          <li>Definir un punto de venta. El primero suele ser el 0001.</li>
+        </ol>
+
+        <h2>3. Configurá tu sistema de facturación</h2>
+        <p>
+          Tenés 3 opciones:
+        </p>
+        <ul>
+          <li>
+            <strong>Mis Comprobantes</strong> de AFIP — gratis, pero tenés que
+            cargar cada factura a mano desde su web. Lento si tenés volumen.
+          </li>
+          <li>
+            <strong>App de factura electrónica</strong> — varias en el
+            mercado, vos cargás la venta y el sistema genera la factura.
+            Mejora la velocidad pero seguís haciendo doble carga (venta en POS,
+            factura en otra app).
+          </li>
+          <li>
+            <strong>POS integrado con AFIP</strong> — vendés en el POS y el
+            sistema genera la factura B con CAE automático en el mismo paso.
+            Es lo que hace Orvex (Plan Profesional) y otros sistemas modernos.
+            Sin doble carga.
+          </li>
+        </ul>
+
+        <h2>4. Datos que tiene que tener la factura B</h2>
+        <ul>
+          <li>Razón social del emisor (tu nombre/empresa).</li>
+          <li>CUIT del emisor.</li>
+          <li>Domicilio fiscal.</li>
+          <li>Condición frente al IVA (Monotributo, etc.).</li>
+          <li>Punto de venta + número correlativo.</li>
+          <li>Fecha de emisión.</li>
+          <li>Datos del cliente (si los tenés — DNI/CUIT y nombre).</li>
+          <li>Detalle de productos con precio.</li>
+          <li>Total final (sin discriminar IVA).</li>
+          <li><strong>CAE</strong> (Código de Autorización Electrónico) y fecha de vencimiento del CAE.</li>
+          <li><strong>QR de AFIP</strong> (obligatorio desde RG 4892/2020).</li>
+        </ul>
+
+        <h2>5. Errores comunes y cómo evitarlos</h2>
+        <h3>"CAE vencido"</h3>
+        <p>
+          Cuando obtenés un CAE, AFIP te da una fecha de vencimiento (~7 días
+          desde la emisión). Si la factura es para una operación futura, podés
+          tener problemas si la fecha de pago se pasa del CAE. Mejor emitir el
+          día que efectivamente cobrás.
+        </p>
+
+        <h3>"Falta categorización del cliente"</h3>
+        <p>
+          Si el cliente es Responsable Inscripto, le tenés que emitir factura
+          A (no B). El POS debería detectarlo automático según el CUIT que
+          cargues. Si emitiste B a un RI, anulás y reemitís A.
+        </p>
+
+        <h3>"Punto de venta no habilitado"</h3>
+        <p>
+          Cada punto de venta tiene que estar dado de alta en AFIP antes de
+          usarlo. Si querés un segundo punto de venta (ej: otra sucursal), lo
+          das de alta en AFIP → Punto de Venta → Nuevo.
+        </p>
+
+        <h2>6. Guarda copias y declara mensualmente</h2>
+        <p>
+          AFIP guarda todas las facturas que emitís en su sistema, pero igual
+          conservá copia (PDF, papel, etc.) por 10 años por si te audita
+          eventualmente. Las facturas emitidas se reflejan automático en tu
+          declaración de monotributo / IVA mensual.
+        </p>
+
+        <h2>Conclusión</h2>
+        <p>
+          Emitir factura B en 2026 es muchísimo más fácil que hace 5 años,
+          siempre que uses un sistema integrado con AFIP. Si todavía cargás
+          ventas a mano y después facturas aparte en Mis Comprobantes, estás
+          perdiendo 1-2 horas por día. Probá un POS con AFIP integrado como{" "}
+          <a href="/factura-electronica-arca-monotributo">Orvex</a> y vas a
+          recuperar ese tiempo el primer día.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "controlar-stock-sin-excel-comercio-chico",
+    title: "Cómo controlar stock sin Excel: 5 alternativas para 2026",
+    description:
+      "Excel funciona pero te roba tiempo. Te muestro 5 alternativas reales para llevar el stock de tu comercio chico en 2026, ordenadas de gratis a paga.",
+    publishedAt: "2026-05-10",
+    readTime: 5,
+    tags: ["stock", "inventario", "herramientas"],
+    body: (
+      <>
+        <p>
+          La planilla de Excel es lo que casi todo comerciante chico arranca
+          usando. Funciona — hasta que no funciona. Cuando llegás a 200+
+          productos o tenés varios cajeros que cargan ventas, Excel se rompe
+          en silencio: el stock real no coincide con la planilla y nunca
+          sabés dónde está la pérdida.
+        </p>
+
+        <h2>Por qué Excel falla a los 6 meses</h2>
+        <ul>
+          <li>
+            <strong>No hay control de cambios</strong>. Si el cajero se olvida
+            de descontar una venta, no te enterás hasta el próximo inventario
+            físico.
+          </li>
+          <li>
+            <strong>Una sola planilla = un solo usuario</strong>. Si abrís la
+            planilla en tu compu y el cajero la abre en la suya, una de las
+            dos sobreescribe.
+          </li>
+          <li>
+            <strong>No tenés histórico</strong>. ¿Cuánto vendiste de Coca el
+            martes pasado? Excel no te lo va a decir si no anotás cada venta.
+          </li>
+          <li>
+            <strong>No hay alertas</strong>. Cuando te quedás sin stock de un
+            producto, te enterás cuando un cliente lo pide y no tenés.
+          </li>
+        </ul>
+
+        <h2>Alternativa 1: Cuaderno físico (gratis)</h2>
+        <p>
+          Sí, todavía hay comercios que lo usan. Sirve si tenés menos de 50
+          productos y vendés 10-15 unidades por día. Pero no sabés cuánto
+          ganaste hasta hacer cuenta a fin de mes, y un cuaderno mojado/
+          perdido = histórico perdido.
+        </p>
+
+        <h2>Alternativa 2: Google Sheets (gratis)</h2>
+        <p>
+          Mejor que Excel porque varios usuarios pueden editarlo a la vez y
+          se guarda solo en la nube. Pero seguís teniendo que cargar cada
+          venta y cada compra a mano. Para comercio con 1-2 personas atendiendo,
+          sirve.
+        </p>
+
+        <h2>Alternativa 3: App de inventario (gratis-bajo costo)</h2>
+        <p>
+          Hay apps simples (Stock&Go, Inventory App, Lightspeed Inventory) que
+          son sólo eso: lista de productos con cantidad. No cobran ventas. Te
+          sirven para hacer recuento físico desde el celu, pero no resuelve
+          el problema de descontar stock al vender.
+        </p>
+
+        <h2>Alternativa 4: POS con inventario integrado (recomendado)</h2>
+        <p>
+          Un POS moderno hace el descuento de stock automáticamente con cada
+          venta. Vos no te ocupás. Cuando un producto se está agotando, el
+          sistema te alerta. Ejemplos en Argentina:
+        </p>
+        <ul>
+          <li>
+            <strong>Orvex</strong>: plan gratis permanente para hasta 100
+            productos, AFIP en Profesional. Web, sin instalación.
+          </li>
+          <li>
+            <strong>Tango Gestión</strong>: el clásico, pero local, caro y con
+            curva de aprendizaje fuerte.
+          </li>
+          <li>
+            <strong>Bizneo / Geopagos</strong>: opciones más caras enfocadas
+            en cadenas medianas.
+          </li>
+        </ul>
+
+        <h2>Alternativa 5: ERP completo (para comercios medianos+)</h2>
+        <p>
+          Si ya tenés 5+ empleados, 5.000+ productos o sucursales, considerar
+          un ERP como SAP Business One o Holded. Costos arrancan en
+          $200.000+ ARS/mes. Sólo conviene si te queda chico el POS.
+        </p>
+
+        <h2>Mi recomendación honesta</h2>
+        <p>
+          Si tenés un comercio chico con hasta 1.000 productos, un POS con
+          inventario integrado te resuelve 95% de los dolores de Excel sin
+          gastar fortuna. Plan gratis o $9.999 ARS/mes están al alcance del
+          kiosco más chico. La diferencia con Excel se nota la primera
+          semana — y te liberás de 4-6 horas semanales que dedicabas a
+          cuadrar planillas.
+        </p>
+        <p>
+          Si querés probar sin compromiso, <a href="/signup">arrancá con
+          Orvex gratis</a> — no pide tarjeta, te quedás con el plan gratis
+          permanente si te alcanza.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "como-abrir-caja-kiosco-protocolo",
+    title: "Cómo abrir la caja de tu kiosco: protocolo paso a paso",
+    description:
+      "El protocolo de apertura y cierre de caja que evita diferencias y problemas con los cajeros. Pasos reales que aplican kioscos exitosos en Argentina.",
+    publishedAt: "2026-05-10",
+    readTime: 5,
+    tags: ["caja", "operaciones", "kiosco"],
+    body: (
+      <>
+        <p>
+          Abrir y cerrar la caja parece trivial — agarrás el cajón, contás la
+          plata, listo. Pero cuando tenés 2-3 cajeros rotando y un mes cerrás
+          con $50.000 menos de lo esperado, te das cuenta que necesitás un
+          protocolo. Acá te tiro el que usan los kioscos que NO tienen
+          diferencias.
+        </p>
+
+        <h2>Apertura de caja</h2>
+
+        <h3>1. Contar el fondo fijo</h3>
+        <p>
+          Empezás cada turno con un monto base que se queda en la caja para
+          dar cambio. Lo típico en Argentina es <strong>$30.000-50.000
+          ARS</strong> dividido en billetes y monedas chicas (5 de $10.000,
+          15 de $1.000, monedas y billetes de $100/200/500). Ese es tu fondo
+          fijo y no se toca para depósitos.
+        </p>
+
+        <h3>2. Registrar la apertura en el sistema</h3>
+        <p>
+          Si usás un POS, registrás la apertura con el monto exacto del fondo
+          ($35.000, por ejemplo). El sistema lo deja como referencia para el
+          cierre. Si tenés cuaderno, anotás fecha + hora + monto + nombre del
+          cajero que abre.
+        </p>
+
+        <h3>3. Quién abre, firma</h3>
+        <p>
+          El cajero que abre se hace responsable de ese turno. Si en el medio
+          del día entra un segundo cajero, hacés un cierre intermedio (cierra
+          el primero, abre el segundo). Cada uno se hace responsable de su
+          parte.
+        </p>
+
+        <h2>Durante el turno</h2>
+
+        <h3>4. Todas las ventas pasan por el sistema</h3>
+        <p>
+          Sin excepción. Hasta la venta de un caramelo de $200 se carga.
+          Si el cliente pide factura, se emite. Si no, se registra como
+          ticket no fiscal. Esto es lo que después te permite cuadrar el
+          turno.
+        </p>
+
+        <h3>5. Movimientos manuales con motivo</h3>
+        <p>
+          Si el cajero saca plata de la caja para comprar algo (un café, pan,
+          carga de proveedor), lo registra como egreso de caja con motivo.
+          No es plata que "le sobra" o "le falta" — está registrada.
+        </p>
+        <p>
+          Lo mismo con ingresos: si el dueño pone $20.000 más para dar
+          cambio, se registra como ingreso manual.
+        </p>
+
+        <h3>6. Conteo intermedio (opcional pero recomendado)</h3>
+        <p>
+          A media tarde, mientras el comercio está más tranquilo, contás la
+          plata y verificás que coincida con lo que el sistema dice. Si hay
+          diferencia, podés revisar mientras está fresco en lugar de
+          descubrirlo a fin de día.
+        </p>
+
+        <h2>Cierre de caja</h2>
+
+        <h3>7. Contar todo</h3>
+        <p>
+          Al final del turno contás:
+        </p>
+        <ul>
+          <li>Efectivo en caja (billetes + monedas)</li>
+          <li>Vouchers de tarjeta (si todavía manejás físicos)</li>
+          <li>Comprobantes de transferencia recibida</li>
+        </ul>
+
+        <h3>8. Comparar con el sistema</h3>
+        <p>
+          El POS te dice cuánto deberías tener: fondo fijo + ventas en
+          efectivo − egresos manuales. Si lo contado es igual, perfecto.
+          Si hay diferencia, hay 4 causas comunes:
+        </p>
+        <ul>
+          <li>Se cobró mal el cambio en alguna venta.</li>
+          <li>Una venta no se cargó en el sistema.</li>
+          <li>Se sacó plata sin registrarlo.</li>
+          <li>Hubo un error de tipeo en el sistema.</li>
+        </ul>
+
+        <h3>9. Depositar el sobrante</h3>
+        <p>
+          Lo que excede el fondo fijo va al sobre del día. Lo guardás en una
+          caja fuerte o lo depositás. El fondo fijo se queda para el día
+          siguiente.
+        </p>
+
+        <h3>10. Cerrar la sesión en el sistema</h3>
+        <p>
+          Registrás el cierre con el monto contado. Si hubo diferencia,
+          también la dejás registrada. Eso queda en el histórico — si una
+          diferencia se repite con un cajero específico, vas a tener el
+          patrón.
+        </p>
+
+        <h2>Errores comunes que vacían tu caja</h2>
+        <ol>
+          <li>
+            <strong>Cajeros que no usan el sistema</strong> — "después lo
+            cargo" termina siendo "nunca lo cargué". Regla: si no pasó por
+            el sistema, no se hizo.
+          </li>
+          <li>
+            <strong>Fondo fijo que se mezcla con depósitos</strong> — si
+            sacás del fondo para depositar y olvidás reponerlo, al día
+            siguiente arranca corto y todas las cuentas dan mal.
+          </li>
+          <li>
+            <strong>No registrar el cambio chico</strong> — propinas, regalos
+            de $50 al vecino, todo eso sale de la caja. Si no lo registrás,
+            "falta plata" a fin de día.
+          </li>
+          <li>
+            <strong>Conteo apurado</strong> — contar el cierre con la
+            persiana media bajada y prisa por irse a casa = diferencias
+            inventadas por mal conteo.
+          </li>
+        </ol>
+
+        <h2>Conclusión</h2>
+        <p>
+          Un protocolo de caja claro elimina el 90% de las diferencias. Si
+          además usás un POS que registra automático cada movimiento (como{" "}
+          <a href="/sistema-pos-kiosco">Orvex</a>), el otro 10% lo pillás
+          rápido.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "que-es-un-pos-y-para-que-sirve",
+    title: "¿Qué es un POS y para qué sirve en un comercio chico?",
+    description:
+      "Explicación clara de qué es un POS (Point of Sale), qué diferencia hay con una caja registradora, y cuándo conviene a un comercio chico argentino.",
+    publishedAt: "2026-05-10",
+    readTime: 4,
+    tags: ["pos", "básico", "tecnología"],
+    body: (
+      <>
+        <p>
+          POS son las siglas de <strong>Point of Sale</strong> ("Punto de
+          Venta" en inglés). En la práctica argentina, cuando alguien dice
+          "POS" se refiere al software que usás para cobrar las ventas — la
+          versión moderna de la vieja caja registradora.
+        </p>
+
+        <h2>¿Qué hace un POS?</h2>
+        <p>
+          Las cosas básicas que hace cualquier POS:
+        </p>
+        <ul>
+          <li>
+            <strong>Cobrar ventas</strong>: armás el carrito con los productos
+            del cliente, calculás el total, registrás el método de pago
+            (efectivo, tarjeta, transferencia).
+          </li>
+          <li>
+            <strong>Descontar stock</strong>: cada venta resta automático las
+            cantidades del inventario. No tenés que llevarlo aparte.
+          </li>
+          <li>
+            <strong>Imprimir ticket</strong>: con detalle de lo vendido,
+            total, método de pago y QR de AFIP si es factura electrónica.
+          </li>
+          <li>
+            <strong>Cerrar caja</strong>: al final del día (o turno) te dice
+            cuánto vendiste, en qué medios de pago, y cuánto efectivo
+            debería haber en el cajón.
+          </li>
+        </ul>
+
+        <h2>POS vs caja registradora vieja</h2>
+        <p>
+          La caja registradora clásica (esa cosa con teclas grandes y cinta
+          de papel que todavía se ve en kioscos viejos) suma totales y
+          imprime ticket. Eso es lo que hace.
+        </p>
+        <p>
+          Un POS moderno también suma y cobra, pero además:
+        </p>
+        <ul>
+          <li>Lleva inventario (sabés cuánto te queda de cada producto)</li>
+          <li>Maneja clientes con cuenta corriente</li>
+          <li>Saca reportes (qué vendiste, cuándo, a quién)</li>
+          <li>Emite factura electrónica AFIP</li>
+          <li>Funciona en cualquier dispositivo (celu, tablet, compu)</li>
+        </ul>
+
+        <h2>¿Necesito un POS si tengo un kiosco chico?</h2>
+        <p>
+          Honestamente, si vendés menos de 20 ventas por día con 30 productos,
+          podés zafar con cuaderno o Excel. Pero apenas pasás esos números,
+          un POS te paga solo:
+        </p>
+        <ul>
+          <li>
+            Te ahorra 4-6 horas semanales en cuadres de caja y cargas de
+            inventario.
+          </li>
+          <li>
+            Te muestra cuáles son tus productos más rentables (no siempre
+            son los que más vendés).
+          </li>
+          <li>
+            Te alerta de quiebres de stock antes de que el cliente te pida un
+            producto que no tenés.
+          </li>
+          <li>
+            Si tenés cajeros empleados, ves quién hace qué y reducís el robo
+            interno (que en Argentina es un problema real en comercio chico).
+          </li>
+        </ul>
+
+        <h2>Tipos de POS</h2>
+
+        <h3>POS hardware</h3>
+        <p>
+          Es la "cajita" física con software propio (Lightspeed, Geopagos
+          Box, etc.). Te la venden con scanner + impresora + cajón
+          incorporados. Cuesta $300.000-800.000 ARS de inversión inicial +
+          suscripción mensual. Tiene la ventaja de venir todo listo, pero
+          si se te rompe la cajita no podés vender hasta que la repongan.
+        </p>
+
+        <h3>POS software (web/PWA)</h3>
+        <p>
+          Es un software que corre en cualquier dispositivo que tengas
+          (compu vieja, tablet, celu). Vos ponés el hardware. Costo de
+          entrada bajísimo ($0-25.000 ARS/mes), y si se te rompe un
+          dispositivo, agarrás otro y seguís. <a href="/">Orvex</a> entra
+          en esta categoría — corre en navegador, lo instalás como app
+          PWA si querés.
+        </p>
+
+        <h3>POS móvil</h3>
+        <p>
+          Es para vendedores ambulantes o ferias — el POS corre en el celu
+          y cobrás con app de pago QR o lector de tarjetas Bluetooth.
+        </p>
+
+        <h2>¿Por dónde arrancar?</h2>
+        <p>
+          Si tenés un kiosco, almacén, farmacia o comercio chico en
+          Argentina, te recomendaría probar un POS web gratis primero. <a
+          href="/signup">Orvex tiene plan gratis permanente</a>: sin
+          tarjeta, cargás tu inventario, vendés, y si te alcanza con el
+          plan gratis te quedás ahí. Si necesitás más productos o AFIP,
+          subís a un plan pago de $9.999 a $24.900 ARS/mes.
+        </p>
+        <p>
+          La inversión cero te permite probar si te sirve antes de
+          comprometerte.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "vender-comida-sin-barcode-empanadas-milanesas",
+    title: "Cómo vender comida sin código de barras (empanadas, milanesas, fiambres)",
+    description:
+      "Si vendés comida casera, fiambres o productos que no tienen barcode, te muestro cómo gestionarlo en un POS sin complicarte la vida.",
+    publishedAt: "2026-05-10",
+    readTime: 5,
+    tags: ["fiambrería", "comida casera", "POS"],
+    body: (
+      <>
+        <p>
+          La mayoría de los sistemas POS están pensados para productos
+          envasados con código de barras. Pero si tu negocio vende
+          empanadas hechas por vos, milanesas al peso, fiambres cortados al
+          momento, pizzas para llevar — esos productos no tienen un barcode
+          que escanear. ¿Cómo se manejan?
+        </p>
+
+        <h2>Opción 1: Catálogo visual + búsqueda</h2>
+        <p>
+          Cargás cada producto con nombre y precio (sin código). En el POS,
+          en lugar de escanear, tipeás el inicio del nombre y autocompleta:
+          "emp" → te muestra todas las variedades de empanada que tenés.
+          Click → al carrito.
+        </p>
+        <p>
+          POS modernos como <a href="/pos-fiambreria">Orvex</a> tienen
+          además ranking automático por más vendido. Si la empanada de
+          carne es tu hit, aparece arriba sin tipear nada.
+        </p>
+
+        <h2>Opción 2: Grilla con fotos (ideal para comida)</h2>
+        <p>
+          En lugar de buscar por texto, mostrás la grilla completa con foto
+          de cada producto. El cajero ve "empanada de carne", "empanada de
+          jamón y queso", "milanesa napolitana", y toca la que el cliente
+          pidió. Mucho más rápido y errores cero.
+        </p>
+        <p>
+          Para esto el sistema necesita soportar fotos de productos. Las
+          sacás desde el celu, las subís y se ven en el grid como menú de
+          delivery. Si no tenés foto en un producto, el sistema le pone
+          un color de fondo según la categoría para que igual se
+          identifique visualmente.
+        </p>
+
+        <h2>Opción 3: Venta por peso (fiambres, milanesa al kg)</h2>
+        <p>
+          Los productos al peso (jamón crudo, queso, milanesa, asado) los
+          cargás con precio por kilo. En el POS, cuando el cliente pide
+          200g de jamón, marcás el producto y se abre un modal pidiendo
+          el peso. Tipeás 0.200 (o leés de la balanza), el sistema cobra
+          el peso × precio/kg.
+        </p>
+        <p>
+          Función importante para fiambrerías: <strong>tara</strong>. Le
+          decís al sistema cuánto pesa el envase/papel (ej: 15 gramos) y
+          el sistema descuenta eso del peso bruto antes de cobrar. Sin
+          esto, todos los días le regalás 10-30g al cliente.
+        </p>
+
+        <h2>Opción 4: Generar barcode propio (avanzado)</h2>
+        <p>
+          Si querés agilizar pedidos grandes, podés generar barcodes
+          internos para tus productos. Imprimís etiquetas con barcode +
+          nombre + precio en una impresora térmica y las pegás en cada
+          paquete pre-armado. Después escaneás el barcode propio para
+          cobrar. Es más vuelta pero ayuda si vendés a comercios mayoristas
+          o tenés muchos pedidos pre-armados.
+        </p>
+
+        <h2>Cantidad rápida para pedidos grandes</h2>
+        <p>
+          Una clienta pide 24 empanadas surtidas. ¿Vas a clickear 24 veces
+          el botón "+"? No. Un POS moderno te deja:
+        </p>
+        <ul>
+          <li>
+            Tocar el producto una vez → aparece en el carrito con cantidad 1.
+          </li>
+          <li>
+            Tocar la cantidad → se abre un input numérico → tipeás 24 →
+            Enter.
+          </li>
+        </ul>
+        <p>
+          12 segundos en vez de 30. Para comercios con pedidos grandes
+          (rotisería, fiambrería con bandejas para fiestas, panadería con
+          encargos), es una diferencia real.
+        </p>
+
+        <h2>Combos / promos del día</h2>
+        <p>
+          Las pizzerías y rotiserías arman combos: "Empanadas + Coca + cerveza
+          = $6.500". En el POS lo cargás como un combo con precio fijo y
+          el sistema descuenta el stock de cada componente. Más rápido para
+          el cajero y más fácil para el cliente.
+        </p>
+
+        <h2>Conclusión</h2>
+        <p>
+          Vender comida sin barcode es totalmente posible y hasta más
+          rápido que escanear, si tenés un POS pensado para eso. La
+          combinación que mejor funciona:
+        </p>
+        <ul>
+          <li>Grilla con fotos de los productos más vendidos arriba.</li>
+          <li>Búsqueda por texto con autocompletado.</li>
+          <li>Modal de peso con tara para productos al kg.</li>
+          <li>Cantidad rápida para pedidos grandes.</li>
+          <li>Combos para promos.</li>
+        </ul>
+        <p>
+          <a href="/pos-fiambreria">Orvex tiene todas estas funciones</a> y
+          arranca gratis para que pruebes si te sirve para tu local de
+          comida.
+        </p>
+      </>
+    ),
+  },
 ]
 
 export function getPostBySlug(slug: string): BlogPost | null {

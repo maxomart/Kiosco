@@ -21,6 +21,11 @@ const KEYWORD_LANDINGS = [
   "control-stock-minisuper",
   "punto-venta-verduleria",
   "factura-electronica-arca-monotributo",
+  "pos-fiambreria",
+  "pos-carniceria",
+  "pos-panaderia",
+  "pos-distribuidora",
+  "alternativa-tango-bejerman",
 ]
 
 // Blog posts (commit 3). Slug + última actualización.
@@ -30,6 +35,11 @@ const BLOG_POSTS = [
   { slug: "productos-mas-vendidos-kiosco-argentino", updatedAt: "2026-05-01" },
   { slug: "cuaderno-vs-excel-vs-sistema-kiosco", updatedAt: "2026-05-01" },
   { slug: "control-stock-minorista-mejores-practicas", updatedAt: "2026-05-01" },
+  { slug: "como-emitir-factura-b-afip-paso-a-paso", updatedAt: "2026-05-10" },
+  { slug: "controlar-stock-sin-excel-comercio-chico", updatedAt: "2026-05-10" },
+  { slug: "como-abrir-caja-kiosco-protocolo", updatedAt: "2026-05-10" },
+  { slug: "que-es-un-pos-y-para-que-sirve", updatedAt: "2026-05-10" },
+  { slug: "vender-comida-sin-barcode-empanadas-milanesas", updatedAt: "2026-05-10" },
 ]
 
 export default function sitemap(): MetadataRoute.Sitemap {
