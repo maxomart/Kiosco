@@ -77,6 +77,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es-AR" suppressHydrationWarning className="dark">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        {/* Performance hints — Core Web Vitals.
+            preconnect a fonts.googleapis baja el handshake TLS de Google
+            Fonts a 0ms en el primer load (Inter usa next/font pero hace
+            fetch en runtime para algunos pesos). dns-prefetch a MP/Stripe
+            adelanta resolución DNS para flows de pago. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://api.mercadopago.com" />
+        <link rel="dns-prefetch" href="https://js.stripe.com" />
+
         {/* iOS tags — sin estos, en iPhone la PWA arranca con barrita
             de Safari y status bar blanco. Con estos arranca como app full. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />

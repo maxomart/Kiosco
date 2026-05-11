@@ -11,6 +11,7 @@ import {
   softwareApplicationSchema,
   faqPageSchema,
   breadcrumbSchema,
+  offerCatalogSchema,
 } from "@/lib/seo-schema"
 
 // Solo 3 ofertas vigentes: Gratis, Básico, Profesional. Los planes BUSINESS /
@@ -202,6 +203,32 @@ export default function PricingPage() {
           breadcrumbSchema([
             { name: "Inicio", url: "https://cobraorvex.com/" },
             { name: "Precios", url: "https://cobraorvex.com/pricing" },
+          ]),
+          offerCatalogSchema([
+            {
+              id: "FREE",
+              name: "Plan Gratis",
+              description: "Plan permanente sin tarjeta. 100 productos, 1 usuario, 50 ventas/mes. POS offline-first.",
+              price: 0,
+              priceCurrency: "ARS",
+              url: "https://cobraorvex.com/signup",
+            },
+            {
+              id: "STARTER",
+              name: "Plan Básico",
+              description: "1.000 productos, 3 usuarios, logo y tema, importar/exportar Excel, etiquetas con barcode.",
+              price: PLAN_PRICES_ARS.STARTER,
+              priceCurrency: "ARS",
+              url: "https://cobraorvex.com/signup?plan=STARTER",
+            },
+            {
+              id: "PROFESSIONAL",
+              name: "Plan Profesional",
+              description: "5.000 productos, 10 usuarios, AFIP/ARCA con CAE, IA predictiva, multi-caja, loyalty, soporte prioritario.",
+              price: PLAN_PRICES_ARS.PROFESSIONAL,
+              priceCurrency: "ARS",
+              url: "https://cobraorvex.com/signup?plan=PROFESSIONAL",
+            },
           ]),
         ]}
       />

@@ -244,6 +244,86 @@ export function websiteSchema() {
 }
 
 /**
+ * OfferCatalog schema — lista los planes de pricing como Products con
+ * Offers individuales. Complementa al softwareApplicationSchema (que ya
+ * tiene los offers embebidos) listándolos como item-level Products para
+ * que Google los muestre en SERP como "Orvex desde $9.999/mes · Plan
+ * Básico · Plan Profesional".
+ */
+interface OfferCatalogPlan {
+  id: string
+  name: string
+  description: string
+  price: number
+  priceCurrency: string
+  url: string
+}
+export function offerCatalogSchema(plans: OfferCatalogPlan[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "OfferCatalog",
+    "@id": `${BASE_URL}/pricing#offers`,
+    name: "Planes y precios de Orvex",
+    url: `${BASE_URL}/pricing`,
+    itemListElement: plans.map((p, i) => ({
+      "@type": "Offer",
+      "@id": `${BASE_URL}/pricing#offer-${p.id.toLowerCase()}`,
+      position: i + 1,
+      name: p.name,
+      description: p.description,
+      price: String(p.price),
+      priceCurrency: p.priceCurrency,
+      availability: "https://schema.org/InStock",
+      url: p.url,
+      priceValidUntil: "2027-12-31",
+      itemOffered: {
+        "@type": "SoftwareApplication",
+        name: `Orvex ${p.name}`,
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web Browser",
+      },
+    })),
+  }
+}
+
+/**
+ * ItemList schema — usado en /blog para que Google muestre el listado
+ * de posts como una lista navegable en SERP. Cada item es un BlogPosting
+ * con su URL, título y fecha.
+ */
+interface ItemListPost {
+  slug: string
+  title: string
+  description: string
+  publishedAt: string
+}
+export function blogItemListSchema(posts: ItemListPost[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "@id": `${BASE_URL}/blog#itemlist`,
+    name: "Blog de Orvex",
+    url: `${BASE_URL}/blog`,
+    numberOfItems: posts.length,
+    itemListElement: posts.map((p, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${BASE_URL}/blog/${p.slug}`,
+      name: p.title,
+      item: {
+        "@type": "BlogPosting",
+        "@id": `${BASE_URL}/blog/${p.slug}#article`,
+        headline: p.title,
+        description: p.description,
+        url: `${BASE_URL}/blog/${p.slug}`,
+        datePublished: p.publishedAt,
+        inLanguage: "es-AR",
+      },
+    })),
+  }
+}
+
+/**
  * HowTo schema — para artículos que enseñan un proceso paso a paso.
  * Google muestra estos como rich snippets con los pasos numerados en
  * el resultado de búsqueda, lo que aumenta el CTR contra un resultado

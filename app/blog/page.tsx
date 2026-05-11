@@ -7,6 +7,7 @@ import {
   organizationSchema,
   websiteSchema,
   breadcrumbSchema,
+  blogItemListSchema,
 } from "@/lib/seo-schema"
 import { getPostsSorted } from "@/lib/blog-posts"
 
@@ -46,6 +47,15 @@ export default function BlogIndexPage() {
           organizationSchema(),
           websiteSchema(),
           POSTS_LIST_SCHEMA,
+          // ItemList con cada post → Google muestra el listado como
+          // colección navegable en SERP en lugar de un solo resultado
+          // genérico.
+          blogItemListSchema(posts.map((p) => ({
+            slug: p.slug,
+            title: p.title,
+            description: p.description,
+            publishedAt: p.publishedAt,
+          }))),
           breadcrumbSchema([
             { name: "Inicio", url: "https://cobraorvex.com/" },
             { name: "Blog", url: "https://cobraorvex.com/blog" },
