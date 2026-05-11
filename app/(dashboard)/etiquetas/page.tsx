@@ -61,6 +61,9 @@ export default function EtiquetasPage() {
   const [size, setSize] = useState<Size>("medium")
   const [showPrice, setShowPrice] = useState(true)
   const [showBusinessName, setShowBusinessName] = useState(true)
+  const [showProductName, setShowProductName] = useState(true)
+  const [showBarcode, setShowBarcode] = useState(true)
+  const [cutBetween, setCutBetween] = useState(true)
   const [selected, setSelected] = useState<Record<string, number>>({})
   const [printer, setPrinter] = useState<ConnectedPrinter | null>(null)
   const [printing, setPrinting] = useState(false)
@@ -167,8 +170,15 @@ export default function EtiquetasPage() {
           productName: p.name,
           price: formatCurrency(p.salePrice),
           barcode: p.barcode ?? p.sku ?? null,
-          businessName: showBusinessName ? businessName : null,
+          businessName: businessName,
         })),
+        {
+          showBusinessName,
+          showProductName,
+          showBarcode,
+          showPrice,
+          cutBetween,
+        },
       )
       await printer.print(data)
       toast.success(`${totalLabels} etiqueta${totalLabels > 1 ? "s" : ""} enviada${totalLabels > 1 ? "s" : ""}`)
@@ -332,9 +342,36 @@ export default function EtiquetasPage() {
 
           <div>
             <label className="block text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-2">
-              Mostrar
+              Mostrar en la etiqueta
             </label>
             <div className="space-y-1.5">
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showBusinessName}
+                  onChange={(e) => setShowBusinessName(e.target.checked)}
+                  className="w-4 h-4 accent-purple-500"
+                />
+                Nombre del negocio
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showProductName}
+                  onChange={(e) => setShowProductName(e.target.checked)}
+                  className="w-4 h-4 accent-purple-500"
+                />
+                Nombre del producto
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showBarcode}
+                  onChange={(e) => setShowBarcode(e.target.checked)}
+                  className="w-4 h-4 accent-purple-500"
+                />
+                Código de barras
+              </label>
               <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
                 <input
                   type="checkbox"
@@ -344,14 +381,14 @@ export default function EtiquetasPage() {
                 />
                 Precio
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer pt-1.5 border-t border-gray-800">
                 <input
                   type="checkbox"
-                  checked={showBusinessName}
-                  onChange={(e) => setShowBusinessName(e.target.checked)}
+                  checked={cutBetween}
+                  onChange={(e) => setCutBetween(e.target.checked)}
                   className="w-4 h-4 accent-purple-500"
                 />
-                Nombre del negocio
+                <span>Cortar papel entre etiquetas <span className="text-[10px] text-gray-500">(sólo impresión directa)</span></span>
               </label>
             </div>
           </div>
@@ -462,17 +499,19 @@ export default function EtiquetasPage() {
                 style={{ width: preset.w, height: preset.h, fontSize: preset.nameSize }}
               >
                 {showBusinessName && businessName && (
-                  <p className="text-[7px] uppercase tracking-wider text-gray-600 truncate w-full text-center leading-tight">
+                  <p className="text-[7px] tracking-wider text-gray-600 truncate w-full text-center leading-tight">
                     {businessName}
                   </p>
                 )}
-                <p
-                  className="font-semibold text-center leading-tight w-full overflow-hidden"
-                  style={{ fontSize: preset.nameSize, lineHeight: 1.1, maxHeight: "2.4em" }}
-                >
-                  {p.name}
-                </p>
-                {(p.barcode || p.sku) && (
+                {showProductName && (
+                  <p
+                    className="font-semibold text-center leading-tight w-full overflow-hidden"
+                    style={{ fontSize: preset.nameSize, lineHeight: 1.1, maxHeight: "2.4em" }}
+                  >
+                    {p.name}
+                  </p>
+                )}
+                {showBarcode && (p.barcode || p.sku) && (
                   <Barcode
                     value={p.barcode ?? p.sku ?? ""}
                     height={preset.barcodeH}
