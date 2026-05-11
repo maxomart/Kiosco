@@ -15,12 +15,34 @@ interface ProductLite {
   categoryName: string | null
 }
 
-type Size = "small" | "medium" | "large"
+type Size = "small" | "medium" | "large" | "ticket58" | "ticket80"
 
-const SIZE_PRESETS: Record<Size, { name: string; w: string; h: string; barcodeH: number; barcodeW: number; nameSize: string; priceSize: string }> = {
+interface SizePreset {
+  name: string
+  w: string
+  h: string
+  barcodeH: number
+  barcodeW: number
+  nameSize: string
+  priceSize: string
+  /** Si está en true, el preset es para impresora térmica de tickets
+   *  (rollo continuo, no etiquetas die-cut). Cambia el CSS @page para
+   *  no asumir tamaño de hoja A4 y dejar que la impresora corte/avance
+   *  entre tickets. */
+  isThermalTicket?: boolean
+}
+
+const SIZE_PRESETS: Record<Size, SizePreset> = {
+  // Etiquetas adhesivas (rollo die-cut tradicional: Xprinter, Brother QL, Zebra)
   small: { name: "Chica (40 × 25mm)", w: "40mm", h: "25mm", barcodeH: 22, barcodeW: 1.0, nameSize: "8px", priceSize: "11px" },
   medium: { name: "Mediana (60 × 35mm)", w: "60mm", h: "35mm", barcodeH: 30, barcodeW: 1.3, nameSize: "10px", priceSize: "14px" },
   large: { name: "Grande (80 × 50mm)", w: "80mm", h: "50mm", barcodeH: 40, barcodeW: 1.6, nameSize: "12px", priceSize: "18px" },
+  // Impresoras térmicas de tickets — la mayoría de los kiosqueros usan estas
+  // (Xprinter XP-58/80, EPSON TM-T20, 3nStar, etc.). Imprimen en rollo
+  // continuo sin separación, una etiqueta por "ticket". El usuario corta
+  // manual o la impresora avanza papel automático según config.
+  ticket58: { name: "Ticket térmico 58mm", w: "48mm", h: "auto", barcodeH: 28, barcodeW: 1.1, nameSize: "10px", priceSize: "16px", isThermalTicket: true },
+  ticket80: { name: "Ticket térmico 80mm", w: "70mm", h: "auto", barcodeH: 36, barcodeW: 1.4, nameSize: "12px", priceSize: "20px", isThermalTicket: true },
 }
 
 export default function EtiquetasPage() {
@@ -331,7 +353,15 @@ export default function EtiquetasPage() {
 
       <style jsx global>{`
         @media print {
-          @page { margin: 6mm; }
+          @page {
+            /* En modo ticket térmico: la "página" es del ancho del rollo
+               (58mm o 80mm) y la altura es auto — la impresora corta o
+               avanza papel automático entre tickets. En modo etiqueta
+               adhesiva tradicional usamos hoja A4 con margen. */
+            ${preset.isThermalTicket
+              ? `size: ${size === "ticket58" ? "58mm auto" : "80mm auto"}; margin: 0;`
+              : "margin: 6mm;"}
+          }
           body { background: white !important; }
           /* Ocultar nav/sidebar/etc */
           aside, nav, header, footer, [role="banner"] {
@@ -344,6 +374,26 @@ export default function EtiquetasPage() {
           .print\\:border-none { border: none !important; }
           .print\\:rounded-none { border-radius: 0 !important; }
           .print\\:border-gray-200 { border-color: #e5e7eb !important; }
+          ${preset.isThermalTicket
+            ? `
+            /* Ticket térmico: cada etiqueta es un "ticket" individual.
+               Forzamos page-break después de cada item así la impresora
+               corta/avanza entre cada uno. No queremos varios apilados
+               en la misma tira. */
+            #labels-sheet { flex-direction: column !important; gap: 0 !important; }
+            #labels-sheet > div {
+              page-break-after: always;
+              break-after: page;
+              border: none !important;
+              padding: 4mm 2mm !important;
+              width: 100% !important;
+            }
+            #labels-sheet > div:last-child {
+              page-break-after: auto;
+              break-after: auto;
+            }
+            `
+            : ""}
         }
       `}</style>
     </div>
