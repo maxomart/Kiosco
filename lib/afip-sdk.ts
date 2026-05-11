@@ -17,6 +17,35 @@
 import { db } from "./db"
 import { decryptAfipCert } from "./afip-crypto"
 
+/**
+ * Extrae el motivo real de errores de AfipSDK. El SDK usa axios — cuando
+ * AFIP devuelve 4xx, axios tira un AxiosError con message="Request failed
+ * with status code 400" (inútil) y el verdadero motivo en `response.data`.
+ * Esta función junta status + body para que el usuario vea la causa.
+ */
+function extractSdkError(err: unknown): string {
+  const e = err as {
+    message?: string
+    response?: { data?: unknown; status?: number; statusText?: string }
+  }
+  if (e?.response?.data !== undefined) {
+    const status = e.response.status ?? "?"
+    const data = e.response.data
+    let bodyStr: string
+    if (typeof data === "string") {
+      bodyStr = data
+    } else if (data && typeof data === "object") {
+      const d = data as { error?: string; message?: string; msg?: string }
+      bodyStr = d.error ?? d.message ?? d.msg ?? JSON.stringify(data)
+    } else {
+      bodyStr = String(data)
+    }
+    return `[HTTP ${status}] ${bodyStr}`
+  }
+  if (err instanceof Error) return err.message
+  return String(err)
+}
+
 type AfipInstance = any
 let _AfipCtor: any = null
 async function loadAfip(): Promise<any> {
@@ -128,8 +157,8 @@ export async function testAfipConnection(tenantId: string): Promise<AfipServerSt
       data: { afipReady: true, afipLastSyncAt: new Date(), afipLastError: null } as any,
     })
     return { ok: true, message: "Conexión con ARCA OK", detail: status }
-  } catch (err: any) {
-    const msg = err?.message ?? String(err)
+  } catch (err) {
+    const msg = extractSdkError(err)
     await db.tenantConfig
       .update({
         where: { tenantId },
@@ -187,9 +216,8 @@ export async function createCertViaSDK(opts: {
       return { ok: false, message: "AfipSDK no devolvió el cert/key esperado" }
     }
     return { ok: true, message: "Certificado generado", cert, key }
-  } catch (err: any) {
-    const msg = err?.message ?? String(err)
-    return { ok: false, message: msg.slice(0, 500) }
+  } catch (err) {
+    return { ok: false, message: extractSdkError(err).slice(0, 500) }
   }
 }
 
