@@ -220,7 +220,12 @@ export async function POST(req: NextRequest) {
 
         await tx.product.update({
           where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
+          data: {
+            stock: { decrement: item.quantity },
+            // Boost de popularidad: el sort del POS pone arriba lo más
+            // vendido. Por cada unidad/kg vendido sumamos al score.
+            popularityScore: { increment: item.quantity },
+          },
         })
 
         await tx.stockMovement.create({

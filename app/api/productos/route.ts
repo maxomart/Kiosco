@@ -30,6 +30,13 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get("page") ?? "1")
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50"), 200)
   const lowStock = searchParams.get("lowStock") === "true"
+  // sort=popularity → más vendidos arriba (lo que el POS quiere para que
+  //                    Coca, alfajores, etc aparezcan primero en la grilla)
+  // sort=name (default) → alfabético (mejor para inventario, data entry)
+  const sort = searchParams.get("sort") === "popularity" ? "popularity" : "name"
+  const orderBy = sort === "popularity"
+    ? [{ popularityScore: "desc" as const }, { name: "asc" as const }]
+    : { name: "asc" as const }
 
   const where: any = { active: true, ...(tenantId ? { tenantId } : {}) }
   if (q) where.OR = [
@@ -42,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const [products, total] = await Promise.all([
-      db.product.findMany({ where, include: { category: { select: { id: true, name: true } }, supplier: { select: { id: true, name: true } } }, orderBy: { name: "asc" }, take: limit, skip: (page - 1) * limit }),
+      db.product.findMany({ where, include: { category: { select: { id: true, name: true } }, supplier: { select: { id: true, name: true } } }, orderBy, take: limit, skip: (page - 1) * limit }),
       db.product.count({ where }),
     ])
 

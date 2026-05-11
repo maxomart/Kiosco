@@ -138,7 +138,7 @@ export default function POSPage() {
   // Also used to populate the grid before any search: users see products
   // straight away instead of an empty "Buscá un producto" placeholder.
   useEffect(() => {
-    fetch("/api/productos?limit=200")
+    fetch("/api/productos?limit=200&sort=popularity")
       .then(r => r.ok ? r.json() : null)
       .then(d => {
         if (d?.products) {

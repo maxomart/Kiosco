@@ -209,7 +209,10 @@ export async function POST(req: NextRequest) {
 
           await tx.product.update({
             where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
+            data: {
+              stock: { decrement: item.quantity },
+              popularityScore: { increment: item.quantity },
+            },
           })
 
           await tx.stockMovement.create({

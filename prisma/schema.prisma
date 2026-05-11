@@ -125,6 +125,10 @@ model Product {
   image        String?
   soldByWeight Boolean  @default(false)
   expiryDate   DateTime?
+  // Score acumulado por cantidad vendida. Sube al completar cada venta.
+  // Usado para ordenar el catálogo y la búsqueda del POS: los productos
+  // más vendidos aparecen arriba sin tener que tipear nada.
+  popularityScore Float @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -147,6 +151,8 @@ model Product {
   @@index([tenantId])
   @@index([active])
   @@index([categoryId])
+  // Sort principal del POS: tenant + activos, ordenado por más vendidos.
+  @@index([tenantId, active, popularityScore(sort: Desc)])
 }
 
 model Category {

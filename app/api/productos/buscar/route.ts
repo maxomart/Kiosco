@@ -26,7 +26,14 @@ export async function GET(req: NextRequest) {
     const products = await db.product.findMany({
       where,
       take: limit,
-      orderBy: { name: "asc" },
+      // 1ro lo más vendido (boostea Coca, alfajores, etc.); empate → orden
+      // alfabético. Esto hace que cuando el kiosquero tipea "cola" la Coca
+      // aparezca antes que cualquier producto que empiece con "C" pero se
+      // venda menos.
+      orderBy: [
+        { popularityScore: "desc" },
+        { name: "asc" },
+      ],
       select: {
         id: true,
         name: true,
