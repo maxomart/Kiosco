@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { issueCreditNote } from "@/lib/afip-credit-note"
 
 export const dynamic = "force-dynamic"
 
+const bodySchema = z
+  .object({
+    customAmount: z.number().positive().optional(),
+    concept: z.string().min(1).max(200).optional(),
+  })
+  .optional()
+
 /**
  * POST /api/sales/:id/credit-note
  *
- * Emite nota de crédito sobre una venta que ya tenía factura electrónica.
- * Marca la venta como CANCELLED y registra los datos de la NC en cancelReason.
+ * Body opcional: { customAmount?: number, concept?: string }
+ * - customAmount permite emitir NC parcial. Si se omite, se anula por el total.
+ * - concept es texto libre que queda en el historial (AfipNote.concept).
+ *
+ * Marca la venta como CANCELLED y persiste la NC en AfipNote.
  */
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, tenantId, session } = await getSessionTenant()
   if (error || !session) return error ?? NextResponse.json({ error: "No autorizado" }, { status: 401 })
   if (session.user.role !== "OWNER" && session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
@@ -31,6 +42,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "La venta no tiene factura electrónica — usá el flow normal de cancelación" }, { status: 400 })
   }
 
-  const result = await issueCreditNote(id)
+  // Body es opcional. Si no manda JSON, asumimos {}.
+  let parsed: z.infer<typeof bodySchema> = undefined
+  try {
+    const raw = await req.json()
+    parsed = bodySchema.parse(raw)
+  } catch {
+    parsed = undefined
+  }
+
+  const result = await issueCreditNote(id, {
+    customAmount: parsed?.customAmount,
+    concept: parsed?.concept,
+  })
   return NextResponse.json(result, { status: result.ok ? 200 : 502 })
 }

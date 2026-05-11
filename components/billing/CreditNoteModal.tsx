@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, FileMinus, Loader2, Check, AlertCircle, AlertTriangle } from "lucide-react"
+import { X, FileMinus, Loader2, Check, AlertCircle, AlertTriangle, Download } from "lucide-react"
 import toast from "react-hot-toast"
 
 interface Props {
@@ -18,6 +18,8 @@ interface IssuedNote {
   invoiceNumber: number
   invoiceCode: number
   qrUrl: string
+  noteId?: string
+  amount: number
 }
 
 /**
@@ -28,6 +30,9 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<IssuedNote | null>(null)
+  const [partial, setPartial] = useState(false)
+  const [amount, setAmount] = useState<string>("")
+  const [concept, setConcept] = useState<string>("")
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -37,11 +42,30 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose, submitting])
 
+  const parsedAmount = Number(amount.replace(",", "."))
+  const amountValid = !partial || (parsedAmount > 0 && parsedAmount <= saleTotal && Number.isFinite(parsedAmount))
+  const effectiveAmount = partial ? parsedAmount : saleTotal
+
   const handleEmit = async () => {
+    if (partial && !amountValid) {
+      setError(
+        parsedAmount > saleTotal
+          ? "El monto no puede superar el total de la factura"
+          : "Ingresá un monto válido mayor a 0",
+      )
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
-      const r = await fetch(`/api/sales/${saleId}/credit-note`, { method: "POST" })
+      const body: Record<string, unknown> = {}
+      if (partial) body.customAmount = parsedAmount
+      if (concept.trim()) body.concept = concept.trim()
+      const r = await fetch(`/api/sales/${saleId}/credit-note`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
       const d = await r.json()
       if (!r.ok || !d.ok) {
         setError(d.error ?? "No se pudo emitir la nota de crédito")
@@ -53,6 +77,8 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
         invoiceNumber: d.invoiceNumber,
         invoiceCode: d.invoiceCode,
         qrUrl: d.qrUrl,
+        noteId: d.noteId,
+        amount: effectiveAmount,
       })
       toast.success(`Nota de crédito emitida — N° ${d.invoiceNumber}`)
       onIssued?.()
@@ -91,6 +117,9 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
                   </p>
                   <p className="text-2xl font-bold text-white tabular-nums">N° {issued.invoiceNumber}</p>
                   <p className="text-xs text-gray-400 mt-1">CAE: {issued.cae}</p>
+                  <p className="text-xs text-gray-400">
+                    Monto: ${issued.amount.toLocaleString("es-AR")}
+                  </p>
                 </div>
               </div>
 
@@ -105,9 +134,20 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
               )}
 
               <p className="text-[11px] text-gray-500 text-center">
-                Esta NC anula fiscalmente la factura {invoiceLetter} N° {invoiceNumber}.
-                La venta queda registrada como anulada.
+                Esta NC {partial ? "anula parcialmente" : "anula fiscalmente"} la factura {invoiceLetter} N° {invoiceNumber}.
+                {!partial && " La venta queda registrada como anulada."}
               </p>
+
+              {issued.noteId && (
+                <a
+                  href={`/api/sales/notes/${issued.noteId}/ticket`}
+                  target="_blank"
+                  rel="noopener"
+                  className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm border border-gray-700"
+                >
+                  <Download size={14} /> Comprobante PDF
+                </a>
+              )}
 
               <button
                 type="button"
@@ -123,13 +163,60 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
                 <AlertTriangle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-medium text-red-100">
-                    Vas a anular la factura {invoiceLetter} N° {invoiceNumber} con una nota de crédito.
+                    Vas a {partial ? "anular parcialmente" : "anular"} la factura {invoiceLetter} N° {invoiceNumber} con una nota de crédito.
                   </p>
                   <p>
-                    Total a anular: <span className="font-bold text-white">${saleTotal.toLocaleString("es-AR")}</span>.
-                    La venta queda como anulada y la NC queda registrada en AFIP — no se puede deshacer.
+                    {partial
+                      ? "Monto a anular según lo que ingreses. La venta queda anulada si la NC cubre el total — sino sigue activa pero con saldo reducido."
+                      : <>Total a anular: <span className="font-bold text-white">${saleTotal.toLocaleString("es-AR")}</span>. La venta queda como anulada y la NC queda registrada en AFIP — no se puede deshacer.</>}
                   </p>
                 </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={partial}
+                  onChange={(e) => setPartial(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-purple-600 focus:ring-purple-500"
+                />
+                Anular un monto parcial (NC por menos del total)
+              </label>
+
+              {partial && (
+                <div>
+                  <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
+                    Monto a anular
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+                      placeholder="0,00"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white text-sm focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Total factura: ${saleTotal.toLocaleString("es-AR")}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
+                  Motivo (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={concept}
+                  onChange={(e) => setConcept(e.target.value)}
+                  placeholder="Ej: Producto devuelto, error en facturación"
+                  maxLength={200}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500"
+                />
               </div>
 
               {error && (
@@ -151,8 +238,8 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
                 <button
                   type="button"
                   onClick={handleEmit}
-                  disabled={submitting}
-                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-bold disabled:opacity-50"
+                  disabled={submitting || (partial && !amountValid)}
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, FilePlus2, Loader2, Check, AlertCircle, Info } from "lucide-react"
+import { X, FilePlus2, Loader2, Check, AlertCircle, Info, Download } from "lucide-react"
 import toast from "react-hot-toast"
 
 interface Props {
@@ -18,20 +18,23 @@ interface IssuedNote {
   invoiceNumber: number
   invoiceCode: number
   qrUrl: string
+  noteId?: string
 }
 
 /**
- * Modal para emitir una nota de débito sobre una venta facturada.
- * La ND es un cargo adicional — NO anula la factura original.
+ * Modal para emitir nota de débito sobre una venta facturada.
  *
- * Hoy el endpoint emite ND por el mismo total de la venta original
- * (caso simplificado). Para ND con monto custom (ej. intereses por mora)
- * habría que ampliar el endpoint para aceptar `amount` + `concept`.
+ * Pide monto + concepto:
+ * - El monto es lo más común: la ND típica es por una fracción del total
+ *   (ej intereses por mora), no por el total entero.
+ * - El concepto queda guardado en AfipNote.concept para historial.
  */
 export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber, onClose, onIssued }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<IssuedNote | null>(null)
+  const [amount, setAmount] = useState<string>("")
+  const [concept, setConcept] = useState<string>("")
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -41,11 +44,24 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose, submitting])
 
+  const parsedAmount = Number(amount.replace(",", "."))
+  const amountValid = parsedAmount > 0 && Number.isFinite(parsedAmount)
+
   const handleEmit = async () => {
+    if (!amountValid) {
+      setError("Ingresá un monto válido mayor a 0")
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
-      const r = await fetch(`/api/sales/${saleId}/debit-note`, { method: "POST" })
+      const body: Record<string, unknown> = { customAmount: parsedAmount }
+      if (concept.trim()) body.concept = concept.trim()
+      const r = await fetch(`/api/sales/${saleId}/debit-note`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
       const d = await r.json()
       if (!r.ok || !d.ok) {
         setError(d.error ?? "No se pudo emitir la nota de débito")
@@ -57,6 +73,7 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
         invoiceNumber: d.invoiceNumber,
         invoiceCode: d.invoiceCode,
         qrUrl: d.qrUrl,
+        noteId: d.noteId,
       })
       toast.success(`Nota de débito emitida — N° ${d.invoiceNumber}`)
       onIssued?.()
@@ -95,6 +112,9 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
                   </p>
                   <p className="text-2xl font-bold text-white tabular-nums">N° {issued.invoiceNumber}</p>
                   <p className="text-xs text-gray-400 mt-1">CAE: {issued.cae}</p>
+                  <p className="text-xs text-gray-400">
+                    Monto: ${parsedAmount.toLocaleString("es-AR")}
+                  </p>
                 </div>
               </div>
 
@@ -111,6 +131,17 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
               <p className="text-[11px] text-gray-500 text-center">
                 ND emitida sobre la factura {invoiceLetter} N° {invoiceNumber}. La venta original sigue activa.
               </p>
+
+              {issued.noteId && (
+                <a
+                  href={`/api/sales/notes/${issued.noteId}/ticket`}
+                  target="_blank"
+                  rel="noopener"
+                  className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm border border-gray-700"
+                >
+                  <Download size={14} /> Comprobante PDF
+                </a>
+              )}
 
               <button
                 type="button"
@@ -129,10 +160,45 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
                     Nota de débito sobre factura {invoiceLetter} N° {invoiceNumber}
                   </p>
                   <p>
-                    Monto: <span className="font-bold text-white">${saleTotal.toLocaleString("es-AR")}</span>.
-                    Una ND es un cargo adicional — la factura original sigue activa, la venta NO se anula.
+                    Total factura: <span className="font-bold text-white">${saleTotal.toLocaleString("es-AR")}</span>.
+                    Una ND es un cargo adicional (ej. intereses por mora) — la
+                    factura original sigue activa.
                   </p>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
+                  Monto a debitar
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+                    placeholder="0,00"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Tip: usá el monto del cargo extra, no el total de la factura.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
+                  Concepto (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={concept}
+                  onChange={(e) => setConcept(e.target.value)}
+                  placeholder="Ej: Intereses por mora"
+                  maxLength={200}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                />
               </div>
 
               {error && (
@@ -154,8 +220,8 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
                 <button
                   type="button"
                   onClick={handleEmit}
-                  disabled={submitting}
-                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold disabled:opacity-50"
+                  disabled={submitting || !amountValid}
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>

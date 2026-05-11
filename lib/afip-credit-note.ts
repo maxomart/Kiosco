@@ -94,6 +94,19 @@ export interface NoteResult {
   qrUrl?: string
   error?: string
   kind?: NoteKind
+  /** Id de la fila AfipNote persistida (si la emisión fue OK). */
+  noteId?: string
+}
+
+export interface NoteOptions {
+  /**
+   * Monto custom — usar cuando la NC/ND NO es por el total de la venta.
+   * Para NC parcial o ND con monto distinto (ej intereses por mora).
+   * Si se omite, se usa sale.total.
+   */
+  customAmount?: number
+  /** Concepto/descripción opcional (ej "Intereses por mora"). */
+  concept?: string
 }
 
 interface TenantConfigForNote {
@@ -121,6 +134,7 @@ function isNativeProvider(provider: string | null | undefined): boolean {
 export async function issueCreditOrDebitNote(
   saleId: string,
   kind: NoteKind = "credit",
+  options: NoteOptions = {},
 ): Promise<NoteResult> {
   const sale = await db.sale.findUnique({
     where: { id: saleId },
@@ -156,7 +170,22 @@ export async function issueCreditOrDebitNote(
   }
 
   const ptoVta = sale.pointOfSale ?? cfg.afipPointOfSale ?? 1
-  const totalAmount = Number(sale.total)
+  // Para NC: customAmount permite emitir notas parciales. Para ND:
+  // customAmount es lo más común (ej intereses por mora son una fracción).
+  // Si no se pasa, usamos el total original.
+  const totalAmount = options.customAmount && options.customAmount > 0
+    ? round2(options.customAmount)
+    : Number(sale.total)
+  if (options.customAmount !== undefined && options.customAmount <= 0) {
+    return { ok: false, error: "El monto debe ser mayor a 0", kind }
+  }
+  if (kind === "credit" && options.customAmount && options.customAmount > Number(sale.total)) {
+    return {
+      ok: false,
+      error: "El monto de la NC no puede superar el total de la factura original",
+      kind,
+    }
+  }
   const customerDocType = (sale.customerDocType as DocType) ?? "SIN_IDENTIFICAR"
   const customerDocNumber = sale.customerDocNumber ?? "0"
   const customerCondicion = (sale.customerCondicionIVA as
@@ -295,6 +324,25 @@ export async function issueCreditOrDebitNote(
     cae: result.cae,
   })
 
+  // Persistir la nota en historial — siempre, incluso si la venta no se
+  // cancela (caso ND). Permite ver QR/CAE de notas viejas sin re-emitir.
+  const note = await db.afipNote.create({
+    data: {
+      kind,
+      cae: result.cae,
+      caeExpiresAt,
+      invoiceNumber: result.number,
+      invoiceCode: noteCode,
+      invoiceLetter: sale.invoiceType,
+      pointOfSale: ptoVta,
+      amount: totalAmount,
+      concept: options.concept ?? null,
+      qrUrl,
+      tenantId: sale.tenantId,
+      saleId,
+    },
+  })
+
   // Solo la NC cancela la venta. La ND no — es un cargo adicional.
   if (kind === "credit") {
     await db.sale.update({
@@ -321,17 +369,18 @@ export async function issueCreditOrDebitNote(
     invoiceCode: noteCode,
     qrUrl,
     kind,
+    noteId: note.id,
   }
 }
 
 /** Shim para callers existentes — NC equivale a credit. */
-export function issueCreditNote(saleId: string): Promise<NoteResult> {
-  return issueCreditOrDebitNote(saleId, "credit")
+export function issueCreditNote(saleId: string, options?: NoteOptions): Promise<NoteResult> {
+  return issueCreditOrDebitNote(saleId, "credit", options)
 }
 
 /** Emite una nota de débito (cargo adicional) sobre la factura asociada. */
-export function issueDebitNote(saleId: string): Promise<NoteResult> {
-  return issueCreditOrDebitNote(saleId, "debit")
+export function issueDebitNote(saleId: string, options?: NoteOptions): Promise<NoteResult> {
+  return issueCreditOrDebitNote(saleId, "debit", options)
 }
 
 function round2(n: number): number {

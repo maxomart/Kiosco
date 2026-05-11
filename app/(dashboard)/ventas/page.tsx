@@ -38,8 +38,24 @@ const DebitNoteModal = dynamic(
   () => import("@/components/billing/DebitNoteModal").then((m) => m.DebitNoteModal),
   { ssr: false }
 )
+const NotesViewer = dynamic(
+  () => import("@/components/billing/NotesViewer").then((m) => m.NotesViewer),
+  { ssr: false }
+)
 
 interface SaleItem { productName: string; quantity: number; unitPrice: number; subtotal: number }
+interface AfipNote {
+  id: string
+  kind: "credit" | "debit"
+  invoiceNumber: number
+  invoiceLetter: string
+  pointOfSale: number
+  amount: number
+  concept: string | null
+  cae: string
+  qrUrl: string | null
+  createdAt: string
+}
 interface Sale {
   id: string
   number: string
@@ -61,6 +77,7 @@ interface Sale {
   pointOfSale?: number | null
   afipQrUrl?: string | null
   afipStatus?: string | null
+  afipNotes?: AfipNote[]
 }
 
 const STATUS_LABELS: Record<string, string> = { COMPLETED: "Completada", CANCELLED: "Anulada", PENDING: "Pendiente" }
@@ -95,6 +112,7 @@ export default function VentasPage() {
   const [invoiceFor, setInvoiceFor] = useState<{ saleId: string; total: number; cae: string | null; letter: string | null; number: number | null; pos: number | null; qrUrl: string | null } | null>(null)
   const [creditNoteFor, setCreditNoteFor] = useState<{ saleId: string; total: number; letter: string | null; number: number | null } | null>(null)
   const [debitNoteFor, setDebitNoteFor] = useState<{ saleId: string; total: number; letter: string | null; number: number | null } | null>(null)
+  const [notesViewerFor, setNotesViewerFor] = useState<{ saleNumber: string | number; notes: AfipNote[] } | null>(null)
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split("T")[0] })
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0])
   const [showAI, setShowAI] = useState(false)
@@ -411,6 +429,21 @@ export default function VentasPage() {
                               </button>
                             </>
                           )}
+                          {s.afipNotes && s.afipNotes.length > 0 && (
+                            <button
+                              onClick={() => setNotesViewerFor({
+                                saleNumber: s.number,
+                                notes: s.afipNotes ?? [],
+                              })}
+                              className="p-1.5 rounded-lg hover:bg-purple-500/10 text-purple-400 transition-colors relative"
+                              title={`Ver ${s.afipNotes.length} nota${s.afipNotes.length > 1 ? "s" : ""} emitida${s.afipNotes.length > 1 ? "s" : ""}`}
+                            >
+                              <Receipt size={15} />
+                              <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                                {s.afipNotes.length}
+                              </span>
+                            </button>
+                          )}
                           {!s.cae && s.status === "COMPLETED" && (
                             <button onClick={() => handleCancel(s.id)} disabled={cancelling === s.id}
                               className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
@@ -530,6 +563,14 @@ export default function VentasPage() {
           invoiceNumber={debitNoteFor.number}
           onClose={() => setDebitNoteFor(null)}
           onIssued={() => load()}
+        />
+      )}
+
+      {notesViewerFor && (
+        <NotesViewer
+          saleNumber={notesViewerFor.saleNumber}
+          notes={notesViewerFor.notes}
+          onClose={() => setNotesViewerFor(null)}
         />
       )}
 
