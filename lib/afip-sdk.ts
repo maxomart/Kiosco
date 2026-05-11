@@ -142,8 +142,33 @@ export interface AfipServerStatus {
   detail?: any
 }
 
-/** Pega contra ARCA para verificar que las credenciales son válidas. */
+/**
+ * Pega contra ARCA para verificar que las credenciales son válidas.
+ * Si el tenant usa `afipCertProvider="native"`, delegamos al cliente WSAA/WSFE
+ * propio (lib/afip-native). Sino, usamos el SDK como antes.
+ */
 export async function testAfipConnection(tenantId: string): Promise<AfipServerStatus> {
+  const providerCfg = (await db.tenantConfig.findUnique({
+    where: { tenantId },
+    select: { afipCertProvider: true } as any,
+  })) as { afipCertProvider?: string | null } | null
+  const provider = (providerCfg?.afipCertProvider ?? "").toLowerCase()
+
+  if (provider === "native") {
+    // Lazy import para no traer node-forge si nadie usa native.
+    const { nativeAuthCheck } = await import("./afip-native")
+    const r = await nativeAuthCheck(tenantId)
+    await db.tenantConfig
+      .update({
+        where: { tenantId },
+        data: r.ok
+          ? ({ afipReady: true, afipLastSyncAt: new Date(), afipLastError: null } as any)
+          : ({ afipReady: false, afipLastError: r.message.slice(0, 500) } as any),
+      })
+      .catch(() => {})
+    return { ok: r.ok, message: r.message, detail: r.detail }
+  }
+
   try {
     const afip = await buildAfipClient(tenantId)
     const status = await afip.ElectronicBilling.GetServerStatus()
