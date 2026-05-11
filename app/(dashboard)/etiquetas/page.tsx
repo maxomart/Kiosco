@@ -1,10 +1,18 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Tag, Search, Printer, Plus, Minus, Layers } from "lucide-react"
+import { Tag, Search, Printer, Plus, Minus, Layers, Bluetooth, Usb, Zap, X as XIcon } from "lucide-react"
 import toast from "react-hot-toast"
 import { formatCurrency } from "@/lib/utils"
 import { Barcode } from "@/components/etiquetas/Barcode"
+import {
+  connectBluetooth,
+  connectUSB,
+  isBluetoothSupported,
+  isUSBSupported,
+  type ConnectedPrinter,
+} from "@/lib/thermal-printer"
+import { buildLabelsBatch } from "@/lib/escpos"
 
 interface ProductLite {
   id: string
@@ -54,6 +62,11 @@ export default function EtiquetasPage() {
   const [showPrice, setShowPrice] = useState(true)
   const [showBusinessName, setShowBusinessName] = useState(true)
   const [selected, setSelected] = useState<Record<string, number>>({})
+  const [printer, setPrinter] = useState<ConnectedPrinter | null>(null)
+  const [printing, setPrinting] = useState(false)
+  const [connecting, setConnecting] = useState<"bluetooth" | "usb" | null>(null)
+  const btSupported = typeof window !== "undefined" && isBluetoothSupported()
+  const usbSupported = typeof window !== "undefined" && isUSBSupported()
 
   useEffect(() => {
     fetch("/api/etiquetas/products", { cache: "no-store" })
@@ -116,6 +129,63 @@ export default function EtiquetasPage() {
       return
     }
     window.print()
+  }
+
+  /** Conectar a impresora térmica por Bluetooth o USB. Se hace una sola vez,
+   *  después cada impresión es instantánea (sin diálogo). */
+  const handleConnect = async (kind: "bluetooth" | "usb") => {
+    setConnecting(kind)
+    try {
+      const p = kind === "bluetooth" ? await connectBluetooth() : await connectUSB()
+      setPrinter(p)
+      toast.success(`Impresora ${p.name} conectada`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo conectar"
+      // Si el usuario cerró el picker del navegador no es un error real
+      if (!msg.toLowerCase().includes("cancel") && !msg.toLowerCase().includes("user")) {
+        toast.error(msg)
+      }
+    } finally {
+      setConnecting(null)
+    }
+  }
+
+  /** Impresión directa via ESC/POS (sin diálogo del navegador). */
+  const handleDirectPrint = async () => {
+    if (!printer) {
+      toast.error("Conectá primero una impresora")
+      return
+    }
+    if (totalLabels === 0) {
+      toast.error("Elegí al menos un producto")
+      return
+    }
+    setPrinting(true)
+    try {
+      const data = buildLabelsBatch(
+        labelsToRender.map((p) => ({
+          productName: p.name,
+          price: formatCurrency(p.salePrice),
+          barcode: p.barcode ?? p.sku ?? null,
+          businessName: showBusinessName ? businessName : null,
+        })),
+      )
+      await printer.print(data)
+      toast.success(`${totalLabels} etiqueta${totalLabels > 1 ? "s" : ""} enviada${totalLabels > 1 ? "s" : ""}`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al imprimir"
+      toast.error(msg)
+    } finally {
+      setPrinting(false)
+    }
+  }
+
+  const handleDisconnect = async () => {
+    if (printer) {
+      await printer.disconnect()
+      setPrinter(null)
+      toast.success("Impresora desconectada")
+    }
   }
 
   const preset = SIZE_PRESETS[size]
@@ -294,17 +364,87 @@ export default function EtiquetasPage() {
             <p className="text-2xl font-bold text-white tabular-nums">{totalLabels}</p>
           </div>
 
-          <button
-            onClick={handlePrint}
-            disabled={totalLabels === 0}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-purple-900/30"
-          >
-            <Printer size={16} />
-            Imprimir {totalLabels > 0 ? `(${totalLabels})` : ""}
-          </button>
-          <p className="text-[11px] text-gray-500 text-center">
-            Tip: en el diálogo de impresión, desactivá los márgenes y "encabezados/pies".
-          </p>
+          {/* Impresión directa via Bluetooth/USB — instant print sin diálogo
+              del navegador. Funciona en Chrome/Edge desktop + Chrome Android.
+              iOS y Firefox: caer al modo diálogo de abajo. */}
+          {printer ? (
+            <div className="bg-emerald-900/20 border border-emerald-700/40 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  {printer.kind === "bluetooth" ? <Bluetooth className="w-4 h-4 text-emerald-400 flex-shrink-0" /> : <Usb className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
+                  <span className="text-xs text-emerald-100 truncate">{printer.name}</span>
+                </div>
+                <button onClick={handleDisconnect} className="text-gray-500 hover:text-gray-200 flex-shrink-0" title="Desconectar">
+                  <XIcon className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <button
+                onClick={handleDirectPrint}
+                disabled={totalLabels === 0 || printing}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-emerald-900/30"
+              >
+                <Zap size={16} />
+                {printing ? "Imprimiendo…" : `Imprimir directo${totalLabels > 0 ? ` (${totalLabels})` : ""}`}
+              </button>
+              <p className="text-[10px] text-emerald-200/60 text-center">
+                Impresión instantánea — sin diálogo del navegador.
+              </p>
+            </div>
+          ) : (
+            (btSupported || usbSupported) && (
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                  Conectar impresora térmica
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {btSupported && (
+                    <button
+                      onClick={() => handleConnect("bluetooth")}
+                      disabled={connecting !== null}
+                      className="flex items-center justify-center gap-1.5 py-2 px-2 bg-sky-900/30 hover:bg-sky-900/50 border border-sky-700/40 disabled:opacity-50 text-sky-200 text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <Bluetooth className="w-3.5 h-3.5" />
+                      {connecting === "bluetooth" ? "Buscando…" : "Bluetooth"}
+                    </button>
+                  )}
+                  {usbSupported && (
+                    <button
+                      onClick={() => handleConnect("usb")}
+                      disabled={connecting !== null}
+                      className="flex items-center justify-center gap-1.5 py-2 px-2 bg-violet-900/30 hover:bg-violet-900/50 border border-violet-700/40 disabled:opacity-50 text-violet-200 text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <Usb className="w-3.5 h-3.5" />
+                      {connecting === "usb" ? "Buscando…" : "USB"}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-500 text-center">
+                  Una vez conectada, las impresiones son instantáneas.
+                </p>
+              </div>
+            )
+          )}
+
+          {/* Fallback / alternativa: print dialog del navegador. Siempre
+              disponible — útil para iOS, Firefox, o quien quiera previsualizar. */}
+          <div className="pt-3 border-t border-gray-800 space-y-2">
+            {printer && (
+              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                Alternativa: diálogo del navegador
+              </p>
+            )}
+            <button
+              onClick={handlePrint}
+              disabled={totalLabels === 0}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 disabled:opacity-40 text-gray-200 text-sm font-medium rounded-lg transition-colors"
+            >
+              <Printer size={14} />
+              Imprimir con diálogo {totalLabels > 0 ? `(${totalLabels})` : ""}
+            </button>
+            <p className="text-[10px] text-gray-500 text-center">
+              Tip: en el diálogo, desactivá márgenes y "encabezados/pies".
+            </p>
+          </div>
         </div>
       </section>
 
