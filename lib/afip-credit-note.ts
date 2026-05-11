@@ -305,6 +305,13 @@ export async function issueCreditOrDebitNote(
       },
     })
   }
+  // Marca salud del tenantConfig para que el banner "Último error" desaparezca.
+  await db.tenantConfig
+    .update({
+      where: { tenantId: sale.tenantId },
+      data: { afipLastSyncAt: new Date(), afipLastError: null },
+    })
+    .catch(() => {})
 
   return {
     ok: true,

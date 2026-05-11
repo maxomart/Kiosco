@@ -16,6 +16,8 @@ import {
   Calendar,
   Filter,
   FileCheck2,
+  FileMinus,
+  FilePlus2,
 } from "lucide-react"
 import toast from "react-hot-toast"
 import dynamic from "next/dynamic"
@@ -26,6 +28,14 @@ import { SalesAIChat } from "@/components/ventas/SalesAIChat"
 
 const InvoiceModal = dynamic(
   () => import("@/components/billing/InvoiceModal").then((m) => m.InvoiceModal),
+  { ssr: false }
+)
+const CreditNoteModal = dynamic(
+  () => import("@/components/billing/CreditNoteModal").then((m) => m.CreditNoteModal),
+  { ssr: false }
+)
+const DebitNoteModal = dynamic(
+  () => import("@/components/billing/DebitNoteModal").then((m) => m.DebitNoteModal),
   { ssr: false }
 )
 
@@ -83,6 +93,8 @@ export default function VentasPage() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
   const [invoiceFor, setInvoiceFor] = useState<{ saleId: string; total: number; cae: string | null; letter: string | null; number: number | null; pos: number | null; qrUrl: string | null } | null>(null)
+  const [creditNoteFor, setCreditNoteFor] = useState<{ saleId: string; total: number; letter: string | null; number: number | null } | null>(null)
+  const [debitNoteFor, setDebitNoteFor] = useState<{ saleId: string; total: number; letter: string | null; number: number | null } | null>(null)
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split("T")[0] })
   const [to, setTo] = useState(() => new Date().toISOString().split("T")[0])
   const [showAI, setShowAI] = useState(false)
@@ -373,7 +385,33 @@ export default function VentasPage() {
                               <FileCheck2 size={15} />
                             </button>
                           )}
-                          {s.status === "COMPLETED" && (
+                          {s.cae && s.status === "COMPLETED" && (
+                            <>
+                              <button
+                                onClick={() => setCreditNoteFor({
+                                  saleId: s.id, total: s.total,
+                                  letter: s.invoiceType ?? null,
+                                  number: s.invoiceNumber ?? null,
+                                })}
+                                className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors"
+                                title="Emitir nota de crédito (anula factura)"
+                              >
+                                <FileMinus size={15} />
+                              </button>
+                              <button
+                                onClick={() => setDebitNoteFor({
+                                  saleId: s.id, total: s.total,
+                                  letter: s.invoiceType ?? null,
+                                  number: s.invoiceNumber ?? null,
+                                })}
+                                className="p-1.5 rounded-lg hover:bg-blue-500/10 text-gray-500 hover:text-blue-400 transition-colors"
+                                title="Emitir nota de débito (cargo adicional)"
+                              >
+                                <FilePlus2 size={15} />
+                              </button>
+                            </>
+                          )}
+                          {!s.cae && s.status === "COMPLETED" && (
                             <button onClick={() => handleCancel(s.id)} disabled={cancelling === s.id}
                               className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors disabled:opacity-50"
                               title="Anular venta">
@@ -470,6 +508,28 @@ export default function VentasPage() {
           } : null}
           onClose={() => setInvoiceFor(null)}
           onIssued={() => { setInvoiceFor(null); load() }}
+        />
+      )}
+
+      {creditNoteFor && (
+        <CreditNoteModal
+          saleId={creditNoteFor.saleId}
+          saleTotal={creditNoteFor.total}
+          invoiceLetter={creditNoteFor.letter}
+          invoiceNumber={creditNoteFor.number}
+          onClose={() => setCreditNoteFor(null)}
+          onIssued={() => load()}
+        />
+      )}
+
+      {debitNoteFor && (
+        <DebitNoteModal
+          saleId={debitNoteFor.saleId}
+          saleTotal={debitNoteFor.total}
+          invoiceLetter={debitNoteFor.letter}
+          invoiceNumber={debitNoteFor.number}
+          onClose={() => setDebitNoteFor(null)}
+          onIssued={() => load()}
         />
       )}
 

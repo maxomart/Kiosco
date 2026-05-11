@@ -270,20 +270,28 @@ export async function issueElectronicInvoice(saleId: string): Promise<IssueResul
     cae,
   })
 
-  // Persistir en la venta
-  await db.sale.update({
-    where: { id: saleId },
-    data: {
-      cae,
-      caeExpiresAt,
-      pointOfSale: ptoVta,
-      invoiceNumber: nextNumber,
-      invoiceType: letter,
-      afipQrUrl: qrUrl,
-      afipStatus: "APPROVED",
-      afipError: null,
-    },
-  })
+  // Persistir en la venta + actualizar salud del tenantConfig
+  await Promise.all([
+    db.sale.update({
+      where: { id: saleId },
+      data: {
+        cae,
+        caeExpiresAt,
+        pointOfSale: ptoVta,
+        invoiceNumber: nextNumber,
+        invoiceType: letter,
+        afipQrUrl: qrUrl,
+        afipStatus: "APPROVED",
+        afipError: null,
+      },
+    }),
+    db.tenantConfig
+      .update({
+        where: { tenantId: sale.tenantId },
+        data: { afipLastSyncAt: new Date(), afipLastError: null },
+      })
+      .catch(() => {}),
+  ])
 
   return {
     ok: true,

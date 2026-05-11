@@ -33,6 +33,9 @@ interface AfipConfig {
   hasPrivateKey: boolean
   lastSyncAt: string | null
   lastError: string | null
+  certExpiresAt?: string | null
+  certExpiresSoon?: boolean
+  certProvider?: string | null
 }
 
 interface InvoiceQuota {
@@ -343,9 +346,50 @@ export default function AfipConfigClient(_props: { initial?: any }) {
         <h2 className="text-white font-semibold">Estado</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <StatusCard label="Conexión a ARCA" ok={config?.ready ?? false} text={config?.ready ? "Verificada" : "Sin probar"} />
-          <StatusCard label="Certificado X.509" ok={config?.hasCert ?? false} text={config?.hasCert ? "Cargado" : "Falta subir"} />
+          <StatusCard
+            label="Certificado X.509"
+            ok={config?.hasCert ?? false}
+            text={
+              config?.hasCert
+                ? config?.certExpiresAt
+                  ? `Vence ${new Date(config.certExpiresAt).toLocaleDateString("es-AR")}`
+                  : "Cargado"
+                : "Falta subir"
+            }
+          />
           <StatusCard label="Private key" ok={config?.hasPrivateKey ?? false} text={config?.hasPrivateKey ? "Cargada" : "Falta subir"} />
         </div>
+
+        {config?.certProvider === "native" && (
+          <div className="bg-emerald-950/30 border border-emerald-900/40 rounded-lg p-3 text-xs text-emerald-200 flex gap-2">
+            <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+            <p>
+              <strong>Modo nativo activo</strong> — la facturación va directo
+              contra ARCA vía WSAA/WSFE, sin pasar por AfipSDK. Costo por
+              factura: $0.
+            </p>
+          </div>
+        )}
+
+        {config?.certExpiresSoon && config?.hasCert && (
+          <div className="bg-amber-950/30 border border-amber-900/40 rounded-lg p-3 text-xs text-amber-200 flex gap-2">
+            <AlertCircle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-100">
+                Tu certificado vence pronto
+                {config.certExpiresAt
+                  ? ` (${new Date(config.certExpiresAt).toLocaleDateString("es-AR")})`
+                  : ""}.
+              </p>
+              <p className="mt-1">
+                Renová antes de que venza. Si lo creaste con &ldquo;Generar
+                certificado&rdquo;, podés volver a usar el modo automático con
+                otro alias. Sino, regeneralo manualmente en WSASS.
+              </p>
+            </div>
+          </div>
+        )}
+
         {config?.lastError && (
           <div className="bg-red-950/40 border border-red-800/40 rounded-lg p-3 text-xs text-red-200">
             <p className="font-semibold mb-1">Último error:</p>

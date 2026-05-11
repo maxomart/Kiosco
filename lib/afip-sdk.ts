@@ -68,6 +68,12 @@ export interface AfipTenantConfig {
   hasPrivateKey: boolean
   lastSyncAt: Date | null
   lastError: string | null
+  /** Vencimiento del cert X.509 si está cargado y es PEM válido. */
+  certExpiresAt: Date | null
+  /** True si el cert vence en menos de 30 días — para mostrar alerta UX. */
+  certExpiresSoon: boolean
+  /** "native" | "afipsdk" | "tusfacturas" | null */
+  certProvider: string | null
 }
 
 export async function getAfipConfig(tenantId: string): Promise<AfipTenantConfig | null> {
@@ -83,12 +89,32 @@ export async function getAfipConfig(tenantId: string): Promise<AfipTenantConfig 
       afipBusinessName: true,
       afipCertX509: true,
       afipCertPrivateKey: true,
+      afipCertProvider: true,
       afipLastSyncAt: true,
       afipLastError: true,
     } as any,
   })
   if (!cfg) return null
   const c = cfg as any
+
+  // Cert expiration check — sólo si hay cert cargado y es PEM válido.
+  // Si el cert está corrupto, devolvemos null en certExpiresAt sin tirar.
+  let certExpiresAt: Date | null = null
+  let certExpiresSoon = false
+  if (c.afipCertX509) {
+    try {
+      const { decryptAfipCert } = await import("./afip-crypto")
+      const { certNotAfter, certExpiresSoon: expiresSoonFn } = await import(
+        "./afip-native/cms"
+      )
+      const pem = decryptAfipCert(c.afipCertX509)
+      certExpiresAt = certNotAfter(pem)
+      certExpiresSoon = expiresSoonFn(pem, 30)
+    } catch {
+      // Cert corrupto o key incorrecta — no es crítico para el listing.
+    }
+  }
+
   return {
     enabled: c.afipEnabled,
     ready: c.afipReady,
@@ -101,6 +127,9 @@ export async function getAfipConfig(tenantId: string): Promise<AfipTenantConfig 
     hasPrivateKey: !!c.afipCertPrivateKey,
     lastSyncAt: c.afipLastSyncAt,
     lastError: c.afipLastError,
+    certExpiresAt,
+    certExpiresSoon,
+    certProvider: c.afipCertProvider ?? null,
   }
 }
 
