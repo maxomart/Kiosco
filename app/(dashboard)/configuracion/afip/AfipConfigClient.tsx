@@ -62,6 +62,11 @@ export default function AfipConfigClient(_props: { initial?: any }) {
   const [creatingCert, setCreatingCert] = useState(false)
   const [claveFiscal, setClaveFiscal] = useState("")
   const [showClaveFiscal, setShowClaveFiscal] = useState(false)
+  const [prodCheck, setProdCheck] = useState<{
+    running: boolean
+    ready: boolean | null
+    checks: Record<string, { ok: boolean; message: string }> | null
+  }>({ running: false, ready: null, checks: null })
 
   const [cuit, setCuit] = useState("")
   const [pointOfSale, setPointOfSale] = useState<number>(1)
@@ -208,6 +213,18 @@ export default function AfipConfigClient(_props: { initial?: any }) {
     }
   }
 
+  const runProdCheck = async () => {
+    setProdCheck({ running: true, ready: null, checks: null })
+    try {
+      const r = await fetch("/api/afip/prod-check", { cache: "no-store" })
+      const d = await r.json()
+      setProdCheck({ running: false, ready: !!d.ready, checks: d.checks ?? null })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error corriendo el check")
+      setProdCheck({ running: false, ready: false, checks: null })
+    }
+  }
+
   const handleTest = async () => {
     setTesting(true)
     try {
@@ -260,6 +277,23 @@ export default function AfipConfigClient(_props: { initial?: any }) {
                 <p>Falta <code className="bg-gray-900 px-1 py-0.5 rounded">AFIP_SDK_ACCESS_TOKEN</code>. Conseguilo gratis en <a href="https://afipsdk.com" target="_blank" rel="noopener" className="text-purple-300 underline inline-flex items-center gap-1">afipsdk.com<ExternalLink size={11} /></a>.</p>
               )}
             </div>
+          </div>
+        </section>
+      )}
+
+      {config?.mode === "PRODUCCION" && config?.enabled && (
+        <section className="bg-gradient-to-r from-red-950/60 via-red-900/40 to-red-950/60 border-2 border-red-700/50 rounded-xl p-4 flex items-center gap-3 shadow-lg shadow-red-900/20">
+          <div className="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center flex-shrink-0">
+            <AlertCircle className="w-5 h-5 text-red-300" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-red-100 uppercase tracking-wider">
+              Modo producción activo
+            </p>
+            <p className="text-xs text-red-200/90 mt-0.5">
+              Cada factura que emitas tiene <strong>valor fiscal real</strong> en
+              ARCA. Si te equivocás, anulá con NC inmediatamente — no se borran.
+            </p>
           </div>
         </section>
       )}
@@ -489,8 +523,16 @@ export default function AfipConfigClient(_props: { initial?: any }) {
               onClick={() => {
                 if (mode === "PRODUCCION") return
                 const ok = window.confirm(
-                  "¿Pasar a modo PRODUCCIÓN?\n\nLas próximas facturas que emitas van a tener valor fiscal real ante ARCA. " +
-                  "Solo activá producción si ya probaste el flow en homologación."
+                  "⚠️ CAMBIO A PRODUCCIÓN REAL\n\n" +
+                  "Estás por activar facturación con VALOR FISCAL ANTE ARCA.\n\n" +
+                  "Cada factura va a quedar registrada en AFIP a tu CUIT — no se puede borrar, solo anular con NC. " +
+                  "Si tu cert/key son los de homo, las llamadas a AFIP van a fallar (cert no autorizado para wsfe de prod).\n\n" +
+                  "Antes de aceptar, asegurate:\n" +
+                  "• Tu cert es de PRODUCCIÓN (creado vía WSASS prod, no homo)\n" +
+                  "• Asociaste el cert al servicio wsfe (no wsfe-homo)\n" +
+                  "• Diste de alta el punto de venta tipo 'Web Services' en el portal de prod\n" +
+                  "• El número de PV configurado corresponde al de producción\n\n" +
+                  "¿Continuar?"
                 )
                 if (ok) setMode("PRODUCCION")
               }}
@@ -678,7 +720,67 @@ export default function AfipConfigClient(_props: { initial?: any }) {
           {testing ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
           {testing ? "Probando..." : "Probar conexión"}
         </button>
+        {mode === "PRODUCCION" && (
+          <button
+            type="button"
+            onClick={runProdCheck}
+            disabled={prodCheck.running}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-900/40 hover:bg-red-900/60 text-red-100 border border-red-700/50 font-medium text-sm disabled:opacity-50"
+          >
+            {prodCheck.running ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <ShieldCheck size={14} />
+            )}
+            {prodCheck.running ? "Verificando..." : "Verificar producción"}
+          </button>
+        )}
       </div>
+
+      {prodCheck.checks && (
+        <section
+          className={`rounded-xl border p-5 space-y-3 ${
+            prodCheck.ready
+              ? "bg-emerald-950/30 border-emerald-700/50"
+              : "bg-red-950/30 border-red-700/50"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {prodCheck.ready ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-400" />
+            )}
+            <h3 className="text-white font-semibold">
+              {prodCheck.ready
+                ? "Listo para emitir en producción"
+                : "Hay items por arreglar antes de emitir en producción"}
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {Object.entries(prodCheck.checks).map(([key, c]) => (
+              <div
+                key={key}
+                className={`flex items-start gap-2 p-2 rounded-lg text-xs ${
+                  c.ok ? "bg-emerald-950/30 text-emerald-200" : "bg-red-950/30 text-red-200"
+                }`}
+              >
+                {c.ok ? (
+                  <CheckCircle2 size={12} className="flex-shrink-0 mt-0.5 text-emerald-400" />
+                ) : (
+                  <AlertCircle size={12} className="flex-shrink-0 mt-0.5 text-red-400" />
+                )}
+                <div className="min-w-0">
+                  <p className="font-medium text-[11px] uppercase tracking-wider text-gray-400">
+                    {key}
+                  </p>
+                  <p className="break-words">{c.message}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

@@ -64,7 +64,7 @@ export function PaymentModal({ onClose }: Props) {
     invoicePending?: boolean
   } | null>(null)
   const [showInvoice, setShowInvoice] = useState(false)
-  const [afipStatus, setAfipStatus] = useState<{ enabled: boolean; ready: boolean } | null>(null)
+  const [afipStatus, setAfipStatus] = useState<{ enabled: boolean; ready: boolean; mode: string | null } | null>(null)
   const [autoInvoice, setAutoInvoice] = useState(false)
 
   // MP state
@@ -109,10 +109,12 @@ export function PaymentModal({ onClose }: Props) {
     fetch("/api/afip/status", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d) setAfipStatus({ enabled: !!d.enabled, ready: !!d.ready })
+        if (d) setAfipStatus({ enabled: !!d.enabled, ready: !!d.ready, mode: d.mode ?? null })
       })
       .catch(() => {})
   }, [])
+
+  const isProduction = afipStatus?.enabled && afipStatus.mode === "PRODUCCION"
 
   // Carga config de loyalty 1 vez
   useEffect(() => {
@@ -723,9 +725,14 @@ export function PaymentModal({ onClose }: Props) {
                 onChange={(e) => setAutoInvoice(e.target.checked)}
                 className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-amber-500 focus:ring-amber-500"
               />
-              <span className="text-sm text-gray-300 flex items-center gap-1.5">
+              <span className="text-sm text-gray-300 flex items-center gap-1.5 flex-wrap">
                 <FileCheck2 size={14} className="text-amber-400" />
                 Facturar automáticamente al cobrar
+                {isProduction && (
+                  <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+                    Valor fiscal real
+                  </span>
+                )}
               </span>
             </label>
           )}
