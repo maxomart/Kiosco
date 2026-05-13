@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, FilePlus2, Loader2, Check, AlertCircle, Info, Download } from "lucide-react"
+import Link from "next/link"
+import { X, FilePlus2, Loader2, Check, AlertCircle, Info, Download, Sparkles, Lock } from "lucide-react"
 import toast from "react-hot-toast"
+import { useAfipFeatures } from "@/hooks/useAfipFeatures"
 
 interface Props {
   saleId: string
@@ -35,6 +37,8 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
   const [issued, setIssued] = useState<IssuedNote | null>(null)
   const [amount, setAmount] = useState<string>("")
   const [concept, setConcept] = useState<string>("")
+  const { status: afipStatus } = useAfipFeatures()
+  const canCustom = !!afipStatus?.features?.ndCustom
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -45,18 +49,24 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
   }, [onClose, submitting])
 
   const parsedAmount = Number(amount.replace(",", "."))
-  const amountValid = parsedAmount > 0 && Number.isFinite(parsedAmount)
+  const customAmountValid = parsedAmount > 0 && Number.isFinite(parsedAmount)
+  // En plan Básico no se permite custom — la ND sale por el total de la venta.
+  const effectiveAmount = canCustom ? parsedAmount : saleTotal
+  const canSubmit = canCustom ? customAmountValid : true
 
   const handleEmit = async () => {
-    if (!amountValid) {
+    if (canCustom && !customAmountValid) {
       setError("Ingresá un monto válido mayor a 0")
       return
     }
     setSubmitting(true)
     setError(null)
     try {
-      const body: Record<string, unknown> = { customAmount: parsedAmount }
-      if (concept.trim()) body.concept = concept.trim()
+      const body: Record<string, unknown> = {}
+      if (canCustom) {
+        body.customAmount = parsedAmount
+        if (concept.trim()) body.concept = concept.trim()
+      }
       const r = await fetch(`/api/sales/${saleId}/debit-note`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +123,7 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
                   <p className="text-2xl font-bold text-white tabular-nums">N° {issued.invoiceNumber}</p>
                   <p className="text-xs text-gray-400 mt-1">CAE: {issued.cae}</p>
                   <p className="text-xs text-gray-400">
-                    Monto: ${parsedAmount.toLocaleString("es-AR")}
+                    Monto: ${effectiveAmount.toLocaleString("es-AR")}
                   </p>
                 </div>
               </div>
@@ -167,39 +177,58 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
-                  Monto a debitar
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
-                    placeholder="0,00"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-500 mt-1">
-                  Tip: usá el monto del cargo extra, no el total de la factura.
-                </p>
-              </div>
+              {canCustom ? (
+                <>
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
+                      Monto a debitar
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+                        placeholder="0,00"
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Tip: usá el monto del cargo extra, no el total de la factura.
+                    </p>
+                  </div>
 
-              <div>
-                <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
-                  Concepto (opcional)
-                </label>
-                <input
-                  type="text"
-                  value={concept}
-                  onChange={(e) => setConcept(e.target.value)}
-                  placeholder="Ej: Intereses por mora"
-                  maxLength={200}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-                />
-              </div>
+                  <div>
+                    <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1.5">
+                      Concepto (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={concept}
+                      onChange={(e) => setConcept(e.target.value)}
+                      placeholder="Ej: Intereses por mora"
+                      maxLength={200}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Lock size={14} className="text-gray-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Vas a emitir ND por el <strong className="text-gray-200">total de la venta original</strong> (${saleTotal.toLocaleString("es-AR")}). Para ND con <strong>monto custom y concepto</strong> (ej. intereses por mora) necesitás el Plan Pro.
+                    </p>
+                  </div>
+                  <Link
+                    href="/configuracion/suscripcion"
+                    className="inline-flex items-center gap-1 text-xs text-purple-300 hover:text-purple-200"
+                  >
+                    <Sparkles size={11} /> Ver Plan Pro
+                  </Link>
+                </div>
+              )}
 
               {error && (
                 <div className="bg-red-950/40 border border-red-800/40 rounded-lg p-3 text-xs text-red-200 flex gap-2">
@@ -220,7 +249,7 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
                 <button
                   type="button"
                   onClick={handleEmit}
-                  disabled={submitting || !amountValid}
+                  disabled={submitting || !canSubmit}
                   className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (

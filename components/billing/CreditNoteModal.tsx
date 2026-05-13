@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, FileMinus, Loader2, Check, AlertCircle, AlertTriangle, Download } from "lucide-react"
+import Link from "next/link"
+import { X, FileMinus, Loader2, Check, AlertCircle, AlertTriangle, Download, Sparkles } from "lucide-react"
 import toast from "react-hot-toast"
+import { useAfipFeatures } from "@/hooks/useAfipFeatures"
 
 interface Props {
   saleId: string
@@ -33,6 +35,8 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
   const [partial, setPartial] = useState(false)
   const [amount, setAmount] = useState<string>("")
   const [concept, setConcept] = useState<string>("")
+  const { status: afipStatus } = useAfipFeatures()
+  const canPartial = !!afipStatus?.features?.ncPartial
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -173,15 +177,27 @@ export function CreditNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumbe
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={partial}
-                  onChange={(e) => setPartial(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-purple-600 focus:ring-purple-500"
-                />
-                Anular un monto parcial (NC por menos del total)
-              </label>
+              {canPartial ? (
+                <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={partial}
+                    onChange={(e) => setPartial(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-700 bg-gray-800 text-purple-600 focus:ring-purple-500"
+                  />
+                  Anular un monto parcial (NC por menos del total)
+                </label>
+              ) : (
+                <Link
+                  href="/configuracion/suscripcion"
+                  className="flex items-start gap-2 text-xs text-gray-500 hover:text-purple-300 group p-2 -mx-2 rounded-lg hover:bg-purple-500/5 transition-colors"
+                >
+                  <Sparkles size={12} className="text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span>
+                    ¿Querés anular sólo una parte de la factura? La <strong className="text-purple-300">NC parcial</strong> está disponible en el plan Pro.
+                  </span>
+                </Link>
+              )}
 
               {partial && (
                 <div>

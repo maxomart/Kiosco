@@ -127,6 +127,12 @@ export type PlanFeature =
   | "feature:tv_mode"         // Modo TV / pantalla pública con stats live
   | "feature:supplier_orders" // Pedidos a proveedor automáticos (IA)
   | "feature:predictive_ai"   // IA predictiva (3 cards en /inicio)
+  // ─── AFIP / facturación electrónica ─────────────────────────────────
+  | "feature:afip_invoicing"     // Emitir facturas A/B/C con CAE (Básico+)
+  | "feature:afip_auto_invoice"  // Checkbox "Facturar automáticamente al cobrar" en POS (Pro+)
+  | "feature:afip_nc_partial"    // NC parcial (anular monto menor al total) (Pro+)
+  | "feature:afip_nd_custom"     // ND con monto + concepto custom (Pro+)
+  | "feature:afip_libro_iva"     // Libro IVA Ventas exportable (Pro+)
 
 type PlanGate = Record<PlanFeature, Plan[]>
 
@@ -160,6 +166,14 @@ const PLAN_FEATURES: PlanGate = {
   "feature:csv_import":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:csv_export":        ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
   "feature:labels":            ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+
+  // AFIP — emisión básica disponible desde Básico (50 fact/mes); el avanzado
+  // queda en Pro como diferencial diario para el upgrade.
+  "feature:afip_invoicing":     ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:afip_auto_invoice":  ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:afip_nc_partial":    ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:afip_nd_custom":     ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
+  "feature:afip_libro_iva":     ["PROFESSIONAL", "BUSINESS", "ENTERPRISE"],
 
   // "La maravilla" — PROFESSIONAL+ (acá vive todo lo wow + IA).
   // tv_mode y whatsapp se quedan gateadas pero no se promocionan en cards

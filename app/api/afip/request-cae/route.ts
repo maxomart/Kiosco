@@ -43,9 +43,11 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Datos inválidos" }, { status: 422 })
 
   const plan = await getTenantPlan(tenantId!)
-  // PROXY GATE — replace with `feature:afip` once added to lib/permissions.ts.
-  if (!hasFeature(plan, "feature:custom_logo")) {
-    return NextResponse.json({ error: "La facturación electrónica AFIP requiere plan Starter o superior." }, { status: 402 })
+  if (!hasFeature(plan, "feature:afip_invoicing")) {
+    return NextResponse.json(
+      { error: "La facturación electrónica AFIP requiere plan Básico o superior." },
+      { status: 402 },
+    )
   }
 
   const sale = await db.sale.findUnique({

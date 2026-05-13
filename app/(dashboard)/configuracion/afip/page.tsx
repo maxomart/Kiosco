@@ -20,20 +20,19 @@ export default async function AfipPage() {
 
   const plan = await getTenantPlan(tenantId)
 
-  // PROXY GATE — using feature:custom_logo (STARTER+) until feature:afip exists.
-  if (!hasFeature(plan, "feature:custom_logo")) {
+  if (!hasFeature(plan, "feature:afip_invoicing")) {
     return (
       <PaywallGate
         currentPlan={plan}
-        requiredPlan={minimumPlanFor("feature:custom_logo")}
+        requiredPlan={minimumPlanFor("feature:afip_invoicing")}
         title="Facturación electrónica AFIP"
         description="Emití facturas A, B y C con CAE directo de AFIP desde tu kiosco."
         perks={[
-          "Factura automática al cerrar la venta",
+          "Hasta 50 facturas/mes incluidas en el plan Básico",
           "Tipo A/B/C calculado según condición IVA del cliente",
           "PDF descargable con QR AFIP válido",
           "Modo homologación para testear antes de producción",
-          "Integración con TusFacturas (no necesitás certificado propio)",
+          "Setup en 5 min con el wizard guiado",
         ]}
       />
     )

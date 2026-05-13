@@ -16,20 +16,22 @@ import type { Plan } from "./utils"
 
 /** Cupo mensual de facturas según plan. INFINITY = sin límite.
  *
- * AFIP es el diferencial principal del Profesional — el costo del slot
- * AfipSDK (por CUIT) no se justifica en planes baratos, así que solo
- * Profesional+ emite facturas electrónicas. Gratis y Básico operan
- * sin AFIP (POS + ticket no fiscal). */
+ * may 2026: con la migración a WSAA + WSFE nativos el costo por factura
+ * es $0 (gratis de AFIP) — ya no necesitamos restringir AFIP a Pro+.
+ * Básico ahora incluye 50/mes (entry-level para monotributistas chicos)
+ * y Pro sube de 500 a 2000 — el diferencial real con Pro son las
+ * features avanzadas (auto-factura POS, NC parcial, ND custom, Libro
+ * IVA, IA, loyalty, etc.), no la cantidad. */
 export const INVOICE_LIMIT_BY_PLAN: Record<Plan, number> = {
   FREE: 0,
-  STARTER: 0,
-  PROFESSIONAL: 500,
-  BUSINESS: 2000,
+  STARTER: 50,
+  PROFESSIONAL: 2000,
+  BUSINESS: 5000,
   ENTERPRISE: Number.POSITIVE_INFINITY,
 }
 
-// Gratis y Básico no incluyen facturación electrónica — para emitir hay que
-// pasar a Profesional. Lo dejamos exportado para no romper imports.
+// Gratis no incluye facturación electrónica — para emitir hay que pasar
+// como mínimo a Básico. Lo dejamos exportado para no romper imports.
 export const FREE_PLAN_LIMIT = 0
 
 export interface InvoiceQuota {

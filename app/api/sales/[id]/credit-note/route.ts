@@ -3,6 +3,8 @@ import { z } from "zod"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { issueCreditNote } from "@/lib/afip-credit-note"
+import { getTenantPlan } from "@/lib/plan-guard"
+import { hasFeature } from "@/lib/permissions"
 
 export const dynamic = "force-dynamic"
 
@@ -51,9 +53,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     parsed = undefined
   }
 
+  // Plan gate: customAmount (NC parcial) sólo Pro+. En Básico se ignora
+  // silenciosamente — emite por el total. Mismo criterio para `concept`
+  // que va atado al feature avanzado.
+  const plan = await getTenantPlan(tenantId!)
+  const allowPartial = hasFeature(plan, "feature:afip_nc_partial")
+
   const result = await issueCreditNote(id, {
-    customAmount: parsed?.customAmount,
-    concept: parsed?.concept,
+    customAmount: allowPartial ? parsed?.customAmount : undefined,
+    concept: allowPartial ? parsed?.concept : undefined,
   })
   return NextResponse.json(result, { status: result.ok ? 200 : 502 })
 }

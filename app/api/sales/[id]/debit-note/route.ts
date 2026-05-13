@@ -3,6 +3,8 @@ import { z } from "zod"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { issueDebitNote } from "@/lib/afip-credit-note"
+import { getTenantPlan } from "@/lib/plan-guard"
+import { hasFeature } from "@/lib/permissions"
 
 export const dynamic = "force-dynamic"
 
@@ -49,9 +51,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     parsed = undefined
   }
 
+  // Plan gate: monto custom + concepto sólo Pro+. En Básico se ignora
+  // silenciosamente y se emite ND por el total de la venta.
+  const plan = await getTenantPlan(tenantId!)
+  const allowCustom = hasFeature(plan, "feature:afip_nd_custom")
+
   const result = await issueDebitNote(id, {
-    customAmount: parsed?.customAmount,
-    concept: parsed?.concept,
+    customAmount: allowCustom ? parsed?.customAmount : undefined,
+    concept: allowCustom ? parsed?.concept : undefined,
   })
   return NextResponse.json(result, { status: result.ok ? 200 : 502 })
 }

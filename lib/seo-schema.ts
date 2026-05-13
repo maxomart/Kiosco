@@ -112,7 +112,7 @@ export function softwareApplicationSchema() {
         availability: "https://schema.org/InStock",
         priceValidUntil: "2027-12-31",
         url: `${BASE_URL}/signup?plan=PROFESSIONAL`,
-        description: "Todo del Básico + IA predictiva, chatbot, Loyalty, Multi-caja, AFIP 500 facturas/mes, soporte prioritario.",
+        description: "Todo del Básico + IA predictiva, chatbot, Loyalty, Multi-caja, AFIP 2000 facturas/mes con auto-factura en POS y NC parciales, soporte prioritario.",
       },
     ],
     featureList: [

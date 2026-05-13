@@ -157,7 +157,7 @@ const PLAN_WELCOME: Record<Plan, WelcomeContent> = {
       "Pedidos a proveedor con IA",
       "Loyalty · Multi-caja simultánea",
       "Reportes IA con comparaciones",
-      "AFIP — 500 facturas/mes",
+      "AFIP — 2000 facturas/mes + auto-factura en POS",
       "Soporte prioritario",
     ],
   },
