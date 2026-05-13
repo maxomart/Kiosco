@@ -96,8 +96,8 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-gray-950 border border-gray-800 rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+      <div className="bg-gray-950 border border-gray-800 rounded-2xl w-full max-w-md max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-gray-800 flex-shrink-0">
           <div className="flex items-center gap-2">
             <FilePlus2 size={18} className="text-blue-400" />
             <h2 className="text-lg font-bold text-white">
@@ -109,7 +109,7 @@ export function DebitNoteModal({ saleId, saleTotal, invoiceLetter, invoiceNumber
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 scrollbar-thin">
           {issued ? (
             <>
               <div className="text-center space-y-2 pb-2">

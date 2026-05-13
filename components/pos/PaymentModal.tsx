@@ -514,29 +514,31 @@ export function PaymentModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md max-h-[92vh] flex flex-col">
+        {/* Header fijo */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800 flex-shrink-0">
           <h2 className="font-bold text-gray-100">Cobrar</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300 transition"><X size={20} /></button>
         </div>
 
-        <div className="p-5 space-y-5">
+        {/* Body scrolleable — métodos + canje + input efectivo + totales */}
+        <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 scrollbar-thin">
           <div>
-            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Método de pago</p>
-            <div className="grid grid-cols-3 gap-2">
+            <p className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wide">Método de pago</p>
+            <div className="grid grid-cols-3 gap-1.5">
               {ALL_METHODS.map(m => (
                 <button
                   key={m.value}
                   onClick={() => { setMethod(m.value); setMpQrUrl(null); setMpStatus("idle"); setMpRef(null) }}
                   className={cn(
-                    "flex flex-col items-center gap-1 py-2 px-1 rounded-xl border text-xs font-medium transition",
+                    "flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg border text-[11px] font-medium transition",
                     method === m.value
                       ? "bg-purple-600 border-purple-500 text-white"
                       : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"
                   )}
                 >
                   {METHOD_ICONS[m.value] ?? <Smartphone size={14} />}
-                  <span className="leading-tight text-center">{m.label}</span>
+                  <span className="leading-tight text-center text-[10px]">{m.label}</span>
                 </button>
               ))}
             </div>
@@ -770,8 +772,9 @@ export function PaymentModal({ onClose }: Props) {
           )}
         </div>
 
-        <div className="p-5 pt-0 flex gap-3">
-          <button onClick={onClose} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-3 rounded-xl transition">
+        {/* Footer sticky con los botones — siempre visibles aunque el body sea largo */}
+        <div className="px-5 py-3 flex gap-2 border-t border-gray-800 bg-gray-900 flex-shrink-0">
+          <button onClick={onClose} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2.5 rounded-lg transition">
             Cancelar
           </button>
           <button
@@ -781,7 +784,7 @@ export function PaymentModal({ onClose }: Props) {
               (method === "CASH" && cashReceived !== "" && Number(cashReceived) < totalAmount) ||
               (method === "CUENTA_CORRIENTE" && !!ccBlocked)
             }
-            className="flex-2 flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2"
+            className="flex-[2] bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg transition flex items-center justify-center gap-2"
           >
             {loading ? <><Loader2 size={16} className="animate-spin" /> Procesando...</>
               : method === "MERCADOPAGO" && mpStatus === "pending"
