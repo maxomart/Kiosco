@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo } from "react"
-import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck, Wand2, Eye, EyeOff } from "lucide-react"
+import Link from "next/link"
+import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck, Wand2, Eye, EyeOff, Receipt, ArrowRight } from "lucide-react"
 import toast from "react-hot-toast"
 
 /**
@@ -252,16 +253,26 @@ export default function AfipConfigClient(_props: { initial?: any }) {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-amber-900/40 border border-amber-700/40 flex items-center justify-center">
-          <FileCheck2 className="w-5 h-5 text-amber-400" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-900/40 border border-amber-700/40 flex items-center justify-center">
+            <FileCheck2 className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Facturación electrónica ARCA</h1>
+            <p className="text-sm text-gray-400">
+              Emití facturas A/B/C con CAE directo de ARCA (ex AFIP) desde tu POS.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Facturación electrónica ARCA</h1>
-          <p className="text-sm text-gray-400">
-            Emití facturas A/B/C con CAE directo de ARCA (ex AFIP) desde tu POS.
-          </p>
-        </div>
+        <Link
+          href="/configuracion/afip/notas"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm border border-gray-700 transition-colors"
+        >
+          <Receipt size={14} className="text-purple-400" />
+          Notas emitidas
+          <ArrowRight size={12} className="text-gray-500" />
+        </Link>
       </div>
 
       {!setupOk && (

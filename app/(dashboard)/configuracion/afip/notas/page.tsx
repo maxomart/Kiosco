@@ -7,10 +7,10 @@ import {
   FileMinus,
   FilePlus2,
   Download,
-  QrCode,
   Calendar,
   Filter,
   ExternalLink,
+  ChevronLeft,
 } from "lucide-react"
 import { formatCurrency, formatDateTime } from "@/lib/utils"
 
@@ -106,6 +106,13 @@ export default function NotasPage() {
 
   return (
     <div className="space-y-5 p-5">
+      <Link
+        href="/configuracion/afip"
+        className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-purple-300 transition-colors"
+      >
+        <ChevronLeft size={12} />
+        Volver a configuración AFIP
+      </Link>
       <div className="flex items-center gap-3">
         <Receipt className="text-purple-400" size={26} />
         <div>

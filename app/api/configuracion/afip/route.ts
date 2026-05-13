@@ -65,6 +65,14 @@ export async function PATCH(req: NextRequest) {
   if (data.pointOfSale !== undefined)    updateData.afipPointOfSale = data.pointOfSale
   if (data.cuit !== undefined)           updateData.afipCertCuit = data.cuit
   if (data.businessName !== undefined)   updateData.afipBusinessName = data.businessName
+
+  // Si cambia el cert, la key, el CUIT o el modo, hay que invalidar los TA
+  // cacheados — el TA del WSAA está firmado por un cert puntual y representa
+  // a un CUIT puntual en un ambiente puntual. Si cualquiera de esos cambia,
+  // el TA viejo deja de aplicar y AFIP rechazaría con "CUIT no en lista de
+  // relaciones".
+  let invalidateTAs = false
+
   if (data.cert !== undefined && data.cert.trim()) {
     updateData.afipCertX509 = encryptAfipCert(data.cert.trim())
     // Cambió el cert → resetear ready y limpiar el último error guardado
@@ -72,11 +80,16 @@ export async function PATCH(req: NextRequest) {
     // nuevo que arregla el problema, y el user piensa que sigue roto).
     updateData.afipReady = false
     updateData.afipLastError = null
+    invalidateTAs = true
   }
   if (data.privateKey !== undefined && data.privateKey.trim()) {
     updateData.afipCertPrivateKey = encryptAfipCert(data.privateKey.trim())
     updateData.afipReady = false
     updateData.afipLastError = null
+    invalidateTAs = true
+  }
+  if (data.cuit !== undefined || data.mode !== undefined) {
+    invalidateTAs = true
   }
 
   await db.tenantConfig.upsert({
@@ -84,6 +97,10 @@ export async function PATCH(req: NextRequest) {
     create: { tenantId: tenantId!, ...updateData },
     update: updateData,
   })
+
+  if (invalidateTAs) {
+    await db.afipTicket.deleteMany({ where: { tenantId: tenantId! } }).catch(() => {})
+  }
 
   const cfg = await getAfipConfig(tenantId!)
   return NextResponse.json({ ok: true, config: cfg })
