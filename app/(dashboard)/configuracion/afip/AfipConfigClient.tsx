@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react"
 import Link from "next/link"
-import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck, Wand2, Eye, EyeOff, Receipt, ArrowRight } from "lucide-react"
+import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck, Wand2, Eye, EyeOff, Receipt, ArrowRight, Copy, FileKey2, Sparkles } from "lucide-react"
 import toast from "react-hot-toast"
 
 /**
@@ -68,6 +68,12 @@ export default function AfipConfigClient(_props: { initial?: any }) {
     ready: boolean | null
     checks: Record<string, { ok: boolean; message: string }> | null
   }>({ running: false, ready: null, checks: null })
+
+  // ─── Wizard rápido: generar CSR + pegar cert firmado ───────────────────
+  const [generatingCsr, setGeneratingCsr] = useState(false)
+  const [csrResult, setCsrResult] = useState<{ csr: string; alias: string } | null>(null)
+  const [certPaste, setCertPaste] = useState("")
+  const [savingCert, setSavingCert] = useState(false)
 
   const [cuit, setCuit] = useState("")
   const [pointOfSale, setPointOfSale] = useState<number>(1)
@@ -211,6 +217,83 @@ export default function AfipConfigClient(_props: { initial?: any }) {
       toast.error(e?.message ?? "Error de red", { id: tid })
     } finally {
       setCreatingCert(false)
+    }
+  }
+
+  const handleGenerateCsr = async () => {
+    if (!cuit.match(/^\d{11}$/)) {
+      toast.error("Primero completá un CUIT válido")
+      return
+    }
+    if (!validateCuitMod11(cuit)) {
+      toast.error("El CUIT no pasa la validación de ARCA")
+      return
+    }
+    setGeneratingCsr(true)
+    try {
+      const r = await fetch("/api/configuracion/afip/generate-csr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cuit,
+          businessName: businessName.trim() || undefined,
+        }),
+      })
+      const d = await r.json()
+      if (!r.ok) {
+        toast.error(d.error ?? "No se pudo generar el CSR")
+        return
+      }
+      setCsrResult({ csr: d.csr, alias: d.alias })
+      toast.success("Pedido de certificado generado", { duration: 4000 })
+      await fetchConfig()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error de red")
+    } finally {
+      setGeneratingCsr(false)
+    }
+  }
+
+  const handleCopyCsr = async () => {
+    if (!csrResult) return
+    try {
+      await navigator.clipboard.writeText(csrResult.csr)
+      toast.success("CSR copiado al portapapeles", { duration: 2500 })
+    } catch {
+      toast.error("No se pudo copiar — copialo a mano del cuadro")
+    }
+  }
+
+  const handleSaveCert = async () => {
+    const cert = certPaste.trim()
+    if (!cert.startsWith("-----BEGIN CERTIFICATE-----")) {
+      toast.error("El cert tiene que empezar con -----BEGIN CERTIFICATE-----")
+      return
+    }
+    if (!cert.includes("-----END CERTIFICATE-----")) {
+      toast.error("El cert tiene que terminar con -----END CERTIFICATE-----")
+      return
+    }
+    setSavingCert(true)
+    try {
+      const r = await fetch("/api/configuracion/afip", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cert }),
+      })
+      const d = await r.json()
+      if (!r.ok) {
+        toast.error(d.error ?? "No se pudo guardar el cert")
+        return
+      }
+      toast.success("Certificado guardado — ahora autorizá wsfe y probá conexión", { duration: 5000 })
+      setCertPaste("")
+      setCsrResult(null)
+      await fetchConfig()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error de red")
+    } finally {
+      setSavingCert(false)
     }
   }
 
@@ -636,6 +719,141 @@ export default function AfipConfigClient(_props: { initial?: any }) {
               Tarda hasta 2 minutos. Después probamos la conexión solos.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* ─── Wizard rápido: generar CSR + pegar cert firmado ─── */}
+      <section className="bg-gradient-to-br from-emerald-950/30 via-gray-900 to-gray-950 border border-emerald-700/40 rounded-xl p-5 space-y-4 relative overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-600/15 blur-3xl rounded-full pointer-events-none" />
+        <div className="relative space-y-4">
+          <div className="flex items-start gap-3">
+            <Sparkles size={18} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h2 className="text-white font-semibold flex items-center gap-2 flex-wrap">
+                Modo guiado <span className="text-[10px] bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 rounded-full px-2 py-0.5">Rápido y confiable</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Generamos el pedido de certificado (CSR) acá mismo y vos sólo lo pegás en el portal de ARCA.
+                Sin Terminal ni archivos. ~5 minutos.
+              </p>
+            </div>
+          </div>
+
+          {!csrResult && !config?.hasCert && (
+            <>
+              <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-3 text-xs text-gray-300 space-y-1.5">
+                <p className="font-medium text-emerald-200">Paso 1 — Generamos tu pedido</p>
+                <p>
+                  Tenemos tu CUIT <span className="font-mono text-white">{cuit || "(arriba)"}</span>
+                  {businessName ? <> y razón social <span className="text-white">{businessName}</span></> : null}.
+                  Tu private key se genera <strong>en nuestro servidor</strong>, queda encriptada con AES-256-GCM y nunca sale de acá.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateCsr}
+                disabled={generatingCsr || !cuit || cuitValid === false}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm disabled:opacity-50"
+              >
+                {generatingCsr ? <Loader2 size={14} className="animate-spin" /> : <FileKey2 size={14} />}
+                {generatingCsr ? "Generando..." : "Generar pedido de certificado"}
+              </button>
+            </>
+          )}
+
+          {csrResult && (
+            <>
+              <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-3 text-xs text-gray-300 space-y-2">
+                <p className="font-medium text-emerald-200">Paso 2 — Llevá esto a ARCA</p>
+                <ol className="list-decimal list-inside space-y-1 text-gray-400">
+                  <li>
+                    Entrá a{" "}
+                    <a
+                      href={mode === "PRODUCCION" ? "https://wsass.afip.gob.ar/wsass/portal/main.aspx" : "https://wsass-homo.afip.gob.ar/wsass/portal/main.aspx"}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-emerald-300 underline inline-flex items-center gap-0.5"
+                    >
+                      WSASS de {mode === "PRODUCCION" ? "producción" : "homologación"} <ExternalLink size={10} />
+                    </a> con tu clave fiscal.
+                  </li>
+                  <li>Click en <span className="text-white">&ldquo;Nuevo Certificado&rdquo;</span>.</li>
+                  <li>Alias: <span className="font-mono text-white">{csrResult.alias}</span> · pegá el CSR de abajo · submit.</li>
+                  <li>Copiá el cert firmado y pegalo abajo (paso 3).</li>
+                </ol>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold">
+                    CSR (pegalo en ARCA)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleCopyCsr}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-200 text-[10px] border border-emerald-500/30"
+                  >
+                    <Copy size={10} /> Copiar
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  value={csrResult.csr}
+                  className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-[10px] font-mono text-gray-300 h-24 resize-none focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-[0.1em] text-gray-400 font-bold mb-1">
+                  Paso 3 — Pegá el certificado firmado por ARCA
+                </label>
+                <textarea
+                  value={certPaste}
+                  onChange={(e) => setCertPaste(e.target.value)}
+                  placeholder={"-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"}
+                  className="w-full bg-gray-950 border border-gray-800 focus:border-emerald-500 rounded-lg p-2 text-[10px] font-mono text-white h-28 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveCert}
+                  disabled={savingCert || !certPaste.trim()}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm disabled:opacity-50"
+                >
+                  {savingCert ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                  {savingCert ? "Guardando..." : "Guardar certificado firmado"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setCsrResult(null); setCertPaste("") }}
+                  className="text-[11px] text-gray-500 hover:text-gray-300 underline"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
+
+          {config?.hasCert && !csrResult && (
+            <div className="bg-emerald-950/30 border border-emerald-700/40 rounded-lg p-3 text-xs text-emerald-200 flex items-center gap-2">
+              <CheckCircle2 size={14} className="text-emerald-400" />
+              <span>
+                Ya tenés certificado cargado{config.certExpiresAt ? <> (vence el {new Date(config.certExpiresAt).toLocaleDateString("es-AR")})</> : ""}.
+                Si querés renovarlo o cambiar de CUIT, regenerá el pedido desde el botón abajo.
+              </span>
+              <button
+                type="button"
+                onClick={handleGenerateCsr}
+                disabled={generatingCsr}
+                className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-100 text-[10px] border border-emerald-500/40 disabled:opacity-50"
+              >
+                {generatingCsr ? <Loader2 size={10} className="animate-spin" /> : <FileKey2 size={10} />}
+                Regenerar
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
