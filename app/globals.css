@@ -618,8 +618,7 @@ html[data-theme="light"] select {
   color: #0f172a;
 }
 
-/* Scrollbar */
-html[data-theme="light"] ::-webkit-scrollbar-track { background: #f1f5f9 !important; }
+/* Scrollbar — light mode */
 html[data-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd5e1 !important; }
 html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
 
@@ -701,10 +700,44 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8 !
     }
   }
 
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #111827; }
-  ::-webkit-scrollbar-thumb { background: #374151; border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+  /* ──────────────────────────────────────────────────────────────────────
+   * Scrollbar global — limpio, tematizado, consistente entre browsers.
+   * Webkit (Chrome/Safari/Edge) usa pseudo-elements. Firefox usa
+   * scrollbar-color y scrollbar-width. Aplica a todo el árbol html→body→
+   * descendientes para que ninguna área se quede con la barra blanca
+   * default de Chrome.
+   * ──────────────────────────────────────────────────────────────────── */
+  html {
+    scrollbar-color: var(--color-border-strong) transparent;
+    scrollbar-width: thin;
+    color-scheme: dark;
+  }
+  html[data-theme="light"] {
+    color-scheme: light;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 9999px;
+    transition: background 0.15s ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Scrollbar más fino en áreas con scroll interno (modales, tablas, etc.) */
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 
   /* Smooth focus rings using accent color */
   :focus-visible {
@@ -712,6 +745,26 @@ html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8 !
     outline-offset: 2px;
     border-radius: 4px;
   }
+
+  /* Selección de texto con el color de la marca */
+  ::selection {
+    background: var(--color-accent-soft);
+    color: var(--color-text-primary);
+  }
+
+  /* Pulido global: transiciones suaves en hover de buttons/links/inputs */
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+    transition-duration: 150ms;
+    transition-timing-function: var(--ease-in-out-soft);
+  }
+  /* Ojo: NO aplicar el transition a elementos con animación propia
+     (framer-motion, NumberFlow, etc.) — Tailwind v4 + CSS cascade ya
+     respeta esto porque las animaciones usan transform/opacity directos. */
 }
 
 @layer utilities {
