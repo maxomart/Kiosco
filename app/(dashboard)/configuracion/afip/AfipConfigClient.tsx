@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import Link from "next/link"
 import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck, Wand2, Eye, EyeOff, Receipt, ArrowRight, Copy, FileKey2, Sparkles } from "lucide-react"
+import { explainAfipError } from "@/lib/afip-errors"
+import { AfipErrorBox } from "@/components/billing/AfipErrorBox"
 import toast from "react-hot-toast"
 
 /**
@@ -74,6 +76,40 @@ export default function AfipConfigClient(_props: { initial?: any }) {
   const [csrResult, setCsrResult] = useState<{ csr: string; alias: string } | null>(null)
   const [certPaste, setCertPaste] = useState("")
   const [savingCert, setSavingCert] = useState(false)
+  const [certInspect, setCertInspect] = useState<{
+    ok: boolean
+    alias?: string | null
+    cuit?: string | null
+    businessName?: string | null
+    notAfter?: string
+    daysToExpire?: number
+    isExpired?: boolean
+    expiresSoon?: boolean
+    environment?: string
+    warning?: string | null
+    error?: string
+  } | null>(null)
+
+  // Validación en vivo del cert pegado — debounce de 400ms para no spamear
+  // el endpoint en cada tecla. Solo dispara si el textarea tiene un PEM razonable.
+  useEffect(() => {
+    const trimmed = certPaste.trim()
+    if (!trimmed || !trimmed.startsWith("-----BEGIN CERTIFICATE-----")) {
+      setCertInspect(null)
+      return
+    }
+    const t = setTimeout(() => {
+      fetch("/api/configuracion/afip/inspect-cert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cert: trimmed }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => setCertInspect(d))
+        .catch(() => setCertInspect(null))
+    }, 400)
+    return () => clearTimeout(t)
+  }, [certPaste])
 
   const [cuit, setCuit] = useState("")
   const [pointOfSale, setPointOfSale] = useState<number>(1)
@@ -470,6 +506,9 @@ export default function AfipConfigClient(_props: { initial?: any }) {
         </section>
       )}
 
+      {/* ─── Checklist de setup ─── */}
+      <SetupChecklist config={config} cuitValid={cuitValid} />
+
       <section className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
         <h2 className="text-white font-semibold">Estado</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -519,10 +558,7 @@ export default function AfipConfigClient(_props: { initial?: any }) {
         )}
 
         {config?.lastError && (
-          <div className="bg-red-950/40 border border-red-800/40 rounded-lg p-3 text-xs text-red-200">
-            <p className="font-semibold mb-1">Último error:</p>
-            <code className="text-red-300 break-all">{config.lastError}</code>
-          </div>
+          <AfipErrorBox error={explainAfipError(config.lastError)} />
         )}
       </section>
 
@@ -811,8 +847,77 @@ export default function AfipConfigClient(_props: { initial?: any }) {
                   value={certPaste}
                   onChange={(e) => setCertPaste(e.target.value)}
                   placeholder={"-----BEGIN CERTIFICATE-----\nMIID...\n-----END CERTIFICATE-----"}
-                  className="w-full bg-gray-950 border border-gray-800 focus:border-emerald-500 rounded-lg p-2 text-[10px] font-mono text-white h-28 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className={`w-full bg-gray-950 border focus:border-emerald-500 rounded-lg p-2 text-[10px] font-mono text-white h-28 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+                    certInspect && !certInspect.ok
+                      ? "border-red-700/60"
+                      : certInspect?.ok
+                        ? "border-emerald-700/60"
+                        : "border-gray-800"
+                  }`}
                 />
+                {certInspect && (
+                  <div
+                    className={`mt-2 rounded-lg p-2.5 text-xs border ${
+                      certInspect.ok
+                        ? certInspect.expiresSoon
+                          ? "bg-amber-950/30 border-amber-700/40 text-amber-200"
+                          : "bg-emerald-950/30 border-emerald-700/40 text-emerald-100"
+                        : "bg-red-950/30 border-red-700/40 text-red-200"
+                    }`}
+                  >
+                    {certInspect.ok ? (
+                      <div className="space-y-1">
+                        <p className="font-medium flex items-center gap-1.5">
+                          <CheckCircle2 size={12} className="text-emerald-400" />
+                          Certificado válido
+                          {certInspect.environment === "HOMOLOGACION" && (
+                            <span className="text-[9px] bg-amber-500/20 text-amber-200 border border-amber-500/30 rounded px-1.5 py-0.5">
+                              Homologación
+                            </span>
+                          )}
+                          {certInspect.environment === "PRODUCCION" && (
+                            <span className="text-[9px] bg-red-500/20 text-red-200 border border-red-500/30 rounded px-1.5 py-0.5">
+                              Producción
+                            </span>
+                          )}
+                        </p>
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] opacity-90">
+                          {certInspect.alias && (
+                            <div>
+                              <span className="opacity-60">Alias:</span> <span className="font-mono">{certInspect.alias}</span>
+                            </div>
+                          )}
+                          {certInspect.cuit && (
+                            <div>
+                              <span className="opacity-60">CUIT:</span> <span className="font-mono">{certInspect.cuit}</span>
+                              {cuit && certInspect.cuit !== cuit && (
+                                <span className="ml-1 text-amber-400 text-[10px]">
+                                  ⚠ no coincide con tu CUIT
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {certInspect.notAfter && (
+                            <div className="col-span-2">
+                              <span className="opacity-60">Vence:</span> {new Date(certInspect.notAfter).toLocaleDateString("es-AR")}
+                              {typeof certInspect.daysToExpire === "number" && (
+                                <span className="opacity-60 ml-1">({certInspect.daysToExpire} días)</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {certInspect.warning && (
+                          <p className="text-[11px] mt-1">⚠ {certInspect.warning}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="flex items-start gap-1.5">
+                        <AlertCircle size={12} className="text-red-400 flex-shrink-0 mt-0.5" />
+                        <span>{certInspect.error ?? "Certificado inválido"}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1053,5 +1158,140 @@ function StatusCard({ label, ok, text }: { label: string; ok: boolean; text: str
       </div>
       <p className={`text-sm ${ok ? "text-emerald-200" : "text-gray-400"}`}>{text}</p>
     </div>
+  )
+}
+
+interface ChecklistItem {
+  label: string
+  ok: boolean
+  hint?: string
+}
+
+function SetupChecklist({
+  config,
+  cuitValid,
+}: {
+  config: AfipConfig | null
+  cuitValid: boolean | null
+}) {
+  if (!config) return null
+
+  const items: ChecklistItem[] = [
+    {
+      label: "CUIT cargado y válido",
+      ok: !!config.cuit && cuitValid !== false,
+      hint: !config.cuit
+        ? "Cargá tu CUIT abajo en Datos fiscales"
+        : cuitValid === false
+          ? "El dígito verificador no coincide — revisá el CUIT"
+          : undefined,
+    },
+    {
+      label: "Condición frente al IVA",
+      ok: !!config.condicionIVA,
+      hint: !config.condicionIVA ? "Seleccioná Monotributo, RI o Exento abajo" : undefined,
+    },
+    {
+      label: "Certificado X.509",
+      ok: config.hasCert && !config.certExpiresSoon,
+      hint: !config.hasCert
+        ? "Generalo en 'Modo guiado' (verde) o subilo en 'Modo manual'"
+        : config.certExpiresSoon
+          ? "Vence pronto — renová desde Modo guiado"
+          : undefined,
+    },
+    {
+      label: "Private key",
+      ok: config.hasPrivateKey,
+      hint: !config.hasPrivateKey ? "Si usaste el Modo guiado se generó sola; en manual subí el .key" : undefined,
+    },
+    {
+      label: "Punto de venta",
+      ok: !!config.pointOfSale && config.pointOfSale > 0,
+      hint:
+        !config.pointOfSale || config.pointOfSale < 1
+          ? "Dalo de alta en AFIP tipo 'Web Services' y poné el número acá"
+          : undefined,
+    },
+    {
+      label: "Conexión a ARCA probada",
+      ok: config.ready,
+      hint: !config.ready
+        ? "Click el botón gris 'Probar conexión' abajo del todo"
+        : undefined,
+    },
+    {
+      label: "Facturación habilitada",
+      ok: config.enabled,
+      hint: !config.enabled ? "Activá el toggle 'Activar facturación electrónica' abajo" : undefined,
+    },
+  ]
+
+  const completed = items.filter((i) => i.ok).length
+  const total = items.length
+  const pct = Math.round((completed / total) * 100)
+  const allDone = completed === total
+
+  return (
+    <section
+      className={`rounded-xl border p-5 space-y-3 ${
+        allDone
+          ? "bg-emerald-950/20 border-emerald-700/40"
+          : "bg-gray-900 border-gray-800"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-white font-semibold flex items-center gap-2">
+            {allDone ? (
+              <>
+                <CheckCircle2 size={16} className="text-emerald-400" /> Setup completo
+              </>
+            ) : (
+              <>Setup de facturación</>
+            )}
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {allDone
+              ? "Ya podés emitir facturas reales con valor fiscal."
+              : `${completed} de ${total} pasos completos`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-32 h-2 rounded-full bg-gray-800 overflow-hidden">
+            <div
+              className={`h-full transition-all ${
+                allDone ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-gray-600"
+              }`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-400 tabular-nums">{pct}%</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className={`flex items-start gap-2 px-2.5 py-1.5 rounded-lg text-xs ${
+              item.ok ? "text-gray-400" : "bg-gray-800/40 text-gray-200"
+            }`}
+          >
+            {item.ok ? (
+              <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle size={13} className="text-gray-500 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="min-w-0">
+              <p className={`leading-tight ${item.ok ? "line-through" : ""}`}>{item.label}</p>
+              {!item.ok && item.hint && (
+                <p className="text-[10px] text-gray-500 mt-0.5">{item.hint}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
