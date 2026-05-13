@@ -114,9 +114,10 @@ export default function SoftwareFarmaciaPage() {
 
         <h3>AFIP / ARCA integrado</h3>
         <p>
-          En el plan Profesional, emitís factura A, B y C con CAE directo
-          desde el POS. Soporta Monotributo, Responsable Inscripto y Exento.
-          500 facturas/mes incluidas en el plan.
+          Emitís factura A, B y C con CAE directo desde el POS. Soporta
+          Monotributo, Responsable Inscripto y Exento. El plan Básico
+          incluye 50 facturas/mes y el Profesional 2.000/mes con auto-factura
+          al cobrar, NC parciales y Libro IVA Ventas exportable.
         </p>
 
         <h3>Reportes accionables</h3>

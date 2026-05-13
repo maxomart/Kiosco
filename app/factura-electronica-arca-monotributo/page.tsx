@@ -43,7 +43,7 @@ const FAQ = [
   {
     question: "¿Cuánto sale por factura?",
     answer:
-      "ARCA no cobra por emitir facturas — es gratis. Lo que cobramos nosotros es el plan: $24.900 ARS/mes (Profesional) que incluye 500 facturas/mes. Si emitís más de 500 al mes, contactanos para evaluar plan Empresa.",
+      "ARCA no cobra por emitir facturas — es gratis. Lo que cobramos nosotros es el plan: $9.999 ARS/mes (Básico) incluye 50 facturas/mes, y $24.900 ARS/mes (Profesional) incluye 2000 facturas/mes con auto-factura en POS y NC parciales. Si emitís más de 2000 al mes, contactanos para evaluar plan Empresa.",
   },
   {
     question: "¿Cómo configuro mi CUIT en Orvex?",
@@ -79,7 +79,7 @@ export default function FacturaElectronicaArcaPage() {
           "Factura A, B y C con CAE",
           "Monotributo, RI y Exento",
           "Setup en 5 minutos",
-          "500 facturas/mes",
+          "Desde 50 facturas/mes en Básico",
         ]}
       >
         <h2>El dolor: facturar por la web de ARCA</h2>
@@ -148,11 +148,13 @@ export default function FacturaElectronicaArcaPage() {
 
         <h2>Cuánto cuesta</h2>
         <ul>
-          <li><strong>Gratis y Básico</strong>: NO incluyen facturación electrónica. Para emitir necesitás Profesional.</li>
-          <li><strong>Profesional</strong>: $24.900 ARS/mes. 500 facturas/mes incluidas. Las facturas no consumidas no se acumulan — empezás cada mes con 500 nuevas.</li>
+          <li><strong>Gratis</strong>: NO incluye facturación electrónica.</li>
+          <li><strong>Básico</strong>: $9.999 ARS/mes. 50 facturas/mes con CAE + notas de crédito por total. Para kiosqueros que recién arrancan a facturar.</li>
+          <li><strong>Profesional</strong>: $24.900 ARS/mes. 2000 facturas/mes + auto-factura en POS al cobrar, NC parciales, ND con monto custom y Libro IVA Ventas exportable a Excel.</li>
         </ul>
         <p>
-          Si necesitás más de 500 facturas por mes (caso de minisúper grande
+          Las facturas no consumidas no se acumulan — empezás cada mes con el
+          cupo del plan. Si necesitás más de 2000/mes (caso de minisúper grande
           o farmacia con mucho volumen B2B), escribinos a soporte@cobraorvex.com
           para evaluar plan custom.
         </p>

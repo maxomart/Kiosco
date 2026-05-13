@@ -33,7 +33,7 @@ const FAQ = [
   {
     question: "¿La facturación AFIP funciona igual que en Tango?",
     answer:
-      "Sí. Orvex emite factura A, B, C con CAE de AFIP directo. El plan Profesional incluye hasta 500 facturas/mes — suficiente para la mayoría de comercios chicos. Si necesitás más, tenemos plan Empresa.",
+      "Sí. Orvex emite factura A, B, C con CAE de AFIP directo. El plan Básico ($9.999/mes) incluye 50 facturas/mes y el Profesional ($24.900/mes) hasta 2.000/mes con auto-factura en POS, NC parciales y Libro IVA Ventas. Si necesitás más, tenemos plan Empresa.",
   },
   {
     question: "¿Cuánto sale comparado con Tango?",
@@ -124,9 +124,11 @@ export default function AlternativaTangoBejermanPage() {
 
         <h3>AFIP / ARCA directo</h3>
         <p>
-          Plan Profesional emite factura A, B, C con CAE directo desde el POS.
-          Hasta 500 facturas/mes incluidas. Manejo automático de Monotributo
-          y Responsable Inscripto. QR de AFIP en el ticket.
+          Emitís factura A, B, C con CAE directo desde el POS. El plan Básico
+          incluye 50 facturas/mes; el Profesional 2.000/mes con auto-factura
+          al cobrar, NC parciales, ND con monto custom y Libro IVA Ventas
+          exportable a Excel. Manejo automático de Monotributo y RI. QR de
+          AFIP en el ticket.
         </p>
 
         <h3>IA que te ayuda en el día a día</h3>

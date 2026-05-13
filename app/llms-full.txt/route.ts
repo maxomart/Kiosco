@@ -37,6 +37,8 @@ Mercado: Argentina (comercio chico/mediano)
 
 ### Plan Básico ($9.999 ARS/mes)
 - 1.000 productos · 3 usuarios · 200 clientes · 50 proveedores
+- **Facturación electrónica AFIP/ARCA** (factura A/B/C con CAE) - 50 facturas/mes incluidas
+- Notas de crédito por total (defensa fiscal básica)
 - Logo y tema custom
 - Importar/exportar Excel
 - Etiquetas con código de barras
@@ -45,7 +47,11 @@ Mercado: Argentina (comercio chico/mediano)
 
 ### Plan Profesional ($24.900 ARS/mes)
 - 5.000 productos · 10 usuarios · 1.000 clientes
-- **Facturación electrónica AFIP/ARCA** (factura A/B/C con CAE) - 500 facturas/mes incluidas
+- **Facturación electrónica AFIP/ARCA** (factura A/B/C con CAE) - 2.000 facturas/mes incluidas
+- **Auto-factura en POS** (1 clic al cobrar — no hay que ir a emitir manual)
+- **NC parcial** (anular menos del total de una factura)
+- **ND con monto y concepto custom** (intereses por mora, ajustes posteriores)
+- **Libro IVA Ventas exportable a Excel** (listo para el contador)
 - IA predictiva + chatbot integrado
 - Pedidos a proveedor sugeridos por IA
 - Loyalty: puntos + canje como descuento

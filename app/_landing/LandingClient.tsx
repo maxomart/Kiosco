@@ -7,6 +7,7 @@ import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import { OrvexLogo } from "@/components/shared/OrvexLogo"
 import {
   ArrowRight,
+  Check,
   CheckCircle,
   Search,
   Truck,
@@ -345,6 +346,90 @@ export default function LandingClient({
               ? "Pagás 12 meses por adelantado y ahorrás 20%"
               : "Cambiá a anual y ahorrás 20%"}
           </p>
+
+          {/* Tabla comparativa compacta — top features que diferencian planes */}
+          <div className="mt-12 sm:mt-16">
+            <div className="text-center mb-6">
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gray-500 mb-2">
+                comparativa rápida
+              </p>
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
+                ¿Qué cambia entre planes?
+              </h3>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden border border-white/10 bg-white/[0.02] backdrop-blur">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs sm:text-sm">
+                  <thead className="bg-white/[0.03]">
+                    <tr>
+                      <th className="text-left px-3 sm:px-4 py-2.5 font-semibold text-gray-400 text-[10px] uppercase tracking-wider">
+                        Feature
+                      </th>
+                      <th className="text-center px-3 sm:px-4 py-2.5 font-bold text-gray-300">Gratis</th>
+                      <th className="text-center px-3 sm:px-4 py-2.5 font-bold text-violet-200 bg-violet-500/5">
+                        Básico
+                      </th>
+                      <th className="text-center px-3 sm:px-4 py-2.5 font-bold text-white bg-gradient-to-b from-violet-500/15 to-transparent">
+                        Profesional
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-300">
+                    {[
+                      ["Productos / Usuarios", "100 / 1", "1.000 / 3", "5.000 / 10"],
+                      ["Ventas por mes", "50", "Ilimitadas", "Ilimitadas"],
+                      ["POS offline-first", true, true, true],
+                      ["Logo + tema custom", false, true, true],
+                      ["AFIP — facturas/mes con CAE", false, "50", "2.000"],
+                      ["Notas de crédito (anular)", false, "Total", "Total y parcial"],
+                      ["ND con monto custom", false, false, true],
+                      ["Auto-factura en POS", false, false, true],
+                      ["Libro IVA Ventas (Excel)", false, false, true],
+                      ["IA + chatbot + insights", false, false, true],
+                      ["Loyalty (puntos + canje)", false, false, true],
+                      ["Multi-caja simultánea", false, false, true],
+                      ["Soporte prioritario", false, false, true],
+                    ].map((row, idx) => {
+                      const cell = (v: string | boolean, isPro = false) => {
+                        if (v === true) {
+                          return (
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20">
+                              <Check className="w-3 h-3 text-emerald-400" />
+                            </span>
+                          )
+                        }
+                        if (v === false) {
+                          return <span className="text-gray-700">—</span>
+                        }
+                        return (
+                          <span
+                            className={`text-[11px] sm:text-xs font-medium ${
+                              isPro ? "text-white" : "text-gray-300"
+                            }`}
+                          >
+                            {v}
+                          </span>
+                        )
+                      }
+                      return (
+                        <tr key={idx} className="border-t border-white/5">
+                          <td className="px-3 sm:px-4 py-2.5 text-gray-300">{row[0] as string}</td>
+                          <td className="text-center px-3 sm:px-4 py-2.5">{cell(row[1] as string | boolean)}</td>
+                          <td className="text-center px-3 sm:px-4 py-2.5 bg-violet-500/[0.02]">
+                            {cell(row[2] as string | boolean)}
+                          </td>
+                          <td className="text-center px-3 sm:px-4 py-2.5 bg-violet-500/5">
+                            {cell(row[3] as string | boolean, true)}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

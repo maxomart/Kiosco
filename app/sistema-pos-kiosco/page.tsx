@@ -147,8 +147,8 @@ export default function SistemaPosKioscoPage() {
         <h2>Cuánto cuesta</h2>
         <ul>
           <li><strong>Gratis</strong>: $0 ARS/mes permanente. 100 productos, 1 usuario, 50 ventas/mes. Ideal para arrancar y ver si te sirve.</li>
-          <li><strong>Básico</strong>: $9.999 ARS/mes. 1.000 productos, 3 usuarios, logo y tema custom, importar Excel, etiquetas con código de barras, history ilimitado.</li>
-          <li><strong>Profesional</strong>: $24.900 ARS/mes. 5.000 productos, 10 usuarios, IA predictiva, AFIP 500 facturas/mes, multi-caja, soporte prioritario.</li>
+          <li><strong>Básico</strong>: $9.999 ARS/mes. 1.000 productos, 3 usuarios, AFIP 50 facturas/mes, notas de crédito por total, logo y tema custom, importar Excel, etiquetas con código de barras, history ilimitado.</li>
+          <li><strong>Profesional</strong>: $24.900 ARS/mes. 5.000 productos, 10 usuarios, IA predictiva, AFIP 2.000 facturas/mes con auto-factura en POS, NC parciales, ND custom y Libro IVA Ventas, multi-caja, soporte prioritario.</li>
         </ul>
         <p>
           Todos los planes pagos tienen <strong>7 días de prueba sin cargar

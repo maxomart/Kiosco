@@ -99,7 +99,8 @@ export default async function LandingPage({
       desc: "Tu marca + más espacio",
       features: [
         "1.000 productos · 3 usuarios",
-        "200 clientes · 50 proveedores",
+        "AFIP — 50 facturas/mes con CAE",
+        "Notas de crédito por total",
         "Logo y tema con tu color",
         "Importar / exportar Excel",
         "Etiquetas con código de barras",
@@ -115,12 +116,13 @@ export default async function LandingPage({
       desc: "Todo lo cool — el más completo",
       features: [
         "5.000 productos · 10 usuarios",
+        "AFIP — 2000 facturas/mes",
+        "Auto-factura en POS (1 clic)",
+        "NC parcial + ND con monto custom",
+        "Libro IVA Ventas exportable",
         "IA predictiva y chatbot integrado",
-        "Pedidos a proveedor con IA",
         "Loyalty · Multi-caja simultánea",
-        "Reportes con comparaciones IA",
         "Soporte prioritario",
-        "AFIP — 500 facturas/mes",
       ],
       cta:
         activePromo && activePromo.planGranted === "PROFESSIONAL"
@@ -158,7 +160,7 @@ export default async function LandingPage({
     {
       question: "¿Emite facturas AFIP?",
       answer:
-        "Sí, en el plan Profesional ($24.900 ARS/mes). Integra con ARCA (ex AFIP) y emite Factura A, B y C con CAE directo desde el POS.",
+        "Sí. El plan Básico ($9.999 ARS/mes) incluye 50 facturas/mes con CAE directo de ARCA. El Profesional ($24.900 ARS/mes) sube a 2000 facturas/mes, agrega auto-factura en el POS al cobrar, notas de crédito parciales, notas de débito con monto custom y Libro IVA Ventas exportable a Excel.",
     },
     {
       question: "¿Cuánto cuesta?",
