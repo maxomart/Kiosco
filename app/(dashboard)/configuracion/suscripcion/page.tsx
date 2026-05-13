@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { Fragment, useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CheckCircle, Zap, Crown, ArrowDown, ExternalLink, AlertCircle, CreditCard, Sparkles } from "lucide-react"
 import NumberFlow from "@number-flow/react"
@@ -49,11 +49,14 @@ const PLAN_FEATURES: Record<string, string[]> = {
     "POS + inventario + caja",
     "Reportes de los últimos 7 días",
     "POS offline-first",
+    "Sin facturación electrónica AFIP",
     "Para arrancar gratis sin tarjeta",
   ],
   STARTER: [
     "1.000 productos · 3 usuarios",
     "200 clientes · 50 proveedores · categorías ilimitadas",
+    "AFIP — 50 facturas/mes (A/B/C con CAE)",
+    "Notas de crédito por total",
     "Logo y tema con tu color",
     "Importar / exportar Excel",
     "Etiquetas con código de barras",
@@ -62,15 +65,76 @@ const PLAN_FEATURES: Record<string, string[]> = {
   PROFESSIONAL: [
     "Todo lo del Básico + lo cool",
     "5.000 productos · 10 usuarios · 1.000 clientes",
+    "AFIP — 2000 facturas/mes",
+    "Auto-factura en el POS (1 clic al cobrar)",
+    "NC parcial + ND con monto y concepto custom",
+    "Libro IVA Ventas exportable",
     "IA predictiva y chatbot integrado",
     "Pedidos a proveedor con IA",
     "Loyalty (puntos + canje)",
     "Multi-caja simultánea",
     "Reportes IA con comparaciones",
-    "AFIP — 500 facturas/mes",
     "Soporte prioritario",
   ],
 }
+
+/**
+ * Tabla comparativa lado a lado de features clave entre Básico y Profesional.
+ * El user ve dónde está el upgrade real con un vistazo.
+ *
+ * Formato: { feature, free, starter, pro } — boolean o string corto.
+ */
+const PLAN_COMPARE_ROWS: Array<{
+  category: string
+  rows: Array<{ label: string; free: string | boolean; starter: string | boolean; pro: string | boolean }>
+}> = [
+  {
+    category: "Operación",
+    rows: [
+      { label: "POS + inventario + caja", free: true, starter: true, pro: true },
+      { label: "Reportes", free: "7 días", starter: "ilimitado", pro: "completo + IA" },
+      { label: "Productos", free: "100", starter: "1.000", pro: "5.000" },
+      { label: "Usuarios", free: "1", starter: "3", pro: "10" },
+      { label: "Clientes", free: "15", starter: "200", pro: "1.000" },
+    ],
+  },
+  {
+    category: "Facturación AFIP",
+    rows: [
+      { label: "Emisión de factura A/B/C", free: false, starter: "50/mes", pro: "2.000/mes" },
+      { label: "Auto-factura al cobrar (POS)", free: false, starter: false, pro: true },
+      { label: "NC por anulación total", free: false, starter: true, pro: true },
+      { label: "NC parcial (monto custom)", free: false, starter: false, pro: true },
+      { label: "ND con monto + concepto custom", free: false, starter: false, pro: true },
+      { label: "Libro IVA Ventas exportable", free: false, starter: false, pro: true },
+    ],
+  },
+  {
+    category: "Productividad",
+    rows: [
+      { label: "Importar/exportar Excel", free: false, starter: true, pro: true },
+      { label: "Etiquetas con código de barras", free: false, starter: true, pro: true },
+      { label: "Logo y tema custom", free: false, starter: true, pro: true },
+      { label: "Multi-caja simultánea", free: false, starter: false, pro: true },
+    ],
+  },
+  {
+    category: "Inteligencia (IA)",
+    rows: [
+      { label: "Chatbot integrado en /ventas e /inventario", free: false, starter: false, pro: true },
+      { label: "Predicción de demanda en /inicio", free: false, starter: false, pro: true },
+      { label: "Pedidos a proveedor sugeridos", free: false, starter: false, pro: true },
+      { label: "Insights y análisis IA", free: false, starter: false, pro: true },
+    ],
+  },
+  {
+    category: "Loyalty y crecimiento",
+    rows: [
+      { label: "Sistema de puntos + canje", free: false, starter: false, pro: true },
+      { label: "Soporte prioritario (WhatsApp)", free: false, starter: false, pro: true },
+    ],
+  },
+]
 
 const PLAN_ICONS: Record<string, React.ElementType> = {
   FREE: Sparkles,
@@ -811,7 +875,104 @@ export default function SuscripcionPage() {
           }}
         />
       )}
+
+      {/* ─── Tabla comparativa ─────────────────────────────────────────── */}
+      <ComparePlansTable currentPlan={sub?.plan ?? "FREE"} />
     </div>
+  )
+}
+
+/**
+ * Tabla comparativa Free vs Básico vs Profesional. Renderiza las features
+ * agrupadas por categoría con tildes/checks. Diseñada para ser scanneable —
+ * el user ve en 5 segundos qué hay en cada tier.
+ */
+function ComparePlansTable({ currentPlan }: { currentPlan: string }) {
+  const cellValue = (v: string | boolean) => {
+    if (v === true) {
+      return (
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20">
+          <CheckCircle size={12} className="text-emerald-400" />
+        </span>
+      )
+    }
+    if (v === false) {
+      return <span className="text-gray-700">—</span>
+    }
+    return <span className="text-xs font-medium text-white">{v}</span>
+  }
+
+  const headerCell = (key: "free" | "starter" | "pro", label: string) => {
+    const isCurrent =
+      (key === "free" && currentPlan === "FREE") ||
+      (key === "starter" && currentPlan === "STARTER") ||
+      (key === "pro" && (currentPlan === "PROFESSIONAL" || currentPlan === "BUSINESS" || currentPlan === "ENTERPRISE"))
+    return (
+      <th
+        className={`text-center font-bold text-sm px-4 py-3 ${
+          isCurrent
+            ? "bg-purple-600/15 text-purple-200 border-b-2 border-purple-500/60"
+            : key === "pro"
+              ? "bg-gradient-to-b from-purple-600/10 to-transparent text-white"
+              : "text-gray-300"
+        }`}
+      >
+        <div className="flex flex-col items-center gap-0.5">
+          <span>{label}</span>
+          {isCurrent && (
+            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-200 border border-purple-500/30 uppercase tracking-wider">
+              Tu plan
+            </span>
+          )}
+        </div>
+      </th>
+    )
+  }
+
+  return (
+    <section className="mt-10 bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-800">
+        <h2 className="text-xl font-bold text-white">Comparativa detallada de planes</h2>
+        <p className="text-sm text-gray-400 mt-1">
+          Todo lo que incluye cada tier. Lo de AFIP arranca en Básico y se vuelve completo en Profesional.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-950/60">
+            <tr>
+              <th className="text-left font-semibold text-xs text-gray-500 uppercase tracking-wider px-4 py-3"></th>
+              {headerCell("free", "Gratis")}
+              {headerCell("starter", "Básico")}
+              {headerCell("pro", "Profesional")}
+            </tr>
+          </thead>
+          <tbody>
+            {PLAN_COMPARE_ROWS.map((cat) => (
+              <Fragment key={cat.category}>
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="bg-gray-950/40 text-[11px] uppercase tracking-wider text-gray-500 font-bold px-4 py-2 border-t border-gray-800"
+                  >
+                    {cat.category}
+                  </td>
+                </tr>
+                {cat.rows.map((row) => (
+                  <tr key={row.label} className="border-t border-gray-900/60 hover:bg-gray-900/30">
+                    <td className="px-4 py-2.5 text-gray-300">{row.label}</td>
+                    <td className="text-center px-4 py-2.5">{cellValue(row.free)}</td>
+                    <td className="text-center px-4 py-2.5">{cellValue(row.starter)}</td>
+                    <td className="text-center px-4 py-2.5 bg-purple-950/10">{cellValue(row.pro)}</td>
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
 

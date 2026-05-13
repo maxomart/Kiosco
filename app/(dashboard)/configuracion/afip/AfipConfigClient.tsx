@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react"
 import Link from "next/link"
-import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck, Wand2, Eye, EyeOff, Receipt, ArrowRight, Copy, FileKey2, Sparkles } from "lucide-react"
+import { FileCheck2, AlertCircle, CheckCircle2, Loader2, Upload, Lock, Info, ExternalLink, ShieldCheck, Wand2, Eye, EyeOff, Receipt, ArrowRight, Copy, FileKey2, Sparkles, BookOpen } from "lucide-react"
 import { explainAfipError } from "@/lib/afip-errors"
 import { AfipErrorBox } from "@/components/billing/AfipErrorBox"
 import toast from "react-hot-toast"
@@ -384,14 +384,22 @@ export default function AfipConfigClient(_props: { initial?: any }) {
             </p>
           </div>
         </div>
-        <Link
-          href="/configuracion/afip/notas"
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm border border-gray-700 transition-colors"
-        >
-          <Receipt size={14} className="text-purple-400" />
-          Notas emitidas
-          <ArrowRight size={12} className="text-gray-500" />
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/configuracion/afip/notas"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm border border-gray-700 transition-colors"
+          >
+            <Receipt size={14} className="text-purple-400" />
+            Notas emitidas
+          </Link>
+          <Link
+            href="/configuracion/afip/libro-iva"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm border border-gray-700 transition-colors"
+          >
+            <BookOpen size={14} className="text-emerald-400" />
+            Libro IVA Ventas
+          </Link>
+        </div>
       </div>
 
       {!setupOk && (
