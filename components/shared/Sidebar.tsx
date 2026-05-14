@@ -21,6 +21,7 @@ import {
   ShoppingBag,
   Lock,
   X,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { canAny, hasFeature, type Permission, type PlanFeature } from "@/lib/permissions"
@@ -82,6 +83,7 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
 
   // Filter por permisos. Items plan-gated igual se muestran con candado.
   const filterByPerm = (items: NavItem[]) =>
@@ -107,6 +109,8 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
   }, [])
 
   const handleSignOut = () => {
+    if (signingOut) return
+    setSigningOut(true)
     signOut({ callbackUrl: "/login" })
   }
 
@@ -235,14 +239,19 @@ export default function Sidebar({ user, plan = "STARTER", logoUrl, brandName }: 
 
         <button
           onClick={handleSignOut}
+          disabled={signingOut}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-950/40 transition-all duration-150",
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-950/40 transition-all duration-150 disabled:opacity-60 disabled:cursor-wait",
             collapsed && "justify-center px-2"
           )}
           title={collapsed ? "Cerrar sesión" : undefined}
         >
-          <LogOut className="w-4 h-4 flex-shrink-0" />
-          {!collapsed && <span>Cerrar sesión</span>}
+          {signingOut ? (
+            <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
+          ) : (
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+          )}
+          {!collapsed && <span>{signingOut ? "Cerrando…" : "Cerrar sesión"}</span>}
         </button>
 
         {/* Collapse toggle (desktop only) */}

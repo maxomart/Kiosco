@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, Clock, Calendar, TrendingUp } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 interface Cell {
   day: number
@@ -12,14 +12,12 @@ interface Cell {
 
 interface DayBreakdownEntry {
   day: number
-  date: string // yyyy-mm-dd
+  date: string
   count: number
   total: number
 }
 
-const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
-const DAY_LABELS_LONG = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
-const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
+const DAY_LABELS_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
 
 type Period = "this-week" | "last-week" | "30d" | "90d" | "custom"
 type Metric = "count" | "total"
@@ -72,20 +70,15 @@ function getPeriodRange(p: Period, fallbackFrom: string, fallbackTo: string): {
 }
 
 function fmtMoney(n: number): string {
-  return `$${n.toLocaleString("es-AR")}`
+  return `$${Math.round(n).toLocaleString("es-AR")}`
 }
 
-function fmtCompact(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}k`
-  return `$${Math.round(n)}`
+function fmtHour(h: number): string {
+  return `${h}:00`
 }
 
-/** "2026-05-11" → "11 may" en es-AR */
-function fmtShortDate(yyyymmdd: string): string {
-  const [y, m, d] = yyyymmdd.split("-").map(Number)
-  const date = new Date(y, m - 1, d)
-  return date.toLocaleDateString("es-AR", { day: "numeric", month: "short" })
+function fmtRange(h: number): string {
+  return `${h}:00 a ${h + 1}:00`
 }
 
 export function SalesHeatmap({
@@ -125,7 +118,7 @@ export function SalesHeatmap({
     }
   }, [range.from, range.to])
 
-  // Agregado por hora (0-23)
+  // Por hora del día
   const byHour = useMemo(() => {
     const arr = Array.from({ length: 24 }, () => ({ count: 0, total: 0 }))
     for (const c of cells) {
@@ -135,153 +128,122 @@ export function SalesHeatmap({
     return arr
   }, [cells])
 
-  // Agrupar dayBreakdown por día de la semana
-  const byDayOfWeek = useMemo(() => {
-    const map = new Map<number, DayBreakdownEntry[]>()
-    for (const e of dayBreakdown) {
-      const list = map.get(e.day) ?? []
-      list.push(e)
-      map.set(e.day, list)
-    }
-    return map
-  }, [dayBreakdown])
-
-  // Totales y promedios por día de la semana
+  // Promedio por día de la semana (sumando todos los lunes, todos los martes, etc / N)
   const dayStats = useMemo(() => {
-    const out = new Map<
-      number,
-      { total: number; count: number; weeks: number; avgCount: number; avgTotal: number }
-    >()
-    for (let d = 0; d < 7; d++) {
-      const entries = byDayOfWeek.get(d) ?? []
+    const byDay = new Map<number, DayBreakdownEntry[]>()
+    for (const e of dayBreakdown) {
+      const list = byDay.get(e.day) ?? []
+      list.push(e)
+      byDay.set(e.day, list)
+    }
+    const out = Array.from({ length: 7 }, (_, d) => {
+      const entries = byDay.get(d) ?? []
       const count = entries.reduce((s, e) => s + e.count, 0)
       const total = entries.reduce((s, e) => s + e.total, 0)
       const weeks = entries.length
-      out.set(d, {
+      return {
+        day: d,
         count,
         total,
         weeks,
         avgCount: weeks > 0 ? count / weeks : 0,
         avgTotal: weeks > 0 ? total / weeks : 0,
-      })
-    }
-    return out
-  }, [byDayOfWeek])
-
-  const getValue = (d: { count: number; total: number }): number =>
-    metric === "count" ? d.count : d.total
-
-  // Rango horario activo con padding
-  const { hourStart, hourEnd } = useMemo(() => {
-    const activeHours = byHour
-      .map((h, idx) => ({ idx, active: h.count > 0 }))
-      .filter((x) => x.active)
-      .map((x) => x.idx)
-    if (activeHours.length === 0) return { hourStart: 8, hourEnd: 22 }
-    return {
-      hourStart: Math.max(0, Math.min(...activeHours) - 1),
-      hourEnd: Math.min(23, Math.max(...activeHours) + 1),
-    }
-  }, [byHour])
-
-  const maxHourValue = useMemo(
-    () => Math.max(1, ...byHour.map(getValue)),
-    [byHour, metric]
-  )
-
-  // Para los días: usamos el PROMEDIO (por semana) como métrica principal
-  // así "Lun" representa "lo que vendés en un lunes típico"
-  const maxDayAvg = useMemo(() => {
-    let max = 1
-    for (const d of dayStats.values()) {
-      const v = metric === "count" ? d.avgCount : d.avgTotal
-      if (v > max) max = v
-    }
-    return max
-  }, [dayStats, metric])
-
-  // Pico de hora
-  const peakHour = useMemo(() => {
-    let bestIdx = -1
-    let bestVal = 0
-    byHour.forEach((h, idx) => {
-      const v = getValue(h)
-      if (v > bestVal) {
-        bestVal = v
-        bestIdx = idx
       }
     })
-    if (bestIdx === -1) return null
-    return { hour: bestIdx, ...byHour[bestIdx] }
-  }, [byHour, metric])
+    return out
+  }, [dayBreakdown])
 
-  // Mejor día (por promedio)
-  const bestDay = useMemo(() => {
-    let bestIdx = -1
-    let bestVal = 0
-    for (const [day, s] of dayStats) {
-      const v = metric === "count" ? s.avgCount : s.avgTotal
-      if (v > bestVal) {
-        bestVal = v
-        bestIdx = day
+  const getHourValue = (h: number) =>
+    metric === "count" ? byHour[h].count : byHour[h].total
+
+  const getDayValue = (d: (typeof dayStats)[number]) =>
+    metric === "count" ? d.avgCount : d.avgTotal
+
+  // Top 1 hora
+  const peakHour = useMemo(() => {
+    let bestH = -1
+    let bestV = 0
+    for (let h = 0; h < 24; h++) {
+      const v = getHourValue(h)
+      if (v > bestV) {
+        bestV = v
+        bestH = h
       }
     }
-    if (bestIdx === -1) return null
-    return { day: bestIdx, ...dayStats.get(bestIdx)! }
+    return bestH === -1 ? null : { hour: bestH, value: bestV, ...byHour[bestH] }
+  }, [byHour, metric])
+
+  // Top 1 día
+  const bestDay = useMemo(() => {
+    let best = dayStats[0]
+    for (const d of dayStats) {
+      if (getDayValue(d) > getDayValue(best)) best = d
+    }
+    return best && getDayValue(best) > 0 ? best : null
   }, [dayStats, metric])
 
-  // Mejor franja de 3h
+  // Mejor franja 3h
   const bestSlot = useMemo(() => {
     let bestStart = -1
-    let bestVal = 0
+    let bestV = 0
     for (let h = 0; h <= 21; h++) {
-      const v = getValue(byHour[h]) + getValue(byHour[h + 1]) + getValue(byHour[h + 2])
-      if (v > bestVal) {
-        bestVal = v
+      const v = getHourValue(h) + getHourValue(h + 1) + getHourValue(h + 2)
+      if (v > bestV) {
+        bestV = v
         bestStart = h
       }
     }
-    if (bestStart === -1) return null
-    return { start: bestStart, end: bestStart + 3, value: bestVal }
+    return bestStart === -1 ? null : { start: bestStart, end: bestStart + 3, value: bestV }
   }, [byHour, metric])
 
-  // Max value across individual day breakdowns (para las mini-sparklines)
-  const maxBreakdownValue = useMemo(() => {
-    return Math.max(1, ...dayBreakdown.map(getValue))
-  }, [dayBreakdown, metric])
+  // Top 5 momentos exactos (día + hora) ordenados por valor
+  const topMoments = useMemo(() => {
+    return [...cells]
+      .filter((c) => c.count > 0)
+      .sort((a, b) => (metric === "count" ? b.count - a.count : b.total - a.total))
+      .slice(0, 5)
+  }, [cells, metric])
 
-  const totalSales = useMemo(() => cells.reduce((s, c) => s + c.count, 0), [cells])
-  const totalRevenue = useMemo(() => cells.reduce((s, c) => s + c.total, 0), [cells])
+  // Día más flojo (con al menos 1 venta)
+  const worstDay = useMemo(() => {
+    const active = dayStats.filter((d) => d.weeks > 0)
+    if (active.length === 0) return null
+    return active.reduce((a, b) => (getDayValue(a) < getDayValue(b) ? a : b))
+  }, [dayStats, metric])
 
-  const visibleHours = Array.from(
-    { length: hourEnd - hourStart + 1 },
-    (_, i) => i + hourStart
-  )
+  const totalSales = cells.reduce((s, c) => s + c.count, 0)
+  const totalRevenue = cells.reduce((s, c) => s + c.total, 0)
   const hasData = cells.length > 0
+
+  // Construir frase principal del insight
+  const mainInsight = useMemo(() => {
+    if (!peakHour || !bestDay) return null
+    const dayName = DAY_LABELS_LONG[bestDay.day]
+    const hourTxt = fmtRange(peakHour.hour)
+    const valueTxt =
+      metric === "count"
+        ? `${bestDay.avgCount.toFixed(1)} ventas`
+        : fmtMoney(bestDay.avgTotal)
+    return `Tu mejor día es el ${dayName} (en promedio ${valueTxt}), y tu hora más fuerte es de ${hourTxt}.`
+  }, [peakHour, bestDay, metric])
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-100">
-            ¿Cuándo vendés más?
-          </h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {range.label}
-            {hasData && (
-              <>
-                {" · "}
-                <span className="text-gray-400">
-                  {totalSales.toLocaleString("es-AR")} ventas · {fmtMoney(totalRevenue)}
-                </span>
-              </>
-            )}
-          </p>
-        </div>
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-gray-100">¿Cuándo vendés más?</h3>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {range.label}
+          {hasData && (
+            <>
+              {" · "}
+              <span className="text-gray-400">
+                {totalSales.toLocaleString("es-AR")} ventas · {fmtMoney(totalRevenue)}
+              </span>
+            </>
+          )}
+        </p>
       </div>
 
-      {/* Controles */}
       <div className="flex items-center justify-between gap-2 flex-wrap mb-5">
         <div className="flex items-center gap-1 flex-wrap">
           {PERIOD_OPTIONS.map((opt) => (
@@ -334,197 +296,122 @@ export function SalesHeatmap({
           Sin ventas en este período. Probá otro rango.
         </div>
       ) : (
-        <>
-          {/* Insights destacados */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
+        <div className="space-y-5">
+          {/* Frase principal — el insight de un vistazo */}
+          {mainInsight && (
+            <div className="bg-accent/10 border border-accent/30 rounded-lg p-4">
+              <p className="text-sm text-gray-100 leading-relaxed">{mainInsight}</p>
+            </div>
+          )}
+
+          {/* Tres bullets clave */}
+          <div className="space-y-2.5 text-sm">
             {peakHour && (
-              <div className="bg-amber-500/5 border border-amber-500/30 rounded-lg p-3">
-                <div className="flex items-center gap-1.5 text-[10px] text-amber-400/90 uppercase tracking-wide mb-1">
-                  <Clock className="w-3 h-3" /> Hora pico
-                </div>
-                <div className="text-lg font-semibold text-gray-100 tabular-nums">
-                  {peakHour.hour}:00 – {peakHour.hour + 1}:00
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">
-                  {metric === "count"
-                    ? `${peakHour.count} ventas en total`
-                    : `${fmtMoney(peakHour.total)} facturados`}
+              <div className="flex items-baseline gap-3">
+                <span className="text-amber-400 shrink-0 w-5 text-center">🕐</span>
+                <div className="flex-1">
+                  <div className="text-gray-100">
+                    <span className="font-medium">Hora pico:</span>{" "}
+                    <span className="tabular-nums">{fmtRange(peakHour.hour)}</span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {metric === "count"
+                      ? `${peakHour.count} ventas se hicieron en esa franja durante todo el período`
+                      : `${fmtMoney(peakHour.total)} facturados en esa franja durante todo el período`}
+                  </div>
                 </div>
               </div>
             )}
+
             {bestDay && (
-              <div className="bg-accent/5 border border-accent/30 rounded-lg p-3">
-                <div className="flex items-center gap-1.5 text-[10px] text-accent uppercase tracking-wide mb-1">
-                  <Calendar className="w-3 h-3" /> Mejor día
-                </div>
-                <div className="text-lg font-semibold text-gray-100">
-                  {DAY_LABELS_LONG[bestDay.day]}
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">
-                  Promedio:{" "}
-                  {metric === "count"
-                    ? `${bestDay.avgCount.toFixed(1)} ventas/día`
-                    : fmtMoney(Math.round(bestDay.avgTotal))}
+              <div className="flex items-baseline gap-3">
+                <span className="text-accent shrink-0 w-5 text-center">📅</span>
+                <div className="flex-1">
+                  <div className="text-gray-100">
+                    <span className="font-medium">Mejor día:</span>{" "}
+                    <span className="capitalize">{DAY_LABELS_LONG[bestDay.day]}</span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    En un {DAY_LABELS_LONG[bestDay.day]} típico vendés{" "}
+                    {metric === "count"
+                      ? `${bestDay.avgCount.toFixed(1)} unidades`
+                      : fmtMoney(bestDay.avgTotal)}
+                    {bestDay.weeks > 1 && ` (promedio de ${bestDay.weeks} ${DAY_LABELS_LONG[bestDay.day]}s)`}
+                  </div>
                 </div>
               </div>
             )}
+
             {bestSlot && (
-              <div className="bg-emerald-500/5 border border-emerald-500/30 rounded-lg p-3">
-                <div className="flex items-center gap-1.5 text-[10px] text-emerald-400/90 uppercase tracking-wide mb-1">
-                  <TrendingUp className="w-3 h-3" /> Franja más activa
+              <div className="flex items-baseline gap-3">
+                <span className="text-emerald-400 shrink-0 w-5 text-center">⏰</span>
+                <div className="flex-1">
+                  <div className="text-gray-100">
+                    <span className="font-medium">Franja más fuerte:</span>{" "}
+                    <span className="tabular-nums">
+                      {fmtHour(bestSlot.start)} a {fmtHour(bestSlot.end)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Son las 3 horas seguidas con más actividad —{" "}
+                    {metric === "count"
+                      ? `${bestSlot.value} ventas en total`
+                      : `${fmtMoney(bestSlot.value)} facturados`}
+                  </div>
                 </div>
-                <div className="text-lg font-semibold text-gray-100 tabular-nums">
-                  {bestSlot.start}:00 – {bestSlot.end}:00
-                </div>
-                <div className="text-[11px] text-gray-400 mt-0.5">
-                  {metric === "count"
-                    ? `${bestSlot.value} ventas en 3 horas`
-                    : `${fmtMoney(bestSlot.value)} en 3 horas`}
+              </div>
+            )}
+
+            {worstDay && bestDay && worstDay.day !== bestDay.day && (
+              <div className="flex items-baseline gap-3">
+                <span className="text-gray-500 shrink-0 w-5 text-center">📉</span>
+                <div className="flex-1">
+                  <div className="text-gray-100">
+                    <span className="font-medium">Día más flojo:</span>{" "}
+                    <span className="capitalize">{DAY_LABELS_LONG[worstDay.day]}</span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    En un {DAY_LABELS_LONG[worstDay.day]} típico vendés{" "}
+                    {metric === "count"
+                      ? `${worstDay.avgCount.toFixed(1)} unidades`
+                      : fmtMoney(worstDay.avgTotal)}{" "}
+                    — pensá una promo o ajustá horarios
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Gráfico 1: Por hora del día */}
-          <div className="mb-7">
-            <div className="flex items-baseline justify-between mb-3">
-              <h4 className="text-xs font-semibold text-gray-200">Por hora del día</h4>
-              <span className="text-[10px] text-gray-500">
-                {hourStart}:00 – {hourEnd + 1}:00
-              </span>
-            </div>
-            <div className="flex items-end gap-[3px] h-32 px-1">
-              {visibleHours.map((h) => {
-                const value = getValue(byHour[h])
-                const heightPct = (value / maxHourValue) * 100
-                const isPeak = peakHour?.hour === h
-                const isBestSlot =
-                  bestSlot && h >= bestSlot.start && h < bestSlot.end
-                return (
-                  <div
-                    key={h}
-                    className="flex-1 flex flex-col items-center justify-end h-full group cursor-default min-w-0"
-                    title={`${h}:00 – ${h + 1}:00 · ${byHour[h].count} ventas · ${fmtMoney(byHour[h].total)}`}
+          {/* Top 5 momentos */}
+          {topMoments.length > 0 && (
+            <div className="pt-4 border-t border-gray-800">
+              <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">
+                Top 5 momentos
+              </h4>
+              <ol className="space-y-1.5">
+                {topMoments.map((m, idx) => (
+                  <li
+                    key={`${m.day}-${m.hour}`}
+                    className="flex items-baseline gap-3 text-sm"
                   >
-                    {value > 0 && (
-                      <span className="text-[9px] text-gray-400 font-mono mb-0.5 group-hover:text-white transition-colors tabular-nums">
-                        {metric === "count" ? value : fmtCompact(value)}
-                      </span>
-                    )}
-                    <div
-                      className={`w-full rounded-t transition-all ${
-                        value === 0
-                          ? "bg-gray-800/40"
-                          : isPeak
-                            ? "bg-amber-400 group-hover:bg-amber-300"
-                            : isBestSlot
-                              ? "bg-accent group-hover:bg-accent/90"
-                              : "bg-accent/40 group-hover:bg-accent/70"
-                      }`}
-                      style={{ height: `${Math.max(value === 0 ? 2 : 4, heightPct)}%` }}
-                    />
-                  </div>
-                )
-              })}
+                    <span className="text-gray-500 font-mono text-xs w-4 text-right shrink-0">
+                      {idx + 1}.
+                    </span>
+                    <span className="text-gray-100 capitalize flex-1">
+                      {DAY_LABELS_LONG[m.day]} a las{" "}
+                      <span className="tabular-nums">{fmtRange(m.hour)}</span>
+                    </span>
+                    <span className="text-gray-400 text-xs tabular-nums">
+                      {metric === "count"
+                        ? `${m.count} ${m.count === 1 ? "venta" : "ventas"}`
+                        : fmtMoney(m.total)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
             </div>
-            <div className="flex gap-[3px] mt-1.5 px-1">
-              {visibleHours.map((h) => (
-                <div
-                  key={h}
-                  className="flex-1 text-center text-[9px] text-gray-500 font-mono tabular-nums min-w-0"
-                >
-                  {h % 2 === 0 || visibleHours.length <= 12 ? h : ""}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Gráfico 2: Por día de la semana — promedio + sparkline semanal */}
-          <div>
-            <div className="flex items-baseline justify-between mb-3">
-              <h4 className="text-xs font-semibold text-gray-200">Por día de la semana</h4>
-              <span className="text-[10px] text-gray-500">
-                Promedio por día · {metric === "count" ? "ventas" : "facturación"}
-              </span>
-            </div>
-            <div className="space-y-2.5">
-              {DAY_ORDER.map((dayIdx) => {
-                const stats = dayStats.get(dayIdx)!
-                const avgValue = metric === "count" ? stats.avgCount : stats.avgTotal
-                const totalValue = metric === "count" ? stats.count : stats.total
-                const widthPct = (avgValue / maxDayAvg) * 100
-                const isBest = bestDay?.day === dayIdx
-                const entries = byDayOfWeek.get(dayIdx) ?? []
-
-                return (
-                  <div key={dayIdx} className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-3">
-                    <div className="text-[11px] text-gray-400 font-medium text-right">
-                      {DAY_LABELS[dayIdx]}
-                    </div>
-
-                    {/* Barra de promedio + sparkline de semanas individuales encima */}
-                    <div className="space-y-1.5">
-                      {/* Sparkline: una barrita por cada lunes/martes/etc del período */}
-                      {entries.length > 0 ? (
-                        <div className="flex items-end gap-0.5 h-5">
-                          {entries.map((e) => {
-                            const v = getValue(e)
-                            const hPct = (v / maxBreakdownValue) * 100
-                            return (
-                              <div
-                                key={e.date}
-                                className={`flex-1 min-w-[3px] max-w-[14px] rounded-sm transition-colors ${
-                                  isBest ? "bg-accent/70 hover:bg-accent" : "bg-gray-700 hover:bg-gray-600"
-                                }`}
-                                style={{ height: `${Math.max(8, hPct)}%` }}
-                                title={`${fmtShortDate(e.date)} · ${e.count} ${e.count === 1 ? "venta" : "ventas"} · ${fmtMoney(e.total)}`}
-                              />
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <div className="h-5 flex items-center text-[10px] text-gray-600">
-                          Sin datos
-                        </div>
-                      )}
-
-                      {/* Barra principal con el promedio */}
-                      <div className="bg-gray-800/40 rounded h-3 overflow-hidden relative">
-                        <div
-                          className={`h-full rounded transition-all ${
-                            avgValue === 0
-                              ? ""
-                              : isBest
-                                ? "bg-accent"
-                                : "bg-accent/40"
-                          }`}
-                          style={{ width: `${Math.max(avgValue === 0 ? 0 : 3, widthPct)}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Promedio + total a la derecha */}
-                    <div className="text-right min-w-[7rem]">
-                      <div className={`text-xs font-medium tabular-nums ${isBest ? "text-accent" : "text-gray-200"}`}>
-                        {metric === "count"
-                          ? `${avgValue.toFixed(1)} prom.`
-                          : `${fmtCompact(avgValue)} prom.`}
-                      </div>
-                      <div className="text-[10px] text-gray-500 tabular-nums">
-                        {stats.weeks} {stats.weeks === 1 ? "día" : "días"} ·{" "}
-                        {metric === "count" ? `${totalValue} en total` : fmtCompact(totalValue)}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <p className="text-[10px] text-gray-500 mt-3 leading-snug">
-              Cada barrita chica = un lunes/martes/etc del período. La barra grande = promedio.
-              Pasá el mouse para ver detalle de cada día.
-            </p>
-          </div>
-        </>
+          )}
+        </div>
       )}
     </div>
   )

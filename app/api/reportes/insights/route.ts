@@ -15,8 +15,8 @@ async function getPlan(tenantId: string): Promise<Plan> {
 }
 
 interface DayHourCell {
-  day: number // 0=Sunday, 6=Saturday
-  hour: number // 0-23
+  day: number
+  hour: number
   count: number
   total: number
 }
@@ -30,39 +30,43 @@ interface PeriodMetrics {
   itemsSold: number
 }
 
-async function computePeriodMetrics(
+/**
+ * Métricas del período anterior — usa aggregates Prisma en vez de cargar
+ * sales+items. Mucho más rápido que computar todo desde objects JS.
+ */
+async function computePreviousMetrics(
   tenantId: string,
   from: Date,
   to: Date
 ): Promise<PeriodMetrics> {
-  const sales = await db.sale.findMany({
-    where: {
-      tenantId,
-      status: "COMPLETED",
-      createdAt: { gte: from, lte: to },
-    },
-    select: {
-      total: true,
-      items: { select: { costPrice: true, quantity: true, subtotal: true } },
-    },
-  })
-
-  const revenue = sales.reduce((a, s) => a + Number(s.total), 0)
-  const cost = sales.reduce(
-    (a, s) =>
-      a + s.items.reduce((b, i) => b + Number(i.costPrice) * i.quantity, 0),
-    0
-  )
-  const itemsSold = sales.reduce(
-    (a, s) => a + s.items.reduce((b, i) => b + i.quantity, 0),
-    0
-  )
+  const where = {
+    tenantId,
+    status: "COMPLETED" as const,
+    createdAt: { gte: from, lte: to },
+  }
+  const [saleAgg, itemAgg] = await Promise.all([
+    db.sale.aggregate({
+      where,
+      _sum: { total: true },
+      _count: true,
+      _avg: { total: true },
+    }),
+    // Aggregate sobre saleItem para obtener cost total + items vendidos sin
+    // cargar todas las filas en memoria.
+    db.saleItem.findMany({
+      where: { sale: where },
+      select: { costPrice: true, quantity: true },
+    }),
+  ])
+  const revenue = Number(saleAgg._sum.total ?? 0)
+  const cost = itemAgg.reduce((a, i) => a + Number(i.costPrice) * i.quantity, 0)
+  const itemsSold = itemAgg.reduce((a, i) => a + i.quantity, 0)
   return {
     revenue,
     cost,
     profit: revenue - cost,
-    salesCount: sales.length,
-    avgTicket: sales.length > 0 ? revenue / sales.length : 0,
+    salesCount: saleAgg._count,
+    avgTicket: Number(saleAgg._avg.total ?? 0),
     itemsSold,
   }
 }
@@ -92,23 +96,71 @@ export async function GET(req: NextRequest) {
   const from = fromStr ? new Date(fromStr) : startOfDay(subDays(to, 30))
   const periodDays = Math.max(1, differenceInDays(to, from))
 
-  // Previous period for comparison
   const prevTo = new Date(from.getTime() - 1)
   const prevFrom = subDays(prevTo, periodDays)
 
   try {
-    const [current, previous] = await Promise.all([
-      computePeriodMetrics(tenantId!, from, to),
-      computePeriodMetrics(tenantId!, prevFrom, prevTo),
+    // UNA sola findMany de sales+items para el período actual.
+    // Cubre: metrics current + heatmap + dayBreakdown + topCategories + topByMargin.
+    // En paralelo: aggregates baratos de período anterior + expenses.
+    const [salesRaw, previous, expensesAgg] = await Promise.all([
+      db.sale.findMany({
+        where: {
+          tenantId: tenantId!,
+          status: "COMPLETED",
+          createdAt: { gte: from, lte: to },
+        },
+        select: {
+          createdAt: true,
+          total: true,
+          items: {
+            select: {
+              productName: true,
+              quantity: true,
+              costPrice: true,
+              subtotal: true,
+              product: {
+                select: {
+                  categoryId: true,
+                  category: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      }),
+      computePreviousMetrics(tenantId!, prevFrom, prevTo),
+      db.expense.aggregate({
+        where: { tenantId: tenantId!, createdAt: { gte: from, lte: to } },
+        _sum: { amount: true },
+      }),
     ])
 
-    // Percent change helper
+    // === Compute current metrics from the single salesRaw load ===
+    let revenue = 0
+    let cost = 0
+    let itemsSold = 0
+    for (const s of salesRaw) {
+      revenue += Number(s.total)
+      for (const it of s.items) {
+        cost += Number(it.costPrice) * it.quantity
+        itemsSold += it.quantity
+      }
+    }
+    const current: PeriodMetrics = {
+      revenue,
+      cost,
+      profit: revenue - cost,
+      salesCount: salesRaw.length,
+      avgTicket: salesRaw.length > 0 ? revenue / salesRaw.length : 0,
+      itemsSold,
+    }
+
     const pctChange = (curr: number, prev: number) => {
       if (prev === 0 && curr === 0) return 0
       if (prev === 0) return 100
       return ((curr - prev) / prev) * 100
     }
-
     const changes = {
       revenue: pctChange(current.revenue, previous.revenue),
       profit: pctChange(current.profit, previous.profit),
@@ -116,82 +168,66 @@ export async function GET(req: NextRequest) {
       avgTicket: pctChange(current.avgTicket, previous.avgTicket),
     }
 
-    // Heatmap: day × hour
-    const salesRaw = await db.sale.findMany({
-      where: {
-        tenantId: tenantId!,
-        status: "COMPLETED",
-        createdAt: { gte: from, lte: to },
-      },
-      select: {
-        createdAt: true,
-        total: true,
-        items: {
-          select: {
-            productName: true,
-            quantity: true,
-            costPrice: true,
-            subtotal: true,
-            product: {
-              select: {
-                categoryId: true,
-                category: { select: { name: true } },
-              },
-            },
-          },
-        },
-      },
-    })
-
+    // === Heatmap + dayBreakdown + categorías + márgenes en UN solo loop ===
     const heatmapMap = new Map<string, DayHourCell>()
-    for (const s of salesRaw) {
-      const d = s.createdAt.getDay()
-      const h = s.createdAt.getHours()
-      const key = `${d}-${h}`
-      const curr = heatmapMap.get(key) ?? { day: d, hour: h, count: 0, total: 0 }
-      curr.count += 1
-      curr.total += Number(s.total)
-      heatmapMap.set(key, curr)
-    }
-    const heatmap = [...heatmapMap.values()]
-
-    // Day breakdown: cada día específico (cada lunes, cada martes, ...) por separado
-    // Permite mostrar variación semana a semana en el componente
     const dayBreakdownMap = new Map<
       string,
       { day: number; date: string; count: number; total: number }
     >()
+    const catMap = new Map<string, { revenue: number; cost: number; qty: number }>()
+    const productMarginMap = new Map<
+      string,
+      { revenue: number; cost: number; qty: number }
+    >()
+
     for (const s of salesRaw) {
       const ts = s.createdAt
-      const day = ts.getDay()
-      // Normalizar a la fecha del día (yyyy-mm-dd local)
+      const d = ts.getDay()
+      const h = ts.getHours()
+      const saleTotal = Number(s.total)
+
+      // Heatmap
+      const hmKey = `${d}-${h}`
+      const hm = heatmapMap.get(hmKey) ?? { day: d, hour: h, count: 0, total: 0 }
+      hm.count += 1
+      hm.total += saleTotal
+      heatmapMap.set(hmKey, hm)
+
+      // Day breakdown (cada lunes/martes/etc específico)
       const y = ts.getFullYear()
-      const m = String(ts.getMonth() + 1).padStart(2, "0")
-      const d = String(ts.getDate()).padStart(2, "0")
-      const dateKey = `${y}-${m}-${d}`
-      const key = `${day}-${dateKey}`
-      const curr =
-        dayBreakdownMap.get(key) ?? { day, date: dateKey, count: 0, total: 0 }
-      curr.count += 1
-      curr.total += Number(s.total)
-      dayBreakdownMap.set(key, curr)
+      const mStr = String(ts.getMonth() + 1).padStart(2, "0")
+      const dStr = String(ts.getDate()).padStart(2, "0")
+      const dateKey = `${y}-${mStr}-${dStr}`
+      const dbKey = `${d}-${dateKey}`
+      const dbEntry =
+        dayBreakdownMap.get(dbKey) ?? { day: d, date: dateKey, count: 0, total: 0 }
+      dbEntry.count += 1
+      dbEntry.total += saleTotal
+      dayBreakdownMap.set(dbKey, dbEntry)
+
+      // Categories + product margins
+      for (const it of s.items) {
+        const cat = it.product?.category?.name ?? "Sin categoría"
+        const catCurr = catMap.get(cat) ?? { revenue: 0, cost: 0, qty: 0 }
+        catCurr.revenue += Number(it.subtotal)
+        catCurr.cost += Number(it.costPrice) * it.quantity
+        catCurr.qty += it.quantity
+        catMap.set(cat, catCurr)
+
+        const pmCurr =
+          productMarginMap.get(it.productName) ?? { revenue: 0, cost: 0, qty: 0 }
+        pmCurr.revenue += Number(it.subtotal)
+        pmCurr.cost += Number(it.costPrice) * it.quantity
+        pmCurr.qty += it.quantity
+        productMarginMap.set(it.productName, pmCurr)
+      }
     }
+
+    const heatmap = [...heatmapMap.values()]
     const dayBreakdown = [...dayBreakdownMap.values()].sort((a, b) =>
       a.date.localeCompare(b.date)
     )
 
-    // Top categories
-    const catMap = new Map<string, { revenue: number; cost: number; qty: number }>()
-    for (const s of salesRaw) {
-      for (const it of s.items) {
-        const cat = it.product?.category?.name ?? "Sin categoría"
-        const curr = catMap.get(cat) ?? { revenue: 0, cost: 0, qty: 0 }
-        curr.revenue += Number(it.subtotal)
-        curr.cost += Number(it.costPrice) * it.quantity
-        curr.qty += it.quantity
-        catMap.set(cat, curr)
-      }
-    }
     const topCategories = [...catMap.entries()]
       .map(([name, v]) => ({
         name,
@@ -203,19 +239,8 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10)
 
-    // Top products by margin (most profitable per unit)
-    const productMarginMap = new Map<string, { revenue: number; cost: number; qty: number }>()
-    for (const s of salesRaw) {
-      for (const it of s.items) {
-        const curr = productMarginMap.get(it.productName) ?? { revenue: 0, cost: 0, qty: 0 }
-        curr.revenue += Number(it.subtotal)
-        curr.cost += Number(it.costPrice) * it.quantity
-        curr.qty += it.quantity
-        productMarginMap.set(it.productName, curr)
-      }
-    }
     const topByMargin = [...productMarginMap.entries()]
-      .filter(([, v]) => v.qty >= 2) // at least 2 units sold
+      .filter(([, v]) => v.qty >= 2)
       .map(([name, v]) => ({
         name,
         revenue: v.revenue,
@@ -226,18 +251,9 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 5)
 
-    // Expenses in period (for net profit comparison)
-    const expensesAgg = await db.expense.aggregate({
-      where: {
-        tenantId: tenantId!,
-        createdAt: { gte: from, lte: to },
-      },
-      _sum: { amount: true },
-    })
     const totalExpenses = Number(expensesAgg._sum.amount ?? 0)
     const netProfit = current.profit - totalExpenses
 
-    // AI Insights (optional, only if requested + plan allows)
     let aiInsights: {
       summary: string
       highlights: string[]
@@ -257,7 +273,7 @@ export async function GET(req: NextRequest) {
           changes,
           topCategories: topCategories.slice(0, 5),
           topByMargin: topByMargin.slice(0, 5),
-          peakHour: heatmap.sort((a, b) => b.total - a.total)[0] ?? null,
+          peakHour: [...heatmap].sort((a, b) => b.total - a.total)[0] ?? null,
           expenses: totalExpenses,
           netProfit,
         }
@@ -299,7 +315,6 @@ Reglas:
         aiInsights = JSON.parse(raw)
       } catch (err) {
         console.error("[reportes/insights] AI failed:", err)
-        // Non-fatal: still return the numeric data
       }
     }
 

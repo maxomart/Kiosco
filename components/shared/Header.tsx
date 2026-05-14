@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react"
 import {
   ChevronDown,
   LifeBuoy,
+  Loader2,
   LogOut,
   Menu,
   Settings as SettingsIcon,
@@ -72,6 +73,7 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
   const title = getPageTitle(pathname)
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -260,12 +262,21 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
                 <div className="p-1.5 border-t border-gray-800">
                   <button
                     type="button"
-                    onClick={() => signOut({ callbackUrl: "/login" })}
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 transition-colors"
+                    onClick={() => {
+                      if (signingOut) return
+                      setSigningOut(true)
+                      signOut({ callbackUrl: "/login" })
+                    }}
+                    disabled={signingOut}
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-60 disabled:cursor-wait"
                     role="menuitem"
                   >
-                    <LogOut size={15} />
-                    Cerrar sesión
+                    {signingOut ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <LogOut size={15} />
+                    )}
+                    {signingOut ? "Cerrando…" : "Cerrar sesión"}
                   </button>
                 </div>
               </motion.div>
