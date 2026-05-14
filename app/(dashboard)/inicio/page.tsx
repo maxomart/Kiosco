@@ -16,8 +16,6 @@ import {
 } from "lucide-react"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { Prisma } from "@prisma/client"
-import { buildResumenDia } from "@/lib/ai-resumen"
 import { formatCurrencyCompact } from "@/lib/utils"
 import StatCard from "@/components/shared/StatCard"
 import WeeklySalesChart from "@/components/shared/WeeklySalesChart"
@@ -31,18 +29,6 @@ import { Progress } from "@/components/ui/progress"
 // Data fetching helpers
 // ---------------------------------------------------------------------------
 
-type LowStockRow = {
-  id: string
-  name: string
-  stock: number
-  minStock: number
-}
-
-/**
- * Trae stats del día + ayer + low stock en una sola pasada.
- * Antes: 3 findMany — uno de ellos sin take cargaba TODO el catálogo activo.
- * Ahora: agregados Prisma + 1 raw SQL que devuelve count + sample (top 10).
- */
 async function getTodayStats(tenantId: string) {
   const now = new Date()
   const todayStart = new Date(now)
@@ -55,52 +41,56 @@ async function getTodayStats(tenantId: string) {
   const yesterdayEnd = new Date(todayEnd)
   yesterdayEnd.setDate(yesterdayEnd.getDate() - 1)
 
-  const [todaySales, yesterdayAgg, lowStockRows] = await Promise.all([
-    // Today: necesitamos items para calcular profit
+  const [todaySales, yesterdaySales, lowStockProducts] = await Promise.all([
     db.sale.findMany({
       where: {
         tenantId,
         status: "COMPLETED",
         createdAt: { gte: todayStart, lte: todayEnd },
       },
-      select: {
-        total: true,
-        items: { select: { costPrice: true, quantity: true } },
-      },
+      select: { total: true, items: { select: { costPrice: true, quantity: true } } },
     }),
-    // Yesterday: solo revenue → aggregate barato
-    db.sale.aggregate({
+    db.sale.findMany({
       where: {
         tenantId,
         status: "COMPLETED",
         createdAt: { gte: yesterdayStart, lte: yesterdayEnd },
       },
-      _sum: { total: true },
+      select: { total: true },
     }),
-    // Low stock: comparación entre 2 columnas → $queryRaw con LIMIT 10
-    db.$queryRaw<LowStockRow[]>(
-      Prisma.sql`
-        SELECT id, name, stock, "minStock"
-        FROM "Product"
-        WHERE "tenantId" = ${tenantId}
-          AND active = true
-          AND stock <= "minStock"
-        ORDER BY stock ASC
-        LIMIT 10
-      `
-    ).catch(() => [] as LowStockRow[]),
+    // Fetch all active products and filter in JS (Prisma can't compare two columns natively without raw query)
+    db.product
+      .findMany({
+        where: { tenantId, active: true },
+        select: { id: true, name: true, stock: true, minStock: true },
+        orderBy: { stock: "asc" },
+      })
+      .then((ps: { id: string; name: string; stock: number; minStock: number }[]) =>
+        ps.filter((p) => p.stock <= p.minStock).slice(0, 10)
+      )
+      .catch(() => [] as { id: string; name: string; stock: number; minStock: number }[]),
   ])
 
-  let todayTotal = 0
-  let todayCost = 0
-  for (const s of todaySales) {
-    todayTotal += Number(s.total)
-    for (const it of s.items) {
-      todayCost += Number(it.costPrice) * it.quantity
-    }
-  }
+  const todayTotal = todaySales.reduce(
+    (acc: number, s: { total: unknown; items: { costPrice: unknown; quantity: number }[] }) =>
+      acc + Number(s.total),
+    0
+  )
+  const todayCost = todaySales.reduce(
+    (acc: number, s: { total: unknown; items: { costPrice: unknown; quantity: number }[] }) =>
+      acc +
+      s.items.reduce(
+        (ia: number, i: { costPrice: unknown; quantity: number }) =>
+          ia + Number(i.costPrice) * i.quantity,
+        0
+      ),
+    0
+  )
   const todayProfit = todayTotal - todayCost
-  const yesterdayTotal = Number(yesterdayAgg._sum.total ?? 0)
+  const yesterdayTotal = yesterdaySales.reduce(
+    (acc: number, s: { total: unknown }) => acc + Number(s.total),
+    0
+  )
 
   const revenueChange =
     yesterdayTotal > 0
@@ -112,7 +102,7 @@ async function getTodayStats(tenantId: string) {
     todayCount: todaySales.length,
     todayProfit,
     revenueChange,
-    lowStockProducts: lowStockRows,
+    lowStockProducts,
   }
 }
 
@@ -154,24 +144,35 @@ async function getWeeklySales(tenantId: string) {
     .map(([date, v]) => ({ date, ...v }))
 }
 
-/**
- * Solo el count de stock bajo, sin sample. Antes hacía findMany con todos
- * los productos activos del tenant; ahora es un COUNT(*) que usa el índice.
- */
 async function getLowStockCount(tenantId: string): Promise<number> {
   try {
-    const rows = await db.$queryRaw<Array<{ count: bigint }>>(
-      Prisma.sql`
-        SELECT COUNT(*)::bigint AS count
-        FROM "Product"
-        WHERE "tenantId" = ${tenantId}
-          AND active = true
-          AND stock <= "minStock"
-      `
-    )
-    return Number(rows[0]?.count ?? 0)
+    const products = await db.product.findMany({
+      where: { tenantId, active: true },
+      select: { stock: true, minStock: true },
+    })
+    return products.filter((p: { stock: number; minStock: number }) => p.stock <= p.minStock).length
   } catch {
     return 0
+  }
+}
+
+async function getAIResumen(tenantId: string): Promise<string | null> {
+  try {
+    const baseUrl =
+      process.env.NEXTAUTH_URL ?? "http://localhost:3000"
+    const res = await fetch(
+      `${baseUrl}/api/ia/resumen-dia?tenantId=${tenantId}`,
+      {
+        cache: "no-store",
+        headers: { "x-internal-call": "1" },
+        signal: AbortSignal.timeout(8000),
+      }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return (data as { resumen?: string }).resumen ?? null
+  } catch {
+    return null
   }
 }
 
@@ -333,7 +334,7 @@ export default async function DashboardPage() {
     getTodayStats(tenantId),
     getWeeklySales(tenantId),
     getLowStockCount(tenantId),
-    buildResumenDia(tenantId).catch(() => null),
+    getAIResumen(tenantId),
   ])
 
   const { todayTotal, todayCount, todayProfit, revenueChange, lowStockProducts } =

@@ -46,106 +46,116 @@ export default async function DashboardLayout({
     redirect("/admin")
   }
 
-  // Todas las queries del layout en paralelo. Antes corrían secuencialmente
-  // (5 round-trips a Postgres antes de renderizar). En cold start eso eran
-  // 400-800ms perceptibles al entrar a cualquier ruta del dashboard.
+  // Block dashboard access until the user has verified their email. Lookup
+  // is one tiny SELECT on a primary key — fine to do unconditionally on
+  // every request. We don't pull the verified status into the JWT yet so
+  // we can flip it without forcing a re-login.
+  const userRow = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      emailVerified: true,
+      tourCompletedAt: true,
+      lastWelcomedPlan: true,
+    },
+  })
+  if (!userRow?.emailVerified) {
+    redirect("/verificar-email")
+  }
+
+  // Read tenant theme + plan on the server so the first paint already has
+  // the correct accent and the sidebar can lock plan-gated items.
   let initialAccent: string | null = null
   let initialMode: "dark" | "light" | "auto" = "dark"
   let plan: string = "STARTER"
   let logoUrl: string | null = null
   let brandName: string | null = null
   let bannerData: BannerData = { kind: null, plan: "" }
+  if (session.user.tenantId) {
+    // Queries split so a single failure doesn't hide all three outputs. The
+    // promoRedemption query in particular may reference a model that isn't
+    // present on older Prisma clients in the running container — keeping it
+    // isolated means the rest of the layout still renders correctly.
+    const tenantId = session.user.tenantId
 
-  const tenantId = session.user.tenantId
-  const wrap = <T,>(p: Promise<T>, name: string) =>
-    p.catch((e) => {
-      console.error(`[dashboard-layout] ${name} query failed:`, e)
-      return null
-    })
-
-  const [userRow, sub, cfg, tenant, redemption] = await Promise.all([
-    wrap(
-      db.user.findUnique({
-        where: { id: session.user.id },
+    let subForBanner: {
+      plan: string
+      status: string | null
+      currentPeriodEnd: Date | null
+      paymentProvider: string | null
+    } | null = null
+    try {
+      const sub = await db.subscription.findUnique({
+        where: { tenantId },
         select: {
-          emailVerified: true,
-          tourCompletedAt: true,
-          lastWelcomedPlan: true,
+          plan: true,
+          status: true,
+          currentPeriodEnd: true,
+          paymentProvider: true,
         },
-      }),
-      "user"
-    ),
-    tenantId
-      ? wrap(
-          db.subscription.findUnique({
-            where: { tenantId },
-            select: {
-              plan: true,
-              status: true,
-              currentPeriodEnd: true,
-              paymentProvider: true,
-            },
-          }),
-          "subscription"
-        )
-      : Promise.resolve(null),
-    tenantId
-      ? wrap(db.tenantConfig.findUnique({ where: { tenantId } }), "tenantConfig")
-      : Promise.resolve(null),
-    tenantId
-      ? wrap(
-          db.tenant.findUnique({
-            where: { id: tenantId },
-            select: { name: true },
-          }),
-          "tenant"
-        )
-      : Promise.resolve(null),
-    tenantId
-      ? wrap(
-          db.promoRedemption.findFirst({
-            where: { tenantId },
-            include: { promoCode: { select: { planGranted: true } } },
-          }) as any,
-          "promoRedemption"
-        )
-      : Promise.resolve(null),
-  ])
+      })
+      if (sub) {
+        plan = sub.plan ?? "STARTER"
+        subForBanner = {
+          plan: sub.plan ?? "STARTER",
+          status: sub.status ?? null,
+          currentPeriodEnd: sub.currentPeriodEnd ?? null,
+          paymentProvider: sub.paymentProvider ?? null,
+        }
+      }
+    } catch (e) {
+      console.error("[dashboard-layout] subscription query failed:", e)
+    }
 
-  if (!userRow?.emailVerified) {
-    redirect("/verificar-email")
-  }
+    try {
+      const cfg = (await db.tenantConfig.findUnique({
+        where: { tenantId },
+      })) as any
+      initialAccent = cfg?.themeColor ?? null
+      const m = cfg?.themeMode
+      if (m === "light" || m === "dark" || m === "auto") initialMode = m
+      logoUrl = cfg?.logoUrl ?? null
+    } catch (e) {
+      console.error("[dashboard-layout] tenantConfig query failed:", e)
+    }
 
-  if (sub) {
-    plan = sub.plan ?? "STARTER"
-  }
-  if (cfg) {
-    const c = cfg as any
-    initialAccent = c?.themeColor ?? null
-    const m = c?.themeMode
-    if (m === "light" || m === "dark" || m === "auto") initialMode = m
-    logoUrl = c?.logoUrl ?? null
-  }
-  if (tenant) {
-    brandName = (tenant as { name: string | null }).name ?? null
-  }
+    try {
+      const tenant = await db.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true },
+      })
+      brandName = tenant?.name ?? null
+    } catch (e) {
+      console.error("[dashboard-layout] tenant query failed:", e)
+    }
 
-  let hadPromo = false
-  let promoPlanGranted: string | null = null
-  if (redemption) {
-    hadPromo = true
-    promoPlanGranted = (redemption as any).promoCode?.planGranted ?? null
-  }
+    // Promo lookup is best-effort. If it fails, the banner will still render
+    // as a trial-style banner for paid plans without paymentProvider, which
+    // is the correct UX for a user on a promo window anyway.
+    let hadPromo = false
+    let promoPlanGranted: string | null = null
+    try {
+      const redemption = (await db.promoRedemption.findFirst({
+        where: { tenantId },
+        include: { promoCode: { select: { planGranted: true } } },
+      })) as any
+      if (redemption) {
+        hadPromo = true
+        promoPlanGranted = redemption.promoCode?.planGranted ?? null
+      }
+    } catch (e) {
+      console.error("[dashboard-layout] promoRedemption query failed:", e)
+    }
 
-  if (sub) {
-    bannerData = deriveBannerState({
-      plan: sub.plan ?? "STARTER",
-      status: sub.status ?? null,
-      currentPeriodEnd: sub.currentPeriodEnd ?? null,
-      paymentProvider: sub.paymentProvider ?? null,
-      hadPromo,
-      promoPlan: promoPlanGranted,
-    })
+    if (subForBanner) {
+      bannerData = deriveBannerState({
+        plan: subForBanner.plan,
+        status: subForBanner.status,
+        currentPeriodEnd: subForBanner.currentPeriodEnd,
+        paymentProvider: subForBanner.paymentProvider,
+        hadPromo,
+        promoPlan: promoPlanGranted,
+      })
+    }
   }
 
   const aiEnabled = hasFeature(plan as any, "feature:ai_assistant")
