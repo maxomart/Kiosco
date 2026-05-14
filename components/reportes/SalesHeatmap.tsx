@@ -11,11 +11,12 @@ interface Cell {
 }
 
 const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
-// Re-order to start with Monday
+const DAY_LABELS_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 
 type Period = "this-week" | "last-week" | "30d" | "90d" | "custom"
+type Metric = "count" | "total"
 
 const PERIOD_OPTIONS: Array<{ value: Period; label: string }> = [
   { value: "this-week", label: "Esta semana" },
@@ -24,10 +25,6 @@ const PERIOD_OPTIONS: Array<{ value: Period; label: string }> = [
   { value: "90d", label: "Últimos 90 días" },
 ]
 
-/**
- * Calcula el rango de fechas para un period (lunes-domingo en AR/ES).
- * Devuelve ISO strings tal cual los espera el endpoint de insights.
- */
 function getPeriodRange(p: Period, fallbackFrom: string, fallbackTo: string): {
   from: string
   to: string
@@ -41,7 +38,6 @@ function getPeriodRange(p: Period, fallbackFrom: string, fallbackTo: string): {
     `${a.toLocaleDateString("es-AR", { day: "numeric", month: "short" })} – ${b.toLocaleDateString("es-AR", { day: "numeric", month: "short" })}`
 
   if (p === "this-week" || p === "last-week") {
-    // Lunes = primer día. JS Sunday = 0; conversión: (day + 6) % 7
     const dayOfWeek = (now.getDay() + 6) % 7
     const weekStart = new Date(now)
     weekStart.setDate(now.getDate() - dayOfWeek)
@@ -58,7 +54,6 @@ function getPeriodRange(p: Period, fallbackFrom: string, fallbackTo: string): {
       label: `${p === "this-week" ? "Esta semana" : "Semana pasada"} · ${fmtRange(weekStart, weekEnd)}`,
     }
   }
-  // 30d / 90d
   const days = p === "30d" ? 30 : 90
   const start = new Date(now)
   start.setDate(now.getDate() - days + 1)
@@ -68,6 +63,13 @@ function getPeriodRange(p: Period, fallbackFrom: string, fallbackTo: string): {
     to: now.toISOString(),
     label: `Últimos ${days} días · ${fmtRange(start, now)}`,
   }
+}
+
+/** Formatea pesos compactos: $44k, $1.2M, etc. */
+function fmtCompact(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}k`
+  return `$${Math.round(n)}`
 }
 
 export function SalesHeatmap({
@@ -80,6 +82,7 @@ export function SalesHeatmap({
   const [cells, setCells] = useState<Cell[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>("30d")
+  const [metric, setMetric] = useState<Metric>("count")
 
   const range = useMemo(() => getPeriodRange(period, from, to), [period, from, to])
 
@@ -104,32 +107,99 @@ export function SalesHeatmap({
     }
   }, [range.from, range.to])
 
-  // Build a lookup
-  const cellMap = new Map<string, Cell>()
-  for (const c of cells) cellMap.set(`${c.day}-${c.hour}`, c)
+  const cellMap = useMemo(() => {
+    const m = new Map<string, Cell>()
+    for (const c of cells) m.set(`${c.day}-${c.hour}`, c)
+    return m
+  }, [cells])
 
-  const maxTotal = Math.max(1, ...cells.map((c) => c.total))
-
-  // Filter visible hours (only show range with activity, +/- 2)
-  const activeHours = new Set(cells.filter((c) => c.count > 0).map((c) => c.hour))
-  const minHour = activeHours.size > 0 ? Math.max(0, Math.min(...activeHours) - 1) : 8
-  const maxHour = activeHours.size > 0 ? Math.min(23, Math.max(...activeHours) + 1) : 22
-  const visibleHours = HOURS.slice(minHour, maxHour + 1)
-
-  const getCellColor = (total: number): string => {
-    if (total === 0) return "bg-gray-900/50 border-gray-800/50"
-    const intensity = total / maxTotal
-    if (intensity > 0.75) return "bg-accent border-accent text-accent-foreground"
-    if (intensity > 0.5) return "bg-accent/70 border-accent/70 text-accent-foreground"
-    if (intensity > 0.25) return "bg-accent/40 border-accent/40 text-gray-100"
-    return "bg-accent/15 border-accent/20 text-gray-300"
+  const getValue = (c: Cell | undefined): number => {
+    if (!c) return 0
+    return metric === "count" ? c.count : c.total
   }
 
-  // Pico del período: día + hora con más ventas (para destacar abajo)
-  const peakCell = cells.reduce<Cell | null>((best, c) => {
-    if (!best || c.total > best.total) return c
-    return best
-  }, null)
+  const maxValue = useMemo(() => {
+    if (cells.length === 0) return 1
+    return Math.max(1, ...cells.map((c) => (metric === "count" ? c.count : c.total)))
+  }, [cells, metric])
+
+  // Solo mostrar horas con actividad (+/- 1)
+  const { visibleHours, minHour, maxHour } = useMemo(() => {
+    const activeHours = new Set(cells.filter((c) => c.count > 0).map((c) => c.hour))
+    if (activeHours.size === 0) return { visibleHours: HOURS.slice(8, 23), minHour: 8, maxHour: 22 }
+    const min = Math.max(0, Math.min(...activeHours) - 1)
+    const max = Math.min(23, Math.max(...activeHours) + 1)
+    return { visibleHours: HOURS.slice(min, max + 1), minHour: min, maxHour: max }
+  }, [cells])
+
+  // Pico (top 3) según métrica activa
+  const topCells = useMemo(() => {
+    return [...cells]
+      .filter((c) => c.count > 0)
+      .sort((a, b) => getValue(b) - getValue(a))
+      .slice(0, 3)
+  }, [cells, metric])
+
+  // Mejor día (agregado por día de semana)
+  const bestDay = useMemo(() => {
+    if (cells.length === 0) return null
+    const byDay = new Map<number, { count: number; total: number }>()
+    for (const c of cells) {
+      const prev = byDay.get(c.day) ?? { count: 0, total: 0 }
+      byDay.set(c.day, { count: prev.count + c.count, total: prev.total + c.total })
+    }
+    let bestKey = -1
+    let bestValue = 0
+    for (const [day, agg] of byDay) {
+      const v = metric === "count" ? agg.count : agg.total
+      if (v > bestValue) {
+        bestValue = v
+        bestKey = day
+      }
+    }
+    if (bestKey === -1) return null
+    return { day: bestKey, ...byDay.get(bestKey)! }
+  }, [cells, metric])
+
+  // Mejor franja horaria (3h consecutivas con más actividad)
+  const bestSlot = useMemo(() => {
+    if (cells.length === 0) return null
+    const byHour = new Array<{ count: number; total: number }>(24)
+      .fill(null as never)
+      .map(() => ({ count: 0, total: 0 }))
+    for (const c of cells) {
+      byHour[c.hour].count += c.count
+      byHour[c.hour].total += c.total
+    }
+    let bestStart = -1
+    let bestValue = 0
+    for (let h = 0; h <= 21; h++) {
+      const v =
+        metric === "count"
+          ? byHour[h].count + byHour[h + 1].count + byHour[h + 2].count
+          : byHour[h].total + byHour[h + 1].total + byHour[h + 2].total
+      if (v > bestValue) {
+        bestValue = v
+        bestStart = h
+      }
+    }
+    if (bestStart === -1) return null
+    return { start: bestStart, end: bestStart + 3, value: bestValue }
+  }, [cells, metric])
+
+  const totalSales = useMemo(() => cells.reduce((s, c) => s + c.count, 0), [cells])
+  const totalRevenue = useMemo(() => cells.reduce((s, c) => s + c.total, 0), [cells])
+
+  const getCellColor = (value: number): string => {
+    if (value === 0) return "bg-gray-900/40 border-gray-800/40"
+    const intensity = value / maxValue
+    if (intensity > 0.66) return "bg-accent border-accent text-accent-foreground shadow-sm shadow-accent/30"
+    if (intensity > 0.33) return "bg-accent/60 border-accent/60 text-accent-foreground"
+    if (intensity > 0.1) return "bg-accent/30 border-accent/40 text-gray-100"
+    return "bg-accent/10 border-accent/20 text-gray-400"
+  }
+
+  const peakCell = topCells[0] ?? null
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
@@ -138,34 +208,65 @@ export function SalesHeatmap({
           <h3 className="text-sm font-semibold text-gray-100">
             Mapa de calor: ¿Cuándo vendés más?
           </h3>
-          <p className="text-xs text-gray-500 mt-0.5">{range.label}</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {range.label} ·{" "}
+            <span className="text-gray-400">
+              {totalSales.toLocaleString("es-AR")} ventas · ${totalRevenue.toLocaleString("es-AR")}
+            </span>
+          </p>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-gray-500">
-          <span>Menos</span>
-          <div className="w-3 h-3 rounded bg-accent/15" />
-          <div className="w-3 h-3 rounded bg-accent/40" />
-          <div className="w-3 h-3 rounded bg-accent/70" />
-          <div className="w-3 h-3 rounded bg-accent" />
-          <span>Más</span>
+        <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+          <span>Poco</span>
+          <div className="w-3 h-3 rounded bg-accent/10 border border-accent/20" />
+          <div className="w-3 h-3 rounded bg-accent/30 border border-accent/40" />
+          <div className="w-3 h-3 rounded bg-accent/60 border border-accent/60" />
+          <div className="w-3 h-3 rounded bg-accent border border-accent" />
+          <span>Mucho</span>
         </div>
       </div>
 
-      {/* Selector de período */}
-      <div className="flex items-center gap-1 flex-wrap mb-4">
-        {PERIOD_OPTIONS.map((opt) => (
+      {/* Controles: período + métrica */}
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+        <div className="flex items-center gap-1 flex-wrap">
+          {PERIOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setPeriod(opt.value)}
+              className={`px-2.5 py-1 text-[11px] rounded-lg border transition-colors ${
+                period === opt.value
+                  ? "bg-accent/20 border-accent/50 text-accent-foreground"
+                  : "bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <div className="inline-flex rounded-lg border border-gray-700 bg-gray-800 p-0.5">
           <button
-            key={opt.value}
             type="button"
-            onClick={() => setPeriod(opt.value)}
-            className={`px-2.5 py-1 text-[11px] rounded-lg border transition-colors ${
-              period === opt.value
-                ? "bg-accent/20 border-accent/50 text-accent-foreground"
-                : "bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-600"
+            onClick={() => setMetric("count")}
+            className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${
+              metric === "count"
+                ? "bg-accent text-accent-foreground font-medium"
+                : "text-gray-400 hover:text-white"
             }`}
           >
-            {opt.label}
+            Ventas
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={() => setMetric("total")}
+            className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${
+              metric === "total"
+                ? "bg-accent text-accent-foreground font-medium"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Facturación
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -198,20 +299,30 @@ export function SalesHeatmap({
                     </td>
                     {visibleHours.map((h) => {
                       const c = cellMap.get(`${dayIdx}-${h}`)
-                      const total = c?.total ?? 0
-                      const count = c?.count ?? 0
-                      const isPeak =
-                        peakCell && peakCell.day === dayIdx && peakCell.hour === h
+                      const value = getValue(c)
+                      const isPeak = peakCell && peakCell.day === dayIdx && peakCell.hour === h
+                      const display =
+                        value === 0
+                          ? ""
+                          : metric === "count"
+                            ? value.toString()
+                            : fmtCompact(value)
                       return (
                         <td key={h} className="p-0.5">
                           <div
-                            className={`w-7 h-6 rounded border ${getCellColor(total)} ${
-                              isPeak ? "ring-2 ring-accent/60 ring-offset-1 ring-offset-gray-900" : ""
-                            } flex items-center justify-center transition-colors group cursor-default relative`}
-                            title={`${DAY_LABELS[dayIdx]} ${h}:00 · ${count} ventas · $ ${total.toLocaleString("es-AR")}`}
+                            className={`w-7 h-6 rounded border ${getCellColor(value)} ${
+                              isPeak
+                                ? "ring-2 ring-amber-400/80 ring-offset-1 ring-offset-gray-900 z-10 relative"
+                                : ""
+                            } flex items-center justify-center transition-colors cursor-default`}
+                            title={
+                              c
+                                ? `${DAY_LABELS_LONG[dayIdx]} ${h}:00 — ${c.count} ${c.count === 1 ? "venta" : "ventas"} · $${c.total.toLocaleString("es-AR")}`
+                                : `${DAY_LABELS_LONG[dayIdx]} ${h}:00 — sin ventas`
+                            }
                           >
-                            {count > 0 && (
-                              <span className="text-[9px] font-mono">{count}</span>
+                            {display && (
+                              <span className="text-[8.5px] font-mono leading-none">{display}</span>
                             )}
                           </div>
                         </td>
@@ -223,15 +334,53 @@ export function SalesHeatmap({
             </table>
           </div>
 
-          {peakCell && peakCell.total > 0 && (
-            <p className="text-[11px] text-gray-500 mt-3">
-              🏆 Pico:{" "}
-              <span className="text-accent font-medium">
-                {DAY_LABELS[peakCell.day]} {peakCell.hour}:00
-              </span>{" "}
-              · {peakCell.count} ventas · ${peakCell.total.toLocaleString("es-AR")}
-            </p>
-          )}
+          {/* Insights */}
+          <div className="mt-4 pt-4 border-t border-gray-800 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {bestDay && (
+              <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-2.5">
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">
+                  Mejor día
+                </div>
+                <div className="text-sm font-medium text-gray-100 capitalize">
+                  {DAY_LABELS_LONG[bestDay.day]}
+                </div>
+                <div className="text-[11px] text-gray-400">
+                  {metric === "count"
+                    ? `${bestDay.count} ventas`
+                    : `$${bestDay.total.toLocaleString("es-AR")}`}
+                </div>
+              </div>
+            )}
+            {bestSlot && (
+              <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-2.5">
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">
+                  Mejor franja
+                </div>
+                <div className="text-sm font-medium text-gray-100">
+                  {bestSlot.start}:00 – {bestSlot.end}:00
+                </div>
+                <div className="text-[11px] text-gray-400">
+                  {metric === "count"
+                    ? `${bestSlot.value} ventas`
+                    : `$${bestSlot.value.toLocaleString("es-AR")}`}
+                </div>
+              </div>
+            )}
+            {peakCell && (
+              <div className="bg-amber-500/5 border border-amber-500/30 rounded-lg p-2.5">
+                <div className="text-[10px] text-amber-400/80 uppercase tracking-wide mb-0.5 flex items-center gap-1">
+                  <span>🏆</span> Hora pico
+                </div>
+                <div className="text-sm font-medium text-gray-100">
+                  {DAY_LABELS[peakCell.day]} {peakCell.hour}:00
+                </div>
+                <div className="text-[11px] text-gray-400">
+                  {peakCell.count} {peakCell.count === 1 ? "venta" : "ventas"} · $
+                  {peakCell.total.toLocaleString("es-AR")}
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
