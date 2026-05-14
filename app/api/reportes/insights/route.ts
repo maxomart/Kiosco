@@ -155,6 +155,31 @@ export async function GET(req: NextRequest) {
     }
     const heatmap = [...heatmapMap.values()]
 
+    // Day breakdown: cada día específico (cada lunes, cada martes, ...) por separado
+    // Permite mostrar variación semana a semana en el componente
+    const dayBreakdownMap = new Map<
+      string,
+      { day: number; date: string; count: number; total: number }
+    >()
+    for (const s of salesRaw) {
+      const ts = s.createdAt
+      const day = ts.getDay()
+      // Normalizar a la fecha del día (yyyy-mm-dd local)
+      const y = ts.getFullYear()
+      const m = String(ts.getMonth() + 1).padStart(2, "0")
+      const d = String(ts.getDate()).padStart(2, "0")
+      const dateKey = `${y}-${m}-${d}`
+      const key = `${day}-${dateKey}`
+      const curr =
+        dayBreakdownMap.get(key) ?? { day, date: dateKey, count: 0, total: 0 }
+      curr.count += 1
+      curr.total += Number(s.total)
+      dayBreakdownMap.set(key, curr)
+    }
+    const dayBreakdown = [...dayBreakdownMap.values()].sort((a, b) =>
+      a.date.localeCompare(b.date)
+    )
+
     // Top categories
     const catMap = new Map<string, { revenue: number; cost: number; qty: number }>()
     for (const s of salesRaw) {
@@ -284,6 +309,7 @@ Reglas:
       previous,
       changes,
       heatmap,
+      dayBreakdown,
       topCategories,
       topByMargin,
       expenses: totalExpenses,

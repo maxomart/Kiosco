@@ -10,6 +10,13 @@ interface Cell {
   total: number
 }
 
+interface DayBreakdownEntry {
+  day: number
+  date: string // yyyy-mm-dd
+  count: number
+  total: number
+}
+
 const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
 const DAY_LABELS_LONG = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
@@ -74,6 +81,13 @@ function fmtCompact(n: number): string {
   return `$${Math.round(n)}`
 }
 
+/** "2026-05-11" → "11 may" en es-AR */
+function fmtShortDate(yyyymmdd: string): string {
+  const [y, m, d] = yyyymmdd.split("-").map(Number)
+  const date = new Date(y, m - 1, d)
+  return date.toLocaleDateString("es-AR", { day: "numeric", month: "short" })
+}
+
 export function SalesHeatmap({
   from,
   to,
@@ -82,6 +96,7 @@ export function SalesHeatmap({
   to: string
 }) {
   const [cells, setCells] = useState<Cell[]>([])
+  const [dayBreakdown, setDayBreakdown] = useState<DayBreakdownEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>("30d")
   const [metric, setMetric] = useState<Metric>("count")
@@ -98,6 +113,7 @@ export function SalesHeatmap({
         if (res.ok && !cancelled) {
           const data = await res.json()
           setCells(data.heatmap ?? [])
+          setDayBreakdown(data.dayBreakdown ?? [])
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -109,7 +125,7 @@ export function SalesHeatmap({
     }
   }, [range.from, range.to])
 
-  // Agregados por hora (0-23)
+  // Agregado por hora (0-23)
   const byHour = useMemo(() => {
     const arr = Array.from({ length: 24 }, () => ({ count: 0, total: 0 }))
     for (const c of cells) {
@@ -119,20 +135,43 @@ export function SalesHeatmap({
     return arr
   }, [cells])
 
-  // Agregados por día (0=Dom .. 6=Sáb)
-  const byDay = useMemo(() => {
-    const arr = Array.from({ length: 7 }, () => ({ count: 0, total: 0 }))
-    for (const c of cells) {
-      arr[c.day].count += c.count
-      arr[c.day].total += c.total
+  // Agrupar dayBreakdown por día de la semana
+  const byDayOfWeek = useMemo(() => {
+    const map = new Map<number, DayBreakdownEntry[]>()
+    for (const e of dayBreakdown) {
+      const list = map.get(e.day) ?? []
+      list.push(e)
+      map.set(e.day, list)
     }
-    return arr
-  }, [cells])
+    return map
+  }, [dayBreakdown])
+
+  // Totales y promedios por día de la semana
+  const dayStats = useMemo(() => {
+    const out = new Map<
+      number,
+      { total: number; count: number; weeks: number; avgCount: number; avgTotal: number }
+    >()
+    for (let d = 0; d < 7; d++) {
+      const entries = byDayOfWeek.get(d) ?? []
+      const count = entries.reduce((s, e) => s + e.count, 0)
+      const total = entries.reduce((s, e) => s + e.total, 0)
+      const weeks = entries.length
+      out.set(d, {
+        count,
+        total,
+        weeks,
+        avgCount: weeks > 0 ? count / weeks : 0,
+        avgTotal: weeks > 0 ? total / weeks : 0,
+      })
+    }
+    return out
+  }, [byDayOfWeek])
 
   const getValue = (d: { count: number; total: number }): number =>
     metric === "count" ? d.count : d.total
 
-  // Solo mostrar rango de horas con actividad (con padding)
+  // Rango horario activo con padding
   const { hourStart, hourEnd } = useMemo(() => {
     const activeHours = byHour
       .map((h, idx) => ({ idx, active: h.count > 0 }))
@@ -145,13 +184,21 @@ export function SalesHeatmap({
     }
   }, [byHour])
 
-  const maxHourValue = useMemo(() => {
-    return Math.max(1, ...byHour.map(getValue))
-  }, [byHour, metric])
+  const maxHourValue = useMemo(
+    () => Math.max(1, ...byHour.map(getValue)),
+    [byHour, metric]
+  )
 
-  const maxDayValue = useMemo(() => {
-    return Math.max(1, ...byDay.map(getValue))
-  }, [byDay, metric])
+  // Para los días: usamos el PROMEDIO (por semana) como métrica principal
+  // así "Lun" representa "lo que vendés en un lunes típico"
+  const maxDayAvg = useMemo(() => {
+    let max = 1
+    for (const d of dayStats.values()) {
+      const v = metric === "count" ? d.avgCount : d.avgTotal
+      if (v > max) max = v
+    }
+    return max
+  }, [dayStats, metric])
 
   // Pico de hora
   const peakHour = useMemo(() => {
@@ -168,22 +215,22 @@ export function SalesHeatmap({
     return { hour: bestIdx, ...byHour[bestIdx] }
   }, [byHour, metric])
 
-  // Mejor día
+  // Mejor día (por promedio)
   const bestDay = useMemo(() => {
     let bestIdx = -1
     let bestVal = 0
-    byDay.forEach((d, idx) => {
-      const v = getValue(d)
+    for (const [day, s] of dayStats) {
+      const v = metric === "count" ? s.avgCount : s.avgTotal
       if (v > bestVal) {
         bestVal = v
-        bestIdx = idx
+        bestIdx = day
       }
-    })
+    }
     if (bestIdx === -1) return null
-    return { day: bestIdx, ...byDay[bestIdx] }
-  }, [byDay, metric])
+    return { day: bestIdx, ...dayStats.get(bestIdx)! }
+  }, [dayStats, metric])
 
-  // Mejor franja de 3h consecutivas
+  // Mejor franja de 3h
   const bestSlot = useMemo(() => {
     let bestStart = -1
     let bestVal = 0
@@ -198,11 +245,18 @@ export function SalesHeatmap({
     return { start: bestStart, end: bestStart + 3, value: bestVal }
   }, [byHour, metric])
 
+  // Max value across individual day breakdowns (para las mini-sparklines)
+  const maxBreakdownValue = useMemo(() => {
+    return Math.max(1, ...dayBreakdown.map(getValue))
+  }, [dayBreakdown, metric])
+
   const totalSales = useMemo(() => cells.reduce((s, c) => s + c.count, 0), [cells])
   const totalRevenue = useMemo(() => cells.reduce((s, c) => s + c.total, 0), [cells])
 
-  const visibleHours = Array.from({ length: hourEnd - hourStart + 1 }, (_, i) => i + hourStart)
-
+  const visibleHours = Array.from(
+    { length: hourEnd - hourStart + 1 },
+    (_, i) => i + hourStart
+  )
   const hasData = cells.length > 0
 
   return (
@@ -227,7 +281,7 @@ export function SalesHeatmap({
         </div>
       </div>
 
-      {/* Controles: período + métrica */}
+      {/* Controles */}
       <div className="flex items-center justify-between gap-2 flex-wrap mb-5">
         <div className="flex items-center gap-1 flex-wrap">
           {PERIOD_OPTIONS.map((opt) => (
@@ -307,9 +361,10 @@ export function SalesHeatmap({
                   {DAY_LABELS_LONG[bestDay.day]}
                 </div>
                 <div className="text-[11px] text-gray-400 mt-0.5">
+                  Promedio:{" "}
                   {metric === "count"
-                    ? `${bestDay.count} ventas en total`
-                    : `${fmtMoney(bestDay.total)} facturados`}
+                    ? `${bestDay.avgCount.toFixed(1)} ventas/día`
+                    : fmtMoney(Math.round(bestDay.avgTotal))}
                 </div>
               </div>
             )}
@@ -384,50 +439,90 @@ export function SalesHeatmap({
             </div>
           </div>
 
-          {/* Gráfico 2: Por día de la semana */}
+          {/* Gráfico 2: Por día de la semana — promedio + sparkline semanal */}
           <div>
-            <h4 className="text-xs font-semibold text-gray-200 mb-3">Por día de la semana</h4>
-            <div className="space-y-2">
+            <div className="flex items-baseline justify-between mb-3">
+              <h4 className="text-xs font-semibold text-gray-200">Por día de la semana</h4>
+              <span className="text-[10px] text-gray-500">
+                Promedio por día · {metric === "count" ? "ventas" : "facturación"}
+              </span>
+            </div>
+            <div className="space-y-2.5">
               {DAY_ORDER.map((dayIdx) => {
-                const value = getValue(byDay[dayIdx])
-                const widthPct = (value / maxDayValue) * 100
+                const stats = dayStats.get(dayIdx)!
+                const avgValue = metric === "count" ? stats.avgCount : stats.avgTotal
+                const totalValue = metric === "count" ? stats.count : stats.total
+                const widthPct = (avgValue / maxDayAvg) * 100
                 const isBest = bestDay?.day === dayIdx
+                const entries = byDayOfWeek.get(dayIdx) ?? []
+
                 return (
-                  <div key={dayIdx} className="flex items-center gap-3">
-                    <div className="w-10 text-[11px] text-gray-400 font-medium text-right shrink-0">
+                  <div key={dayIdx} className="grid grid-cols-[2.5rem_1fr_auto] items-center gap-3">
+                    <div className="text-[11px] text-gray-400 font-medium text-right">
                       {DAY_LABELS[dayIdx]}
                     </div>
-                    <div className="flex-1 bg-gray-800/40 rounded-md h-6 overflow-hidden relative">
-                      <div
-                        className={`h-full rounded-md transition-all flex items-center justify-end pr-2 ${
-                          value === 0
-                            ? ""
-                            : isBest
-                              ? "bg-accent"
-                              : "bg-accent/40"
-                        }`}
-                        style={{ width: `${Math.max(value === 0 ? 0 : 3, widthPct)}%` }}
-                      >
-                        {value > 0 && widthPct > 15 && (
-                          <span
-                            className={`text-[10px] font-mono tabular-nums ${
-                              isBest ? "text-accent-foreground font-medium" : "text-gray-200"
-                            }`}
-                          >
-                            {metric === "count" ? `${value} ventas` : fmtMoney(value)}
-                          </span>
-                        )}
-                      </div>
-                      {value > 0 && widthPct <= 15 && (
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-mono tabular-nums">
-                          {metric === "count" ? value : fmtCompact(value)}
-                        </span>
+
+                    {/* Barra de promedio + sparkline de semanas individuales encima */}
+                    <div className="space-y-1.5">
+                      {/* Sparkline: una barrita por cada lunes/martes/etc del período */}
+                      {entries.length > 0 ? (
+                        <div className="flex items-end gap-0.5 h-5">
+                          {entries.map((e) => {
+                            const v = getValue(e)
+                            const hPct = (v / maxBreakdownValue) * 100
+                            return (
+                              <div
+                                key={e.date}
+                                className={`flex-1 min-w-[3px] max-w-[14px] rounded-sm transition-colors ${
+                                  isBest ? "bg-accent/70 hover:bg-accent" : "bg-gray-700 hover:bg-gray-600"
+                                }`}
+                                style={{ height: `${Math.max(8, hPct)}%` }}
+                                title={`${fmtShortDate(e.date)} · ${e.count} ${e.count === 1 ? "venta" : "ventas"} · ${fmtMoney(e.total)}`}
+                              />
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="h-5 flex items-center text-[10px] text-gray-600">
+                          Sin datos
+                        </div>
                       )}
+
+                      {/* Barra principal con el promedio */}
+                      <div className="bg-gray-800/40 rounded h-3 overflow-hidden relative">
+                        <div
+                          className={`h-full rounded transition-all ${
+                            avgValue === 0
+                              ? ""
+                              : isBest
+                                ? "bg-accent"
+                                : "bg-accent/40"
+                          }`}
+                          style={{ width: `${Math.max(avgValue === 0 ? 0 : 3, widthPct)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Promedio + total a la derecha */}
+                    <div className="text-right min-w-[7rem]">
+                      <div className={`text-xs font-medium tabular-nums ${isBest ? "text-accent" : "text-gray-200"}`}>
+                        {metric === "count"
+                          ? `${avgValue.toFixed(1)} prom.`
+                          : `${fmtCompact(avgValue)} prom.`}
+                      </div>
+                      <div className="text-[10px] text-gray-500 tabular-nums">
+                        {stats.weeks} {stats.weeks === 1 ? "día" : "días"} ·{" "}
+                        {metric === "count" ? `${totalValue} en total` : fmtCompact(totalValue)}
+                      </div>
                     </div>
                   </div>
                 )
               })}
             </div>
+            <p className="text-[10px] text-gray-500 mt-3 leading-snug">
+              Cada barrita chica = un lunes/martes/etc del período. La barra grande = promedio.
+              Pasá el mouse para ver detalle de cada día.
+            </p>
           </div>
         </>
       )}
