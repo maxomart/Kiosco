@@ -35,7 +35,25 @@ const CORNER_STORAGE_KEY = "orvex:ai-corner"
 // can drag the FAB and it snaps to the nearest of these four.
 type Corner = "tl" | "tr" | "bl" | "br"
 
-const CORNER_POSITION: Record<Corner, string> = {
+const FAB_SIZE = 56 // w-14 / h-14
+const FAB_PADDING = 20 // ~5 (Tailwind p-5)
+
+function cornerToPos(c: Corner, w: number, h: number): { left: number; top: number } {
+  switch (c) {
+    case "tl":
+      return { left: FAB_PADDING, top: FAB_PADDING }
+    case "tr":
+      return { left: w - FAB_SIZE - FAB_PADDING, top: FAB_PADDING }
+    case "bl":
+      return { left: FAB_PADDING, top: h - FAB_SIZE - FAB_PADDING }
+    case "br":
+      return { left: w - FAB_SIZE - FAB_PADDING, top: h - FAB_SIZE - FAB_PADDING }
+  }
+}
+
+// Posición del panel — se ancla a la esquina donde está el FAB para que el
+// panel "salga" desde el botón.
+const PANEL_CORNER_POSITION: Record<Corner, string> = {
   tl: "top-5 left-5",
   tr: "top-5 right-5",
   bl: "bottom-5 left-5",
@@ -81,9 +99,24 @@ export function AssistantWidget({ plan = "STARTER" }: { plan?: Plan }) {
   const [corner, setCorner] = useState<Corner>("br")
   const [dragging, setDragging] = useState(false)
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
+  const [viewport, setViewport] = useState<{ w: number; h: number }>(() => {
+    if (typeof window === "undefined") return { w: 1280, h: 800 }
+    return { w: window.innerWidth, h: window.innerHeight }
+  })
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragStartedRef = useRef(false) // distinguishes drag from click on pointerup
   const pointerIdRef = useRef<number | null>(null)
+
+  // Listen resize para recalcular posiciones de corners (rotación de pantalla,
+  // ventana redimensionada, etc.). El FAB anima suave a la nueva posición.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    function onResize() {
+      setViewport({ w: window.innerWidth, h: window.innerHeight })
+    }
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
 
   // Restore saved corner on mount.
   useEffect(() => {
@@ -269,13 +302,21 @@ export function AssistantWidget({ plan = "STARTER" }: { plan?: Plan }) {
 
   const insightCount = insights.length
 
-  // Compute FAB position. While dragging we follow the pointer; otherwise we
-  // anchor to the saved corner via tailwind class.
-  const fabStyle: React.CSSProperties =
-    dragging && dragPos
-      ? { position: "fixed", left: dragPos.x - 28, top: dragPos.y - 28, zIndex: 60 }
-      : {}
-  const fabCornerClass = dragging ? "" : `fixed ${CORNER_POSITION[corner]} z-40`
+  // Compute FAB position. Siempre `position: fixed` con left/top numéricos
+  // — durante drag sigue el cursor sin transition, y al soltar (o al cambiar
+  // de corner) la transición CSS lo anima suave con un easing ease-out-back
+  // tipo spring. Antes el corner usaba clases Tailwind y el cambio era
+  // teleport instantáneo — esto lo arregla.
+  const cornerPos = cornerToPos(corner, viewport.w, viewport.h)
+  const fabStyle: React.CSSProperties = {
+    position: "fixed",
+    left: dragging && dragPos ? dragPos.x - FAB_SIZE / 2 : cornerPos.left,
+    top: dragging && dragPos ? dragPos.y - FAB_SIZE / 2 : cornerPos.top,
+    zIndex: dragging ? 60 : 40,
+    transition: dragging
+      ? "transform 0.15s, box-shadow 0.15s"
+      : "left 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.15s, box-shadow 0.2s",
+  }
 
   return (
     <>
@@ -289,11 +330,10 @@ export function AssistantWidget({ plan = "STARTER" }: { plan?: Plan }) {
         onContextMenu={(e) => e.preventDefault()}
         style={fabStyle}
         className={cn(
-          fabCornerClass,
           "w-14 h-14 rounded-full shadow-2xl flex items-center justify-center select-none touch-none",
-          "bg-accent hover:bg-accent-hover text-accent-foreground transition-transform duration-150",
+          "bg-accent hover:bg-accent-hover text-accent-foreground",
           dragging
-            ? "scale-110 ring-4 ring-accent/40 cursor-grabbing"
+            ? "scale-110 ring-4 ring-accent/40 cursor-grabbing shadow-accent/40"
             : "hover:scale-105 active:scale-95 cursor-grab",
           open && "scale-90 opacity-0 pointer-events-none"
         )}
@@ -314,7 +354,7 @@ export function AssistantWidget({ plan = "STARTER" }: { plan?: Plan }) {
           "fixed z-50 w-[calc(100vw-2.5rem)] sm:w-96 max-w-[420px] h-[calc(100vh-6rem)] sm:h-[600px]",
           "bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden",
           "animate-in fade-in zoom-in-95 duration-200",
-          CORNER_POSITION[corner],
+          PANEL_CORNER_POSITION[corner],
           PANEL_ANIM[corner]
         )}>
           {/* Header */}
