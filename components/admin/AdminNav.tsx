@@ -23,6 +23,7 @@ import {
   Settings,
   UsersRound,
   FileCheck2,
+  Ticket,
 } from "lucide-react"
 
 interface Props {
@@ -63,6 +64,7 @@ const NAV: NavEntry[] = [
       { href: "/admin/usuarios", label: "Usuarios", icon: Users, description: "Cuentas individuales" },
       { href: "/admin/suscripciones", label: "Suscripciones", icon: CreditCard, description: "Planes y renovaciones" },
       { href: "/admin/facturas", label: "Facturas", icon: Receipt, description: "Cobros y emisiones" },
+      { href: "/admin/promo-codes", label: "Códigos promo", icon: Ticket, description: "Cupones de descuento" },
     ],
   },
   { type: "link", href: "/admin/soporte", label: "Soporte", icon: LifeBuoy },
