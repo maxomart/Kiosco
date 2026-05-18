@@ -18,7 +18,7 @@ export async function GET() {
     console.error("[admin/stats] promoRedemption lookup failed:", e)
   }
 
-  const [tenants, users, subs, recent, paidInvoices] = await Promise.all([
+  const [tenants, users, subs, recent, paidInvoices, salesAgg] = await Promise.all([
     db.tenant.findMany({ select: { id: true, active: true, config: { select: { businessType: true } } } }),
     db.user.count(),
     db.subscription.findMany({
@@ -38,6 +38,12 @@ export async function GET() {
       select: { id: true, name: true, createdAt: true, subscription: { select: { plan: true } } },
     }),
     db.invoice.findMany({ where: { status: "PAID" }, select: { subscriptionId: true } }),
+    // Volumen total transaccionado por TODOS los tenants (GMV del sistema).
+    db.sale.aggregate({
+      where: { status: "COMPLETED" },
+      _sum: { total: true },
+      _count: true,
+    }),
   ])
 
   const paidSubscriptionSet = new Set<string>(
@@ -88,7 +94,8 @@ export async function GET() {
     paidTenants,
     promoActiveTenants,
     totalUsers: users,
-    totalRevenue: 0,
+    totalRevenue: Number(salesAgg._sum.total ?? 0),
+    totalSalesCount: salesAgg._count,
     monthlyRecurringRevenue: mrr,
     byPlan,
     byBusinessType,

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Building2, Users, DollarSign, TrendingUp } from "lucide-react"
+import { Building2, Users, DollarSign, TrendingUp, ShoppingCart } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
 import AdminAIBrief from "@/components/admin/AdminAIBrief"
 import AdminActivityFeed from "@/components/admin/AdminActivityFeed"
@@ -15,6 +15,7 @@ interface AdminStats {
   promoActiveTenants?: number
   totalUsers: number
   totalRevenue: number
+  totalSalesCount?: number
   monthlyRecurringRevenue: number
   byPlan: { plan: string; count: number }[]
   byBusinessType: { type: string; count: number }[]
@@ -61,9 +62,8 @@ export default function AdminDashboard() {
       {/* AI Brief — IA-generated 2-3 sentence summary of today */}
       <AdminAIBrief />
 
-      {/* KPI Cards + System health */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* KPI Cards — métricas del negocio */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-500 text-sm">Tenants totales</span>
@@ -107,11 +107,23 @@ export default function AdminDashboard() {
           <p className="text-2xl font-bold text-yellow-400">${(stats.monthlyRecurringRevenue * 12).toFixed(0)}</p>
           <p className="text-gray-500 text-xs mt-1">USD / año recurrente</p>
         </div>
+      </div>
+
+      {/* Volumen del sistema + salud */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-500 text-sm">Volumen procesado en Orvex</span>
+            <ShoppingCart size={16} className="text-purple-400" />
+          </div>
+          <p className="text-2xl font-bold text-white">
+            ${Math.round(stats.totalRevenue).toLocaleString("es-AR")}
+          </p>
+          <p className="text-gray-500 text-xs mt-1">
+            {(stats.totalSalesCount ?? 0).toLocaleString("es-AR")} ventas registradas por todos los tenants
+          </p>
         </div>
-        {/* System health card — last column on lg+ */}
-        <div className="lg:col-span-1">
-          <AdminHealthCard />
-        </div>
+        <AdminHealthCard />
       </div>
 
       {/* Charts row */}
