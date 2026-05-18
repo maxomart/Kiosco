@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import {
   ChevronDown,
+  HelpCircle,
   LifeBuoy,
   LogOut,
   Menu,
@@ -244,6 +245,11 @@ export default function Header({ user, plan: planProp = "STARTER" }: HeaderProps
                 </div>
                 <div className="p-1.5 border-t border-gray-800">
                   <InstallAppMenuItem onClick={() => setMenuOpen(false)} />
+                  <MenuLink
+                    href="/ayuda"
+                    icon={<HelpCircle size={15} />}
+                    label="Centro de ayuda"
+                  />
                   <button
                     type="button"
                     onClick={() => {
