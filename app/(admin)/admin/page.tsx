@@ -19,6 +19,8 @@ interface AdminStats {
   monthlyRecurringRevenue: number
   byPlan: { plan: string; count: number }[]
   byBusinessType: { type: string; count: number }[]
+  signupsByMonth?: { month: string; count: number }[]
+  conversionRate?: number
   recentSignups: { id: string; name: string; plan: string; createdAt: string }[]
 }
 
@@ -153,6 +155,36 @@ export default function AdminDashboard() {
               <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Crecimiento: altas por mes + conversión */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-gray-900 rounded-xl p-5 border border-gray-800">
+          <h3 className="text-white font-semibold mb-4">Altas por mes (últimos 6)</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={stats.signupsByMonth ?? []}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="month" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+              <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#111827", border: "1px solid #374151", borderRadius: "8px" }}
+              />
+              <Bar dataKey="count" name="Altas" fill="#10b981" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col">
+          <h3 className="text-white font-semibold mb-1">Conversión a pago</h3>
+          <p className="text-gray-500 text-xs mb-4">Tenants en plan pago sobre el total</p>
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <p className="text-5xl font-bold text-emerald-400">
+              {(stats.conversionRate ?? 0).toFixed(0)}%
+            </p>
+            <p className="text-gray-400 text-sm mt-2 text-center">
+              {stats.paidTenants ?? 0} de {stats.totalTenants} cuentas pagan
+            </p>
+          </div>
         </div>
       </div>
 

@@ -19,7 +19,7 @@ export async function GET() {
   }
 
   const [tenants, users, subs, recent, paidInvoices, salesAgg] = await Promise.all([
-    db.tenant.findMany({ select: { id: true, active: true, config: { select: { businessType: true } } } }),
+    db.tenant.findMany({ select: { id: true, active: true, createdAt: true, config: { select: { businessType: true } } } }),
     db.user.count(),
     db.subscription.findMany({
       select: {
@@ -87,6 +87,27 @@ export async function GET() {
   }
   const byBusinessType = Object.entries(businessCounts).map(([type, count]) => ({ type, count }))
 
+  // Altas por mes — últimos 6 meses (incluye meses sin altas para que el
+  // gráfico no se "salte" períodos).
+  const MONTH_LABELS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+  const signupMap: Record<string, number> = {}
+  for (const t of tenants) {
+    const d = t.createdAt
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    signupMap[key] = (signupMap[key] ?? 0) + 1
+  }
+  const signupsByMonth: { month: string; count: number }[] = []
+  const cursor = new Date()
+  cursor.setDate(1)
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(cursor.getFullYear(), cursor.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    signupsByMonth.push({ month: MONTH_LABELS[d.getMonth()], count: signupMap[key] ?? 0 })
+  }
+
+  // Conversión: % de tenants en plan pago sobre el total.
+  const conversionRate = totalTenants > 0 ? (paidTenants / totalTenants) * 100 : 0
+
   return NextResponse.json({
     totalTenants,
     activeTenants,
@@ -99,6 +120,8 @@ export async function GET() {
     monthlyRecurringRevenue: mrr,
     byPlan,
     byBusinessType,
+    signupsByMonth,
+    conversionRate,
     recentSignups: recent.map(r => ({
       id: r.id, name: r.name,
       plan: r.subscription?.plan ?? "STARTER",
