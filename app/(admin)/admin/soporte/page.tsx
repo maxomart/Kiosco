@@ -10,6 +10,7 @@ interface TicketSummary {
   subject: string
   status: string
   plan: string | null
+  priority: string
   unreadByAdmin: boolean
   escalatedAt: string | null
   closedAt: string | null
@@ -196,6 +197,11 @@ export default function AdminSupportPage() {
                         <span className="w-2 h-2 rounded-full bg-violet-400 mt-1.5 shrink-0" />
                       )}
                       <p className="text-sm text-white font-medium flex-1 truncate">{t.subject}</p>
+                      {t.priority === "HIGH" && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider whitespace-nowrap border bg-amber-500/15 text-amber-300 border-amber-500/30">
+                          ★ Prioritario
+                        </span>
+                      )}
                       <StatusBadge status={t.status} />
                     </div>
                     <p className="text-[11px] text-gray-500 truncate">

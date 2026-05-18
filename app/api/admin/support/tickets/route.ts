@@ -28,13 +28,23 @@ export async function GET(req: Request) {
   }
   // "all" = no filter
 
-  const tickets = await db.supportTicket.findMany({
+  const rawTickets = await db.supportTicket.findMany({
     where,
     orderBy: [
       { unreadByAdmin: "desc" },
       { lastMessageAt: "desc" },
     ],
     take: 100,
+  })
+
+  // Re-orden en JS para meter la prioridad: primero lo no leído, dentro de
+  // eso los prioritarios (planes pagos altos), después por más reciente.
+  const PRIORITY_RANK: Record<string, number> = { HIGH: 0, NORMAL: 1, LOW: 2 }
+  const tickets = [...rawTickets].sort((a, b) => {
+    if (a.unreadByAdmin !== b.unreadByAdmin) return a.unreadByAdmin ? -1 : 1
+    const pr = (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1)
+    if (pr !== 0) return pr
+    return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
   })
 
   // Pull author info for each ticket — just one batch query
@@ -53,6 +63,7 @@ export async function GET(req: Request) {
         subject: t.subject,
         status: t.status,
         plan: t.planSnapshot,
+        priority: t.priority,
         unreadByAdmin: t.unreadByAdmin,
         escalatedAt: t.escalatedAt,
         closedAt: t.closedAt,

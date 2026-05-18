@@ -5,6 +5,9 @@ import { replyToSupport } from "@/lib/support-ai"
 import { sendEmail } from "@/lib/email"
 import type { Plan } from "@/lib/utils"
 
+// Planes que reciben prioridad alta en la cola de soporte.
+const HIGH_PRIORITY_PLANS = new Set<Plan>(["PROFESSIONAL", "BUSINESS", "ENTERPRISE"])
+
 // GET /api/soporte/tickets — lista de tickets del usuario actual
 export async function GET() {
   const session = await auth()
@@ -32,8 +35,8 @@ export async function GET() {
 //
 // Crea un ticket, guarda el primer mensaje del usuario, e inmediatamente
 // le pega a la IA para tener una respuesta lista cuando el usuario abra
-// la conversación. Si la IA decide escalar (token ESCALATE en su salida),
-// el ticket nace ESCALATED y le mandamos un mail al admin.
+// la conversación. Le avisa al admin por mail de TODO ticket nuevo
+// (escalado o no) para que no se le pase ninguna consulta.
 export async function POST(req: Request) {
   const session = await auth()
   if (!session?.user?.id) {
@@ -74,6 +77,10 @@ export async function POST(req: Request) {
     }
   }
 
+  // Prioridad: los planes pagos altos van como HIGH para que el admin
+  // los vea primero en la bandeja.
+  const priority = HIGH_PRIORITY_PLANS.has(plan) ? "HIGH" : "NORMAL"
+
   // Crear ticket + primer mensaje en una transacción
   const ticket = await db.$transaction(async (tx) => {
     const t = await tx.supportTicket.create({
@@ -82,6 +89,7 @@ export async function POST(req: Request) {
         userId: session.user.id,
         subject,
         status: "OPEN",
+        priority,
         planSnapshot: plan,
       },
     })
@@ -122,7 +130,7 @@ export async function POST(req: Request) {
         data: {
           status: escalated ? "ESCALATED" : "AI_REPLIED",
           escalatedAt: escalated ? new Date() : null,
-          unreadByAdmin: escalated,
+          unreadByAdmin: true,
           unreadByUser: true,
           lastMessageAt: new Date(),
         },
@@ -132,17 +140,19 @@ export async function POST(req: Request) {
     console.error("[soporte/tickets] AI reply failed:", e)
   }
 
-  // Mail al admin si escaló
-  if (escalated) {
-    void notifyAdminOfEscalation({
-      ticketId: ticket.id,
-      subject,
-      userEmail: session.user.email,
-      userName: session.user.name,
-      message,
-      plan,
-    })
-  }
+  // Mail al admin de TODO ticket nuevo. Si escaló, mail urgente; si la IA
+  // contestó, mail informativo con lo que se respondió.
+  void notifyAdminOfNewTicket({
+    ticketId: ticket.id,
+    subject,
+    userEmail: session.user.email,
+    userName: session.user.name,
+    message,
+    plan,
+    priority,
+    escalated,
+    aiReply: aiContent,
+  })
 
   return NextResponse.json({
     ticket: {
@@ -155,23 +165,48 @@ export async function POST(req: Request) {
   })
 }
 
-async function notifyAdminOfEscalation(opts: {
+async function notifyAdminOfNewTicket(opts: {
   ticketId: string
   subject: string
   userEmail: string
   userName: string
   message: string
   plan: Plan
+  priority: string
+  escalated: boolean
+  aiReply: string | null
 }) {
   const adminEmail = process.env.SUPERADMIN_EMAIL ?? process.env.EMAIL_REPLY_TO
   if (!adminEmail) return
-  // Defensive — subject is already CR/LF-stripped at write time, but if
-  // a future migration ever loads pre-existing rows that aren't, this
-  // guarantees no header injection.
-  const subject = `[Soporte] ${sanitizeHeader(opts.subject)} — ${opts.plan}`
+
+  const esPrioritario = opts.priority === "HIGH"
+  // Etiqueta del asunto del mail según urgencia.
+  const tag = opts.escalated
+    ? "ESCALADO"
+    : esPrioritario
+      ? "PRIORITARIO"
+      : "nuevo"
+  const subject = `[Soporte · ${tag}] ${sanitizeHeader(opts.subject)} — ${opts.plan}`
+
+  // Bloque con la respuesta de la IA (solo si la IA contestó y no escaló).
+  const aiBlock =
+    opts.aiReply && !opts.escalated
+      ? `
+      <p style="margin:16px 0 4px;color:#6b7280;font-size:12px;font-weight:600;">La IA ya respondió esto:</p>
+      <div style="background:#eef2ff;border-radius:10px;padding:14px 16px;font-size:13px;color:#3730a3;line-height:1.5;white-space:pre-wrap;">
+        ${escapeHtml(opts.aiReply)}
+      </div>`
+      : ""
+
+  const estadoTxt = opts.escalated
+    ? "El usuario necesita una respuesta humana."
+    : "La IA ya contestó. Revisalo por si querés sumar algo."
+
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
-      <p style="margin:0 0 4px;color:#6b7280;text-transform:uppercase;font-size:11px;letter-spacing:0.05em;font-weight:600;">soporte · escalado</p>
+      <p style="margin:0 0 4px;color:${opts.escalated ? "#dc2626" : "#6b7280"};text-transform:uppercase;font-size:11px;letter-spacing:0.05em;font-weight:600;">
+        soporte · ${opts.escalated ? "escalado" : "nuevo ticket"}${esPrioritario ? " · prioritario" : ""}
+      </p>
       <h2 style="margin:0 0 12px;font-size:18px;color:#111827;">${escapeHtml(opts.subject)}</h2>
       <p style="color:#4b5563;font-size:14px;line-height:1.55;margin:0 0 12px;">
         <strong>${escapeHtml(opts.userName)}</strong> (${escapeHtml(opts.userEmail)}) · plan <strong>${opts.plan}</strong>
@@ -179,15 +214,26 @@ async function notifyAdminOfEscalation(opts: {
       <div style="background:#f3f4f6;border-radius:10px;padding:14px 16px;font-size:14px;color:#111827;line-height:1.5;white-space:pre-wrap;">
         ${escapeHtml(opts.message)}
       </div>
-      <p style="margin-top:18px;font-size:13px;color:#6b7280;">
-        Respondé desde <a href="${process.env.NEXTAUTH_URL ?? ""}/admin/soporte/${opts.ticketId}" style="color:#2563eb;">/admin/soporte</a>.
+      ${aiBlock}
+      <p style="margin:16px 0 4px;color:#6b7280;font-size:13px;">${estadoTxt}</p>
+      <p style="margin-top:8px;font-size:13px;color:#6b7280;">
+        Respondé desde <a href="${process.env.NEXTAUTH_URL ?? ""}/admin/soporte" style="color:#2563eb;">/admin/soporte</a>.
       </p>
     </div>`.trim()
+
+  const textParts = [
+    `Ticket ${tag} de ${opts.userEmail} (${opts.plan}):`,
+    "",
+    opts.message,
+  ]
+  if (aiBlock) textParts.push("", "La IA respondió:", opts.aiReply ?? "")
+  textParts.push("", "Responder en /admin/soporte")
+
   await sendEmail({
     to: adminEmail,
     subject,
     html,
-    text: `Ticket escalado de ${opts.userEmail} (${opts.plan}):\n\n${opts.message}\n\nResponder en /admin/soporte/${opts.ticketId}`,
+    text: textParts.join("\n"),
   })
 }
 
