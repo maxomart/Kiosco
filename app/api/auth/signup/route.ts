@@ -3,9 +3,7 @@ import { z } from "zod"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 import { slugify } from "@/lib/utils"
-import { issueEmailCode, EMAIL_CODE_TTL_MIN } from "@/lib/email-verification"
 import { sendEmail } from "@/lib/email"
-import { renderEmailVerificationCode } from "@/lib/email-templates"
 import { syncUserToSheet } from "@/lib/sheets-sync"
 import { ensureReferralCode, applyReferralOnSignup } from "@/lib/referrals"
 
@@ -301,9 +299,9 @@ export async function POST(req: Request) {
           },
         })
 
-        // 2. Create User (OWNER role) — emailVerified intentionally null
-        //    so the dashboard layout will bounce them to /verificar-email
-        //    until they type the code we send below.
+        // 2. Create User (OWNER role). emailVerified se setea de una —
+        //    la verificación por código de email quedó desactivada, así
+        //    que el usuario entra directo al dashboard.
         const user = await tx.user.create({
           data: {
             name: ownerName,
@@ -312,6 +310,7 @@ export async function POST(req: Request) {
             phone,
             role: "OWNER",
             tenantId: tenant.id,
+            emailVerified: now,
           },
         })
         createdUserId = user.id
@@ -353,29 +352,6 @@ export async function POST(req: Request) {
       throw txErr
     }
 
-    // Email verification — fire & forget the email but always return the
-    // userId so the client can land on /verificar-email and either type
-    // the code or hit "reenviar". Failure here doesn't roll back signup;
-    // the user can always request another code from the verify page.
-    if (createdUserId) {
-      try {
-        const codeRes = await issueEmailCode({ userId: createdUserId, force: true })
-        if ("code" in codeRes) {
-          const tpl = renderEmailVerificationCode({
-            name: ownerName,
-            code: codeRes.code,
-            expiresInMin: EMAIL_CODE_TTL_MIN,
-          })
-          await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text })
-          if (!process.env.RESEND_API_KEY) {
-            console.log(`[signup] verification code for ${email}: ${codeRes.code}`)
-          }
-        }
-      } catch (e) {
-        console.error("[signup] failed to issue verification code:", e)
-      }
-    }
-
     // Notify the platform admin about the new signup. Best-effort,
     // doesn't block. Subject is sanitized to dodge header injection
     // even though businessName is regex-validated upstream.
@@ -407,7 +383,7 @@ export async function POST(req: Request) {
       {
         ok: true,
         userId: createdUserId,
-        needsEmailVerification: true,
+        needsEmailVerification: false,
         promoApplied: promoApplied
           ? { plan: promoApplied.planGranted, days: promoApplied.daysGranted }
           : null,
