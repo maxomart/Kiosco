@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import {
   Calculator,
   Camera,
@@ -290,39 +291,38 @@ export default function CierrePage() {
   const numStr = (v: any): string | undefined =>
     v !== null && v !== undefined && v !== "" && !isNaN(Number(v)) ? String(v) : undefined
 
-  const applyExtraction = (d: any) => {
+  const buildNext = (prev: Form, d: any): Form => {
     d = d || {}
-    setF((prev) => {
-      const next: Form = { ...prev }
-      const fe = normFecha(d.fecha)
-      if (fe) next.fecha = fe
-      if (d.numeroZ != null && String(d.numeroZ).trim() !== "") next.numeroZ = String(d.numeroZ)
-      const pairs: [keyof Form, any][] = [
-        ["ticketsZ", d.ticketsZ], ["ticketsAB", d.ticketsAB],
-        ["importeZ", d.importeZ], ["facturasAB", d.facturasAB],
-        ["salonMonto", d.salonMonto], ["salonCub", d.salonCub],
-        ["takeMonto", d.takeMonto], ["takeCub", d.takeCub],
-        ["otroMonto", d.otroMonto], ["otroCub", d.otroCub],
-        ["saldoAnterior", d.saldoAnterior],
-      ]
-      for (const [k, v] of pairs) {
-        const s = numStr(v)
-        if (s !== undefined) (next as any)[k] = s
-      }
-      const mapRows = (arr: any[]): Row[] =>
-        arr.map((x) => ({ concepto: String(x?.concepto || ""), monto: x?.monto == null ? "" : String(x.monto) }))
-      if (Array.isArray(d.efectivo) && d.efectivo.length) next.efectivo = mapRows(d.efectivo)
-      if (Array.isArray(d.gastos) && d.gastos.length) next.gastos = mapRows(d.gastos)
-      if (Array.isArray(d.retiros) && d.retiros.length) next.retiros = mapRows(d.retiros)
-      if (Array.isArray(d.propinas) && d.propinas.length)
-        next.propinas = d.propinas.map((p: any) => ({
-          concepto: String(p?.concepto || ""),
-          monto: p?.monto == null ? "" : String(p.monto),
-          personas: p?.personas == null ? "" : String(p.personas),
-        }))
-      return next
-    })
+    const next: Form = { ...prev }
+    const fe = normFecha(d.fecha)
+    if (fe) next.fecha = fe
+    if (d.numeroZ != null && String(d.numeroZ).trim() !== "") next.numeroZ = String(d.numeroZ)
+    const pairs: [keyof Form, any][] = [
+      ["ticketsZ", d.ticketsZ], ["ticketsAB", d.ticketsAB],
+      ["importeZ", d.importeZ], ["facturasAB", d.facturasAB],
+      ["salonMonto", d.salonMonto], ["salonCub", d.salonCub],
+      ["takeMonto", d.takeMonto], ["takeCub", d.takeCub],
+      ["otroMonto", d.otroMonto], ["otroCub", d.otroCub],
+      ["saldoAnterior", d.saldoAnterior],
+    ]
+    for (const [k, v] of pairs) {
+      const s = numStr(v)
+      if (s !== undefined) (next as any)[k] = s
+    }
+    const mapRows = (arr: any[]): Row[] =>
+      arr.map((x) => ({ concepto: String(x?.concepto || ""), monto: x?.monto == null ? "" : String(x.monto) }))
+    if (Array.isArray(d.efectivo) && d.efectivo.length) next.efectivo = mapRows(d.efectivo)
+    if (Array.isArray(d.gastos) && d.gastos.length) next.gastos = mapRows(d.gastos)
+    if (Array.isArray(d.retiros) && d.retiros.length) next.retiros = mapRows(d.retiros)
+    if (Array.isArray(d.propinas) && d.propinas.length)
+      next.propinas = d.propinas.map((p: any) => ({
+        concepto: String(p?.concepto || ""),
+        monto: p?.monto == null ? "" : String(p.monto),
+        personas: p?.personas == null ? "" : String(p.personas),
+      }))
+    return next
   }
+  const applyExtraction = (d: any) => setF((prev) => buildNext(prev, d))
 
   const leerFotos = async () => {
     if (!imgs.length) {
@@ -342,6 +342,11 @@ export default function CierrePage() {
       if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`)
       applyExtraction(j.data)
       setIaMsg({ text: "Listo. Revisá los números antes de guardar.", kind: "ok" })
+      // El mensajito de amor aparece acá: leer la foto ES "cerrar la caja" para
+      // ella (rara vez baja hasta el botón Guardar). Lo calculamos sobre el form
+      // ya completado para que el tono (cuadró/cerca/lejos) sea el real.
+      const c = compute(buildNext(f, j.data))
+      if (c.esperado > 0) setLove(loveMessage(c.diferencia, c.esperado))
     } catch (e: any) {
       let m = e?.message || String(e)
       if (/failed to fetch|networkerror|load failed/i.test(m)) m = "No me pude conectar. Revisá tu internet."
@@ -365,7 +370,7 @@ export default function CierrePage() {
   }
   const saveCierre = () => {
     persist([...readHist(), { id: Date.now(), savedAt: new Date().toISOString(), form: f, calc }])
-    setLove(loveMessage(calc.diferencia, calc.esperado))
+    toast.success("Cierre guardado")
   }
   const openCierre = (s: Saved) => {
     setF(s.form)
@@ -771,34 +776,38 @@ export default function CierrePage() {
         </div>
       </div>
 
-      {/* Mensajito de amor al cerrar la caja ❤️ */}
-      {love && (
-        <div
-          onClick={() => setLove(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
-          role="dialog"
-          aria-label="Mensaje"
-        >
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {["8%", "24%", "42%", "60%", "78%", "92%"].map((l, i) => (
-              <span
-                key={l}
-                className="cierre-love-heart"
-                style={{ left: l, animationDelay: `${i * 0.32}s`, fontSize: `${18 + (i % 3) * 12}px` }}
-              >
-                {["❤️", "💕", "💛", "💖", "💗", "💞"][i % 6]}
-              </span>
-            ))}
-          </div>
-          <div className="cierre-love-card relative w-full max-w-sm rounded-2xl border border-rose-400/30 bg-rose-950/90 px-6 py-8 text-center shadow-2xl">
-            <div className="cierre-love-beat mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-rose-500/20">
-              <Heart className="h-9 w-9 text-rose-400" fill="currentColor" />
+      {/* Mensajito de amor al cerrar la caja ❤️ — va por portal al <body> para que
+          NO lo atrape el stacking context del layout (main `relative z-10` +
+          overflow), que si no lo dejaba tapado/recortado por los widgets. */}
+      {love && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            onClick={() => setLove(null)}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+            role="dialog"
+            aria-label="Mensaje"
+          >
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              {["8%", "24%", "42%", "60%", "78%", "92%"].map((l, i) => (
+                <span
+                  key={l}
+                  className="cierre-love-heart"
+                  style={{ left: l, animationDelay: `${i * 0.32}s`, fontSize: `${18 + (i % 3) * 12}px` }}
+                >
+                  {["❤️", "💕", "💛", "💖", "💗", "💞"][i % 6]}
+                </span>
+              ))}
             </div>
-            <p className="text-lg font-extrabold leading-snug text-white">{love}</p>
-            <p className="mt-3 text-xs font-medium text-rose-200/70">Cierre guardado ✓ · tocá para cerrar</p>
-          </div>
-        </div>
-      )}
+            <div className="cierre-love-card relative w-full max-w-sm rounded-2xl border border-rose-400/30 bg-rose-950/90 px-6 py-8 text-center shadow-2xl">
+              <div className="cierre-love-beat mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-rose-500/20">
+                <Heart className="h-9 w-9 text-rose-400" fill="currentColor" />
+              </div>
+              <p className="text-lg font-extrabold leading-snug text-white">{love}</p>
+              <p className="mt-3 text-xs font-medium text-rose-200/70">Tocá para cerrar ❤️</p>
+            </div>
+          </div>,
+          document.body
+        )}
 
       <style>{`
         @keyframes cierrePop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1);opacity:1}}
