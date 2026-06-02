@@ -4,7 +4,7 @@ import OpenAI from "openai"
 import { db } from "@/lib/db"
 import { getSessionTenant } from "@/lib/tenant"
 import { hasFeature, AI_DAILY_QUOTA, AI_PER_MINUTE_LIMIT } from "@/lib/permissions"
-import { getOpenAI, isOpenAIConfigured, DEFAULT_MODEL } from "@/lib/openai"
+import { getOpenAI, isOpenAIConfigured } from "@/lib/openai"
 import type { Plan } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -35,11 +35,47 @@ function checkPerMinuteLimit(tenantId: string): boolean {
   return true
 }
 
-const SYS_PROMPT =
-  "Sos un asistente que extrae datos del cierre de caja de una cafeteria en Argentina a partir de imagenes. Te pueden pasar: (1) una foto de la pantalla de un sistema POS (por ejemplo 'MrService') con totales de ventas, y/o (2) una foto de una planilla de cierre escrita a mano. Tu tarea es leer los numeros y devolver SOLO un objeto JSON valido (sin texto extra) con los campos indicados. Reglas estrictas: los montos van como numeros enteros, sin simbolo $ ni separadores de miles (ej: '560.300' o '$ 560.300' => 560300; si hay coma decimal usala como punto). Si un dato no aparece o no estas seguro, poné null para los campos sueltos y [] para las listas. No inventes ningun valor: si no lo ves, va null."
+// gpt-4o (no -mini) para esta ruta: lee mucho mejor la letra manuscrita y los
+// dígitos en fotos de planillas/tickets que el mini. Cuesta ~10x más por llamada
+// (igual son centavos), pero es una función de plata y la precisión importa.
+// El chat sigue en DEFAULT_MODEL (mini); este override es solo para visión.
+const VISION_MODEL = "gpt-4o"
 
-const USER_PROMPT =
-  "Lee la(s) imagen(es) y devolve un JSON con esta forma exacta (todos los campos son opcionales, poné null o [] si no aparece):\n{\n \"fecha\": \"YYYY-MM-DD o null\",\n \"numeroZ\": \"texto o null (Numero Z del reporte)\",\n \"ticketsZ\": \"entero o null (cant. de tickets fiscales; en el POS suele figurar como 'Fac. B FIS (52)' => 52)\",\n \"ticketsAB\": \"entero o null (cant. de Facturas A/B no fiscales; POS 'Factura B (19)' => 19)\",\n \"importeZ\": \"numero o null (Importe total del Z o 'Fac. B FIS', el monto FISCAL)\",\n \"facturasAB\": \"numero o null ('Facturas A y B' o 'Factura B', el monto NO fiscal)\",\n \"salonMonto\": \"numero o null\", \"salonCub\": \"entero o null (ventas de Salon y cubiertos)\",\n \"takeMonto\": \"numero o null\", \"takeCub\": \"entero o null (Take away)\",\n \"otroMonto\": \"numero o null\", \"otroCub\": \"entero o null\",\n \"saldoAnterior\": \"numero o null ('Saldo de dia anterior')\",\n \"efectivo\": [{\"concepto\":\"ej Caja o Bolsa\",\"monto\":0}],\n \"gastos\": [{\"concepto\":\"texto\",\"monto\":0}],\n \"retiros\": [{\"concepto\":\"ej Tarjeta/TD o Mercado Pago/MP\",\"monto\":0}],\n \"propinas\": [{\"concepto\":\"texto o null\",\"monto\":0,\"personas\":0}]\n}\nNotas: 'Salon' y 'Take away' a veces traen los cubiertos entre parentesis, ej 'Salon 567800 (54)' => salonMonto 567800, salonCub 54. En 'Retiros' suelen estar los pagos virtuales (Tarjeta/TD, Mercado Pago/MP). En 'Gastos' van nombres de proveedores o personas con su monto. Devolve unicamente el JSON."
+const SYS_PROMPT = `Sos un asistente que extrae datos del cierre de caja de una cafetería en Argentina a partir de imágenes, para autocompletar un formulario. Te pueden pasar varias imágenes juntas: (1) la pantalla de un POS (ej "MrService") con las ventas; (2) tickets de tarjetas (ej Getnet/Posnet) o de Mercado Pago; (3) una planilla de cierre escrita a mano. Combiná TODAS las imágenes en un solo JSON. Reglas estrictas de números: van como enteros, sin símbolo $ ni separadores de miles ("266.800" o "$ 266.800" => 266800; si hay coma decimal usala como punto: "1.234,50" => 1234.5). Si un dato no aparece o no lo ves con seguridad, poné null para los campos sueltos y [] para las listas. NUNCA inventes un número: si no lo ves claro, va null. Devolvé SOLO el objeto JSON, sin ningún texto adicional.`
+
+const USER_PROMPT = `Leé la(s) imagen(es) y devolvé un JSON con esta forma exacta (todos los campos son opcionales: null o [] si no aparece):
+{
+ "fecha": "YYYY-MM-DD o null",
+ "numeroZ": "texto o null (Número de reporte Z)",
+ "ticketsZ": "entero o null (cant. de tickets FISCALES; en el POS figura como 'Fac. B FIS (25)' => 25)",
+ "ticketsAB": "entero o null (cant. de Facturas A/B NO fiscales; POS 'Factura B (9)' => 9)",
+ "importeZ": "número o null (monto FISCAL: 'Fac. B FIS' del POS, o 'Z' en la planilla a mano)",
+ "facturasAB": "número o null (monto NO fiscal: 'Factura B' del POS, o 'AyB' en la planilla a mano)",
+ "salonMonto": "número o null", "salonCub": "entero o null (ventas de Salón y sus cubiertos)",
+ "takeMonto": "número o null", "takeCub": "entero o null (Take away)",
+ "otroMonto": "número o null", "otroCub": "entero o null",
+ "saldoAnterior": "número o null (saldo del día ANTERIOR; en la planilla 'SDA')",
+ "efectivo": [{"concepto":"ej Caja o Bolsa","monto":0}],
+ "gastos": [{"concepto":"texto","monto":0}],
+ "retiros": [{"concepto":"ej Tarjeta/TD o Mercado Pago/MP","monto":0}],
+ "propinas": [{"concepto":"texto o null","monto":0,"personas":0}]
+}
+
+Diccionario de la planilla escrita a mano (abreviaturas de esta cafetería):
+- Z = importe FISCAL => importeZ
+- AyB = Facturas A y B, NO fiscal (suele ser efectivo) => facturasAB
+- SD = "Saldo del día" = el efectivo CONTADO en caja al cerrar => va en efectivo, ej {"concepto":"Caja","monto":SD}
+- TG = "Total de gastos" => si hay detalle cargá cada gasto en gastos[]; si solo está el total, gastos: [{"concepto":"Gastos","monto":TG}]
+- TR = "Total de retiros" = plata que salió de la caja (tarjetas TD/Getnet, Mercado Pago MP, y a veces un retiro de efectivo del dueño/encargado) => cargá cada uno en retiros[]: {"concepto":"Tarjeta (TD)","monto":...}, {"concepto":"Mercado Pago (MP)","monto":...}, {"concepto":"Retiro efectivo","monto":...}
+- SDA = "Saldo del día anterior" => saldoAnterior
+
+NO pongas estos en ningún campo: son totales que la app recalcula sola (solo están en la planilla para chequear la cuenta): ET ("Egresos totales" = TG + TR), ST ("Suma total" = ET + SD), T ("Total" = ST − SDA), DF ("Diferencia" = T − AyB − Z).
+
+Notas finales:
+- 'Salón' y 'Take away' a veces traen los cubiertos entre paréntesis: 'Salón 251100 (26)' => salonMonto 251100, salonCub 26.
+- En los tickets, Getnet/Posnet/Visa/débito => un retiro "Tarjeta"; Mercado Pago => un retiro "Mercado Pago".
+- Para las VENTAS (Z, Factura B, Salón, Take away) priorizá lo que muestre el POS; el efectivo, los gastos y el saldo anterior salen de la planilla a mano.
+Devolvé únicamente el JSON.`
 
 async function getDailyUsage(tenantId: string): Promise<number> {
   const start = new Date()
@@ -137,7 +173,7 @@ export async function POST(req: NextRequest) {
     ]
 
     const response = await openai.chat.completions.create({
-      model: DEFAULT_MODEL,
+      model: VISION_MODEL,
       temperature: 0,
       max_tokens: 1500,
       response_format: { type: "json_object" },
