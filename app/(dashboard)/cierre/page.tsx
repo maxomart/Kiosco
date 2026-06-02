@@ -14,6 +14,7 @@ import {
   Download,
   ExternalLink,
   History,
+  Heart,
 } from "lucide-react"
 import toast from "react-hot-toast"
 import { cn } from "@/lib/utils"
@@ -47,6 +48,36 @@ type Calc = ReturnType<typeof compute>
 type Saved = { id: number; savedAt: string; form: Form; calc: Calc }
 
 const HKEY = "orvex_cierres_v1"
+
+// ── mensajitos de amor al cerrar la caja ❤️ ─────────────────────────────────
+const PET_NAMES = ["mi amor", "mi bb", "mi vida", "hermosa", "mi reina", "bebé", "mi cielo"]
+const LOVE_MSGS: Record<"exacto" | "cerca" | "lejos", string[]> = {
+  exacto: [
+    "¡Cuadró justo, {p}! Sos una genia ❤️",
+    "Caja impecable, {p} ❤️ te amo",
+    "¡Cero diferencia, {p}! La mejor del mundo ❤️",
+    "Perfecto, {p} ❤️ te re amo",
+  ],
+  cerca: [
+    "Estuviste cerquísima, {p} ❤️ por monedas",
+    "Casi casi, {p} ❤️ buenísimo igual, te amo",
+    "Re cerca, {p} ❤️ sos una capa",
+    "Por poquito, {p} ❤️ te amo un montón",
+  ],
+  lejos: [
+    "No pasa nada, {p} ❤️ mañana lo clavás",
+    "Tranqui, {p} ❤️ la caja es lo de menos, te amo",
+    "Igual sos la mejor, {p} ❤️ te amo",
+    "Pasa, {p} ❤️ te amo igual, dé lo que dé",
+  ],
+}
+const pickOne = (a: string[]) => a[Math.floor(Math.random() * a.length)]
+function loveMessage(diferencia: number, esperado: number): string {
+  const abs = Math.abs(Math.round(diferencia))
+  const umbral = Math.max(2000, esperado * 0.01)
+  const tier = abs === 0 ? "exacto" : abs <= umbral ? "cerca" : "lejos"
+  return pickOne(LOVE_MSGS[tier]).replace("{p}", pickOne(PET_NAMES))
+}
 
 // ── helpers puros ──────────────────────────────────────────────────────────
 // Igual que en la herramienta original: limpia $, espacios y separador de miles
@@ -187,6 +218,14 @@ export default function CierrePage() {
   const [f, setF] = useState<Form>(emptyForm)
   const calc = useMemo(() => compute(f), [f])
 
+  // mensajito de amor que aparece al guardar (cerrar la caja)
+  const [love, setLove] = useState<string | null>(null)
+  useEffect(() => {
+    if (!love) return
+    const t = setTimeout(() => setLove(null), 5000)
+    return () => clearTimeout(t)
+  }, [love])
+
   const [hist, setHist] = useState<Saved[]>([])
   useEffect(() => {
     try {
@@ -326,7 +365,7 @@ export default function CierrePage() {
   }
   const saveCierre = () => {
     persist([...readHist(), { id: Date.now(), savedAt: new Date().toISOString(), form: f, calc }])
-    toast.success("Cierre guardado")
+    setLove(loveMessage(calc.diferencia, calc.esperado))
   }
   const openCierre = (s: Saved) => {
     setF(s.form)
@@ -731,6 +770,44 @@ export default function CierrePage() {
           </div>
         </div>
       </div>
+
+      {/* Mensajito de amor al cerrar la caja ❤️ */}
+      {love && (
+        <div
+          onClick={() => setLove(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm"
+          role="dialog"
+          aria-label="Mensaje"
+        >
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {["8%", "24%", "42%", "60%", "78%", "92%"].map((l, i) => (
+              <span
+                key={l}
+                className="cierre-love-heart"
+                style={{ left: l, animationDelay: `${i * 0.32}s`, fontSize: `${18 + (i % 3) * 12}px` }}
+              >
+                {["❤️", "💕", "💛", "💖", "💗", "💞"][i % 6]}
+              </span>
+            ))}
+          </div>
+          <div className="cierre-love-card relative w-full max-w-sm rounded-2xl border border-rose-400/30 bg-rose-950/90 px-6 py-8 text-center shadow-2xl">
+            <div className="cierre-love-beat mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-rose-500/20">
+              <Heart className="h-9 w-9 text-rose-400" fill="currentColor" />
+            </div>
+            <p className="text-lg font-extrabold leading-snug text-white">{love}</p>
+            <p className="mt-3 text-xs font-medium text-rose-200/70">Cierre guardado ✓ · tocá para cerrar</p>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes cierrePop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1);opacity:1}}
+        @keyframes cierreBeat{0%,100%{transform:scale(1)}30%{transform:scale(1.18)}60%{transform:scale(.97)}}
+        @keyframes cierreFloat{0%{transform:translateY(40px) scale(.6);opacity:0}15%{opacity:1}100%{transform:translateY(-260px) scale(1.1);opacity:0}}
+        .cierre-love-card{animation:cierrePop .4s ease-out both}
+        .cierre-love-beat{animation:cierreBeat 1s ease-in-out infinite}
+        .cierre-love-heart{position:absolute;bottom:6%;animation:cierreFloat 2.8s ease-in infinite}
+      `}</style>
     </div>
   )
 }
