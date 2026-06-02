@@ -61,6 +61,8 @@ const USER_PROMPT = `Leé la(s) imagen(es) y devolvé un JSON con esta forma exa
  "propinas": [{"concepto":"texto o null","monto":0,"personas":0}]
 }
 
+MUY IMPORTANTE — NO DUPLIQUES. Te pueden pasar varias fotos del MISMO cierre y muchas se superponen (ej: el total de tarjetas figura en el ticket de Getnet Y en la planilla a mano; el Z figura en el POS Y en la planilla; o directamente dos fotos de la misma pantalla). Cada monto real va UNA SOLA VEZ: nunca sumes el mismo dato dos veces ni crees dos ítems iguales en las listas (efectivo/gastos/retiros). Si el mismo dato aparece con valores distintos en dos fotos, quedate con el más confiable (ventas => POS; tarjetas/Mercado Pago => el ticket de la terminal) y descartá el otro. Mejor un dato en null que repetido o inventado.
+
 Diccionario de la planilla escrita a mano (abreviaturas de esta cafetería):
 - Z = importe FISCAL => importeZ
 - AyB = Facturas A y B, NO fiscal (suele ser efectivo) => facturasAB
