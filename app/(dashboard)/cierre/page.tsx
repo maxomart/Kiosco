@@ -121,6 +121,18 @@ function compute(f: Form) {
   }
 }
 
+// Campos "esenciales" para que la diferencia tenga sentido. Varios salen de los
+// apuntes a mano (no de la pantalla del POS): si falta alguno NO mostramos
+// "Falta $X" (asusta de gusto) — avisamos qué cargar.
+function faltantesDe(f: Form, c: Calc): string[] {
+  const m: string[] = []
+  if (c.esperado <= 0) m.push("ventas (Z / Facturas A y B)")
+  if (c.saldoDia <= 0) m.push("efectivo contado")
+  if (!f.saldoAnterior.trim()) m.push("saldo del día anterior")
+  if (c.totalRetiros <= 0) m.push("retiros (Mercado Pago / tarjeta)")
+  return m
+}
+
 function normFecha(f: any): string {
   if (!f) return ""
   const s = String(f)
@@ -218,6 +230,8 @@ function SumLine({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
 export default function CierrePage() {
   const [f, setF] = useState<Form>(emptyForm)
   const calc = useMemo(() => compute(f), [f])
+  const faltantes = useMemo(() => faltantesDe(f, calc), [f, calc])
+  const incompleto = faltantes.length > 0
 
   // mensajito de amor que aparece al guardar (cerrar la caja)
   const [love, setLove] = useState<string | null>(null)
@@ -241,7 +255,7 @@ export default function CierrePage() {
   const [imgs, setImgs] = useState<{ file: File; url: string }[]>([])
   const [drag, setDrag] = useState(false)
   const [iaLoading, setIaLoading] = useState(false)
-  const [iaMsg, setIaMsg] = useState<{ text: string; kind: "ok" | "bad" | "wait" } | null>(null)
+  const [iaMsg, setIaMsg] = useState<{ text: string; kind: "ok" | "bad" | "wait" | "warn" } | null>(null)
 
   const imgsRef = useRef(imgs)
   useEffect(() => {
@@ -340,13 +354,21 @@ export default function CierrePage() {
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`)
+      const nf = buildNext(f, j.data)
       applyExtraction(j.data)
-      setIaMsg({ text: "Listo. Revisá los números antes de guardar.", kind: "ok" })
-      // El mensajito de amor aparece acá: leer la foto ES "cerrar la caja" para
-      // ella (rara vez baja hasta el botón Guardar). Lo calculamos sobre el form
-      // ya completado para que el tono (cuadró/cerca/lejos) sea el real.
-      const c = compute(buildNext(f, j.data))
-      if (c.esperado > 0) setLove(loveMessage(c.diferencia, c.esperado))
+      const c = compute(nf)
+      const falt = faltantesDe(nf, c)
+      if (falt.length) {
+        // Faltan datos (típico: subió sólo la pantalla del POS, sin los apuntes
+        // con saldo anterior / retiros). Avisamos qué cargar en vez de mostrar un
+        // "Falta plata" que asusta de gusto.
+        setIaMsg({ text: `Leí la foto ✓ Todavía falta cargar: ${falt.join(", ")}.`, kind: "warn" })
+      } else {
+        setIaMsg({ text: "¡Listo, cargué todo! Revisá los números.", kind: "ok" })
+        // El corazón sale acá, con el form completo: leer la foto ES "cerrar la
+        // caja" para ella. El tono (cuadró/cerca/lejos) ya es el real.
+        setLove(loveMessage(c.diferencia, c.esperado))
+      }
     } catch (e: any) {
       let m = e?.message || String(e)
       if (/failed to fetch|networkerror|load failed/i.test(m)) m = "No me pude conectar. Revisá tu internet."
@@ -518,6 +540,7 @@ export default function CierrePage() {
               "mt-2 text-sm font-medium",
               iaMsg.kind === "ok" && "text-green-400",
               iaMsg.kind === "bad" && "text-red-400",
+              iaMsg.kind === "warn" && "text-amber-300",
               iaMsg.kind === "wait" && "text-violet-300"
             )}
           >
@@ -658,14 +681,21 @@ export default function CierrePage() {
         <SumLine k="Total ventas (esperado)" v={fmt(calc.esperado)} />
         <SumLine k="Diferencia" v={fmt(calc.diferencia)} strong />
 
-        <div
-          className={cn(
-            "mt-3 p-3 rounded-lg text-center font-extrabold",
-            diffOk ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
-          )}
-        >
-          {diffOk ? "✓ La caja cuadra perfecto" : diff > 0 ? `↑ Sobra ${fmt(calc.diferencia)}` : `↓ Falta ${fmt(-calc.diferencia)}`}
-        </div>
+        {incompleto ? (
+          <div className="mt-3 p-3 rounded-lg text-center bg-amber-500/15 text-amber-300">
+            <div className="font-bold">Todavía falta cargar para saber si cuadra:</div>
+            <div className="font-extrabold mt-0.5">{faltantes.join(" · ")}</div>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "mt-3 p-3 rounded-lg text-center font-extrabold",
+              diffOk ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
+            )}
+          >
+            {diffOk ? "✓ La caja cuadra perfecto" : diff > 0 ? `↑ Sobra ${fmt(calc.diferencia)}` : `↓ Falta ${fmt(-calc.diferencia)}`}
+          </div>
+        )}
       </Card>
 
       {/* 7. Propinas */}
@@ -770,8 +800,8 @@ export default function CierrePage() {
             <div className="text-[10px] uppercase tracking-wide text-gray-500">Total</div>
             <div className="text-lg font-extrabold tabular-nums text-white truncate">{fmt(calc.total)}</div>
           </div>
-          <div className={cn("px-3 py-2 rounded-lg font-extrabold text-sm text-center min-w-[120px]", diffOk ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400")}>
-            {diffOk ? "✓ Cuadra" : diff > 0 ? `Sobra ${fmt(calc.diferencia)}` : `Falta ${fmt(-calc.diferencia)}`}
+          <div className={cn("px-3 py-2 rounded-lg font-extrabold text-sm text-center min-w-[120px]", incompleto ? "bg-amber-500/15 text-amber-300" : diffOk ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400")}>
+            {incompleto ? "Faltan datos" : diffOk ? "✓ Cuadra" : diff > 0 ? `Sobra ${fmt(calc.diferencia)}` : `Falta ${fmt(-calc.diferencia)}`}
           </div>
         </div>
       </div>

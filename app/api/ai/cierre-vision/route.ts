@@ -75,7 +75,10 @@ NO pongas estos en ningún campo: son totales que la app recalcula sola (solo es
 
 Notas finales:
 - 'Salón' y 'Take away' a veces traen los cubiertos entre paréntesis: 'Salón 251100 (26)' => salonMonto 251100, salonCub 26.
-- En los tickets, Getnet/Posnet/Visa/débito => un retiro "Tarjeta"; Mercado Pago => un retiro "Mercado Pago".
+- TICKETS DE TERMINAL (traen MUCHOS números: cantidad de operaciones, comisiones, IVA, fecha/número de lote, etc.). NO sumes esos números ni tomes un renglón suelto: de cada ticket sacá UN SOLO monto —el TOTAL— y cargalo como un retiro.
+  · Tarjeta débito/crédito (Getnet/Posnet/Visa/Mastercard): el monto correcto es el TOTAL del cierre de lote / liquidación, el que va ABAJO, al final del ticket. Concepto "Tarjeta (TD)".
+  · Mercado Pago: el monto correcto es el TOTAL grande que figura ARRIBA del comprobante (NO los movimientos detallados de abajo). Concepto "Mercado Pago".
+  Un ticket = un retiro. Si la misma terminal está fotografiada dos veces, va UNA sola vez (no la dupliques).
 - Para las VENTAS (Z, Factura B, Salón, Take away) priorizá lo que muestre el POS; el efectivo, los gastos y el saldo anterior salen de la planilla a mano.
 Devolvé únicamente el JSON.`
 
