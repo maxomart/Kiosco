@@ -68,7 +68,7 @@ Diccionario de la planilla escrita a mano (abreviaturas de esta cafetería):
 - AyB = Facturas A y B, NO fiscal (suele ser efectivo) => facturasAB
 - SD = "Saldo del día" = el efectivo CONTADO en caja al cerrar => va en efectivo, ej {"concepto":"Caja","monto":SD}
 - TG = "Total de gastos" => si hay detalle cargá cada gasto en gastos[]; si solo está el total, gastos: [{"concepto":"Gastos","monto":TG}]
-- TR = "Total de retiros" = plata que salió de la caja (tarjetas TD/Getnet, Mercado Pago MP, y a veces un retiro de efectivo del dueño/encargado) => cargá cada uno en retiros[]: {"concepto":"Tarjeta (TD)","monto":...}, {"concepto":"Mercado Pago (MP)","monto":...}, {"concepto":"Retiro efectivo","monto":...}
+- TR = "Total de retiros" = plata que salió de la caja. Sus componentes se anotan aparte (normalmente a la derecha, en columna) con códigos: MP = Mercado Pago, TD = Tarjeta de débito/crédito (Getnet/Posnet), L = Leandro (el dueño). Una "L" sola con un monto SIEMPRE es un retiro de EFECTIVO que hizo Leandro: NO la ignores ni la metas en gastos, va en retiros como "Retiro Leandro". Cargá CADA componente como un ítem de retiros[]: {"concepto":"Mercado Pago","monto":MP}, {"concepto":"Tarjeta (TD)","monto":TD}, {"concepto":"Retiro Leandro","monto":L}. Validación: MP + TD + L tiene que dar TR; si no da, te faltó cargar alguno.
 - SDA = "Saldo del día anterior" => saldoAnterior
 
 NO pongas estos en ningún campo: son totales que la app recalcula sola (solo están en la planilla para chequear la cuenta): ET ("Egresos totales" = TG + TR), ST ("Suma total" = ET + SD), T ("Total" = ST − SDA), DF ("Diferencia" = T − AyB − Z).
